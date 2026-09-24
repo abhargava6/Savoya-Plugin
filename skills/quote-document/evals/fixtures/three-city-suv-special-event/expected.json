@@ -1,0 +1,32 @@
+{
+  "normalize": {
+    "client": "Yerdle",
+    "prepared_by": "Ayush Bhargava",
+    "title": "SUV Hourly \u2014 Orlando, Los Angeles, New York"
+  },
+  "edits": {
+    "meta": {
+      "service_area": "Orlando \u00b7 Los Angeles \u00b7 New York"
+    },
+    "personalization": {
+      "cover": "executive-assistants"
+    }
+  },
+  "adjustments": [],
+  "engine_subtotal_cents": 333872,
+  "total_cents": 333872,
+  "leg_count": 3,
+  "contains": [
+    "US Open",
+    "8-hour minimum",
+    "$3,338.72",
+    "$186.34"
+  ],
+  "not_contains": [
+    "rack",
+    "fallback",
+    "SpecialEventHourlyRate",
+    "fuel surcharge of 5%"
+  ],
+  "pdf_pages": 3
+}

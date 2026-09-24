@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "client": "Access TCA",
+    "profile_id": null,
+    "prepared_by": "Daniel Mullican",
+    "prepared_on": "2026-08-19",
+    "valid_until": "2026-08-26",
+    "estimate_type": "approximate",
+    "currency": "USD",
+    "title": "Access TCA \u2014 Wedding 05/30/2027",
+    "reference": null,
+    "travel_coordinator": "Desiree Strobel",
+    "service_area": "Hartford, Connecticut"
+  },
+  "legs": [
+    {
+      "key": "sprinter_1",
+      "ref": "A1",
+      "label": "Wedding party \u2014 dresses",
+      "date": "2027-05-30T14:30:00-04:00",
+      "passenger_count": 6,
+      "service_area": "Hartford, CT",
+      "vehicle": {
+        "name": "Mercedes Sprinter Van",
+        "capacity": 13,
+        "quantity": 1
+      },
+      "stops": [
+        {
+          "label": "Hilton Hartford",
+          "address": "315 Trumbull St",
+          "kind": "address"
+        },
+        {
+          "label": "Stonehurst at Hampton Valley",
+          "address": null,
+          "kind": "address"
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 30900,
+        "billable_hours": 3,
+        "minimum_hours": 3,
+        "cancellation_hours": 24,
+        "special_event": null,
+        "per_vehicle_cents": 92700,
+        "line_total_cents": 92700
+      },
+      "client_notes": [
+        "6 pax + dresses/garment bags. 3-hr hourly minimum. ~25 mi / up to 40 min."
+      ]
+    },
+    {
+      "key": "sprinter_2",
+      "ref": "A2",
+      "label": "Wedding party",
+      "date": "2027-05-30T14:30:00-04:00",
+      "passenger_count": 6,
+      "service_area": "Hartford, CT",
+      "vehicle": {
+        "name": "Mercedes Sprinter Van",
+        "capacity": 13,
+        "quantity": 1
+      },
+      "stops": [
+        {
+          "label": "Hilton Hartford",
+          "address": "315 Trumbull St",
+          "kind": "address"
+        },
+        {
+          "label": "Stonehurst at Hampton Valley",
+          "address": null,
+          "kind": "address"
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 30900,
+        "billable_hours": 3,
+        "minimum_hours": 3,
+        "cancellation_hours": 24,
+        "special_event": null,
+        "per_vehicle_cents": 92700,
+        "line_total_cents": 92700
+      },
+      "client_notes": [
+        "6 pax. 3-hr hourly minimum. ~25 mi / up to 40 min."
+      ]
+    },
+    {
+      "key": "minibus_waves",
+      "ref": "A3",
+      "label": "Guest shuttle waves",
+      "date": "2027-05-30T14:30:00-04:00",
+      "passenger_count": 120,
+      "service_area": "Hartford, CT",
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hilton Hartford",
+          "address": "315 Trumbull St",
+          "kind": "address"
+        },
+        {
+          "label": "Stonehurst at Hampton Valley",
+          "kind": "address",
+          "wait_hours": 7
+        },
+        {
+          "label": "Hilton Hartford",
+          "address": "315 Trumbull St",
+          "kind": "address"
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 44400,
+        "billable_hours": 9,
+        "minimum_hours": 6,
+        "cancellation_hours": 168,
+        "special_event": null,
+        "per_vehicle_cents": 399600,
+        "line_total_cents": 1198800
+      },
+      "client_notes": [
+        "Covers 3:00pm & 3:15pm outbound waves (90 guests) and 11:00pm return (up to 102). 123 seats.",
+        "Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks. Cancel window 168 hrs (7 days)."
+      ]
+    }
+  ],
+  "engine_subtotal_cents": 1384200,
+  "adjustments": [],
+  "total_cents": 1384200,
+  "personalization": {
+    "cover_image_url": null,
+    "client_logo_url": null,
+    "event_name": "Stonehurst at Hampton Valley \u00b7 Wedding Day",
+    "intro_note": null,
+    "pull_quote": null,
+    "pull_quote_attribution": null,
+    "account_manager": {
+      "name": "Daniel Mullican",
+      "title": "Client Success, Savoya",
+      "email": null,
+      "phone": null
+    },
+    "closing_note": null
+  },
+  "terms": [
+    "Our pricing includes all charges EXCLUDING: variable fees such as parking, airport fees, tolls, and state taxes where applicable. We bill these charges at cost as they are incurred.",
+    "Our drivers are well compensated and additional gratuity is not expected.",
+    "A fuel surcharge of 5% is currently in effect.",
+    "Transfer rates include up to 30 minutes of complimentary wait time. Additional wait time is billed in 15 minute increments at the market hourly rate. Partial quarter hour increments are rounded to the next quarter hour.",
+    "Trips with stops are billed hourly. Hourly trips are billed garage to garage.",
+    "We have a 2-hour cancellation policy unless otherwise noted above.",
+    "This is a quoting tool and therefore builds quotes. This is not a final price nor is it guaranteed pricing."
+  ],
+  "internal": {
+    "rate_ids": [],
+    "warnings": [],
+    "placeholders": [],
+    "dropped_units": []
+  }
+}

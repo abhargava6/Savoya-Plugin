@@ -1,0 +1,15 @@
+{
+  "_note": "Route map path is rewritten by the runner; asserts every ref survives both tables.",
+  "adjustments": [],
+  "leg_count": 16,
+  "engine_subtotal_cents": 7484160,
+  "contains": [
+    "A16",
+    "Itinerary map",
+    "continued"
+  ],
+  "not_contains": [
+    "Stop 2"
+  ],
+  "pdf_pages": 8
+}

@@ -1,0 +1,1 @@
+Synthetic from the Onvia London/Sicily/Milan session: 6 legs, several with three long client_notes (out-of-market positioning, TBD flights, meet-and-greet). Regression guard for the page overflow that clipped a line item and a line note.

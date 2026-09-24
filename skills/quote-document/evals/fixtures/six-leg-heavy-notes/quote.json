@@ -1,0 +1,363 @@
+{
+  "meta": {
+    "client": "Yerdle",
+    "profile_id": null,
+    "prepared_by": "Ayush Bhargava",
+    "prepared_on": "2026-09-19",
+    "valid_until": "2026-09-26",
+    "estimate_type": "exact",
+    "currency": "USD",
+    "title": "Boston Offsite \u2014 Ground Transportation",
+    "reference": null,
+    "travel_coordinator": "Desiree Strobel",
+    "service_area": null
+  },
+  "legs": [
+    {
+      "key": "E0",
+      "service_area": null,
+      "label": "London \u2014 LGW arrival transfer",
+      "date": "2027-07-01T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A1"
+    },
+    {
+      "key": "E1",
+      "service_area": null,
+      "label": "London \u2014 LGW departure",
+      "date": "2027-07-04T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation.",
+        "Flight details to be confirmed \u2014 BA2612 departing 14:50; chauffeur monitors the schedule and adjusts pickup.",
+        "Meet-and-greet inside the terminal at baggage reclaim, name board displayed."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A2"
+    },
+    {
+      "key": "E2",
+      "service_area": null,
+      "label": "Sicily \u2014 CTA arrival",
+      "date": "2027-07-07T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation.",
+        "Flight details to be confirmed \u2014 BA2612 departing 14:50; chauffeur monitors the schedule and adjusts pickup.",
+        "Meet-and-greet inside the terminal at baggage reclaim, name board displayed."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A3"
+    },
+    {
+      "key": "E3",
+      "service_area": null,
+      "label": "Sicily \u2014 CTA departure",
+      "date": "2027-07-10T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation.",
+        "Flight details to be confirmed \u2014 BA2612 departing 14:50; chauffeur monitors the schedule and adjusts pickup.",
+        "Meet-and-greet inside the terminal at baggage reclaim, name board displayed."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A4"
+    },
+    {
+      "key": "E4",
+      "service_area": null,
+      "label": "Milan \u2014 LIN arrival",
+      "date": "2027-07-13T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A5"
+    },
+    {
+      "key": "E5",
+      "service_area": null,
+      "label": "Milan \u2014 LIN departure",
+      "date": "2027-07-16T09:00:00+01:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address"
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "drive_minutes": 14
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "drive_minutes": 15
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 40500,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 243000,
+        "line_total_cents": 729000
+      },
+      "client_notes": [
+        "Vehicles for this service are positioned from our Naples partners; additional drive time is included in the reservation."
+      ],
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      },
+      "engine_discount_pct": 30.0,
+      "ref": "A6"
+    }
+  ],
+  "engine_subtotal_cents": 4374000,
+  "adjustments": [],
+  "total_cents": 4374000,
+  "personalization": {
+    "cover": "event-planners",
+    "cover_image_url": null,
+    "client_logo_url": null,
+    "event_name": "Yerdle Leadership Offsite",
+    "intro_note": null,
+    "pull_quote": null,
+    "pull_quote_attribution": null,
+    "account_manager": {
+      "name": "Ayush Bhargava",
+      "title": null,
+      "email": null,
+      "phone": null
+    },
+    "closing_note": null
+  },
+  "terms": [
+    "Our pricing includes all charges EXCLUDING: variable fees such as parking, airport fees, tolls, and state taxes where applicable. We bill these charges at cost as they are incurred.",
+    "Our drivers are well compensated and additional gratuity is not expected.",
+    "Transfer rates include up to 30 minutes of complimentary wait time. Additional wait time is billed in 15 minute increments at the market hourly rate. Partial quarter hour increments are rounded to the next quarter hour.",
+    "Trips with stops are billed hourly. Hourly trips are billed garage to garage.",
+    "We have a 2-hour cancellation policy unless otherwise noted above.",
+    "This is a quoting tool and therefore builds quotes. This is not a final price nor is it guaranteed pricing."
+  ],
+  "internal": {
+    "rate_ids": [],
+    "warnings": [],
+    "placeholders": [],
+    "dropped_units": [],
+    "intake": null
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "contract": 1,
+  "client": {
+    "name": "Yerdle",
+    "profile_id": 201890,
+    "source": "resolve"
+  },
+  "units": [
+    {
+      "key": "offsite_9_16_minibus",
+      "label": "Wed 9/16 Offsite - Hyatt Regency > Classic Harbor Line > Hyatt Regency (5:45pm, ~120 pax) - Mini Bus 6-hr block",
+      "date": "2026-09-16T17:45:00-04:00",
+      "passenger_count": 120,
+      "structure": "out-and-back-block",
+      "rationale": "2.25h wait at Rowes Wharf \u2192 one 6-hr block per bus",
+      "alternative_of": null,
+      "vehicle_type_ids": [
+        7
+      ],
+      "quantity": 1,
+      "chosen": {
+        "vehicle_type_id": 7,
+        "quantity": 3,
+        "line_total": 561312
+      }
+    },
+    {
+      "key": "departure_9_18_minibus",
+      "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Mini Bus",
+      "date": "2026-09-18T12:00:00-04:00",
+      "passenger_count": 80,
+      "structure": null,
+      "rationale": null,
+      "alternative_of": null,
+      "vehicle_type_ids": [
+        7
+      ],
+      "quantity": 1,
+      "chosen": {
+        "vehicle_type_id": 7,
+        "quantity": 2,
+        "line_total": 374208
+      }
+    },
+    {
+      "key": "departure_9_18_sprinter",
+      "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Sprinter alternative",
+      "date": "2026-09-18T12:00:00-04:00",
+      "passenger_count": 80,
+      "structure": null,
+      "rationale": null,
+      "alternative_of": "departure_9_18_minibus",
+      "vehicle_type_ids": [
+        26
+      ],
+      "quantity": 1,
+      "chosen": {
+        "vehicle_type_id": 26,
+        "quantity": 7,
+        "line_total": 312620
+      }
+    }
+  ],
+  "quote_mode": "options",
+  "rate_sheet_shown": false,
+  "ambiguities": [],
+  "placeholders": [
+    "departure flight 14:30 assumed"
+  ],
+  "final": true,
+  "selection": {
+    "select": [
+      "offsite_9_16_minibus",
+      "departure_9_18_minibus"
+    ],
+    "alternatives": {
+      "departure_9_18_sprinter": "departure_9_18_minibus"
+    }
+  },
+  "decisions": {
+    "discount_bps": 0,
+    "fuel": "add"
+  },
+  "log": [
+    {
+      "ts": "2026-09-17T20:15:10+00:00",
+      "step": "G",
+      "note": "quote written, mode=options, final=True"
+    },
+    {
+      "ts": "2026-09-17T20:17:34+00:00",
+      "step": "doc",
+      "note": "discount_bps = 0"
+    },
+    {
+      "ts": "2026-09-17T20:17:34+00:00",
+      "step": "doc",
+      "note": "fuel = 'add'"
+    }
+  ]
+}

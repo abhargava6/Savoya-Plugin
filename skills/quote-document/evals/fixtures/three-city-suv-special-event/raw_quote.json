@@ -1,0 +1,639 @@
+{
+ "contract_version": 1,
+ "quote_units": [
+  {
+   "key": "orlando_suv_4hr",
+   "label": "Orlando - SUV hourly, 4 hrs",
+   "passenger_count": 5,
+   "pickup_date": "2027-03-20T10:00:00-04:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "Orlando International Airport",
+     "address": "1 Jeff Fuqua Boulevard"
+    },
+    {
+     "name": "Lake Eola Park",
+     "address": "Lake Eola Park, Orlando, Florida, USA"
+    }
+   ],
+   "requested_stop_count": 2,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 8,
+      "name": "SUV",
+      "capacity": 6,
+      "classification": "suv"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 74536,
+     "quantity": 1,
+     "line_total": 74536,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 74536,
+      "per_vehicle_total_amount": 74536,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 53510,
+       "source": "rack",
+       "rate_amount_before_temporary_discount": 18634,
+       "effective_rate_amount": 18634,
+       "billing_unit": "hour",
+       "minimum_hours": 2
+      },
+      "calculation": {
+       "billable_hours": 4,
+       "passenger_count": 5,
+       "vehicle_capacity": 6,
+       "requested_quantity": 1,
+       "required_quantity": 1,
+       "quantity": 1
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 2,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ]
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 53510,
+     "rate_record_type": "HourlyRate",
+     "effective_rate_amount": 18634,
+     "requested_quantity": 1,
+     "required_quantity": 1,
+     "passenger_count": 5,
+     "capacity_adjusted": false,
+     "billable_hours": 4,
+     "cancellation_hours": 2,
+     "minimum": 2,
+     "warnings": []
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 74536,
+    "quantity": 1,
+    "line_total": 74536,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 74536,
+     "per_vehicle_total_amount": 74536,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53510,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 18634,
+      "effective_rate_amount": 18634,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 4,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53510,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 18634,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 4,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": []
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 74536,
+    "quantity": 1,
+    "line_total": 74536,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 74536,
+     "per_vehicle_total_amount": 74536,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53510,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 18634,
+      "effective_rate_amount": 18634,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 4,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53510,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 18634,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 4,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": []
+   },
+   "warnings": [
+    "No transfer rates found"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  },
+  {
+   "key": "la_suv_4hr",
+   "label": "Los Angeles - SUV hourly, 4 hrs",
+   "passenger_count": 5,
+   "pickup_date": "2027-03-20T10:00:00-07:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "The Beverly Hills Hotel",
+     "address": "9641 Sunset Boulevard"
+    },
+    {
+     "name": "STAPLES Center",
+     "address": "1111 South Figueroa Street"
+    }
+   ],
+   "requested_stop_count": 2,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 8,
+      "name": "SUV",
+      "capacity": 6,
+      "classification": "suv"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 74536,
+     "quantity": 1,
+     "line_total": 74536,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 74536,
+      "per_vehicle_total_amount": 74536,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 53526,
+       "source": "rack",
+       "rate_amount_before_temporary_discount": 18634,
+       "effective_rate_amount": 18634,
+       "billing_unit": "hour",
+       "minimum_hours": 2
+      },
+      "calculation": {
+       "billable_hours": 4,
+       "passenger_count": 5,
+       "vehicle_capacity": 6,
+       "requested_quantity": 1,
+       "required_quantity": 1,
+       "quantity": 1
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 2,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ]
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 53526,
+     "rate_record_type": "HourlyRate",
+     "effective_rate_amount": 18634,
+     "requested_quantity": 1,
+     "required_quantity": 1,
+     "passenger_count": 5,
+     "capacity_adjusted": false,
+     "billable_hours": 4,
+     "cancellation_hours": 2,
+     "minimum": 2,
+     "warnings": []
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 74536,
+    "quantity": 1,
+    "line_total": 74536,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 74536,
+     "per_vehicle_total_amount": 74536,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53526,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 18634,
+      "effective_rate_amount": 18634,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 4,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53526,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 18634,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 4,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": []
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 74536,
+    "quantity": 1,
+    "line_total": 74536,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 74536,
+     "per_vehicle_total_amount": 74536,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53526,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 18634,
+      "effective_rate_amount": 18634,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 4,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53526,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 18634,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 4,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": []
+   },
+   "warnings": [
+    "No transfer rates found"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  },
+  {
+   "key": "nyc_suv_4hr",
+   "label": "New York City - SUV hourly, 4 hrs",
+   "passenger_count": 5,
+   "pickup_date": "2027-03-20T10:00:00-04:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "Times Square",
+     "address": "Times Square, New York, Manhattan, NY, USA"
+    },
+    {
+     "name": "Grand Central Terminal",
+     "address": "89 East 42nd Street"
+    }
+   ],
+   "requested_stop_count": 2,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 8,
+      "name": "SUV",
+      "capacity": 6,
+      "classification": "suv"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 184800,
+     "quantity": 1,
+     "line_total": 184800,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 184800,
+      "per_vehicle_total_amount": 184800,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 1432,
+       "source": "special_event",
+       "rate_amount_before_temporary_discount": 23100,
+       "effective_rate_amount": 23100,
+       "billing_unit": "hour",
+       "minimum_hours": 8
+      },
+      "calculation": {
+       "billable_hours": 8,
+       "passenger_count": 5,
+       "vehicle_capacity": 6,
+       "requested_quantity": 1,
+       "required_quantity": 1,
+       "quantity": 1
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 24,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ],
+      "special_event": {
+       "id": 1308,
+       "name": "US Open",
+       "no_rates": false
+      }
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 1432,
+     "rate_record_type": "SpecialEventHourlyRate",
+     "effective_rate_amount": 23100,
+     "requested_quantity": 1,
+     "required_quantity": 1,
+     "passenger_count": 5,
+     "capacity_adjusted": false,
+     "billable_hours": 8,
+     "cancellation_hours": 24,
+     "minimum": 8,
+     "warnings": []
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 184800,
+    "quantity": 1,
+    "line_total": 184800,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 184800,
+     "per_vehicle_total_amount": 184800,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 1432,
+      "source": "special_event",
+      "rate_amount_before_temporary_discount": 23100,
+      "effective_rate_amount": 23100,
+      "billing_unit": "hour",
+      "minimum_hours": 8
+     },
+     "calculation": {
+      "billable_hours": 8,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 24,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ],
+     "special_event": {
+      "id": 1308,
+      "name": "US Open",
+      "no_rates": false
+     }
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 1432,
+    "rate_record_type": "SpecialEventHourlyRate",
+    "effective_rate_amount": 23100,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 8,
+    "cancellation_hours": 24,
+    "minimum": 8,
+    "warnings": []
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 8,
+     "name": "SUV",
+     "capacity": 6,
+     "classification": "suv"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 184800,
+    "quantity": 1,
+    "line_total": 184800,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 184800,
+     "per_vehicle_total_amount": 184800,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 1432,
+      "source": "special_event",
+      "rate_amount_before_temporary_discount": 23100,
+      "effective_rate_amount": 23100,
+      "billing_unit": "hour",
+      "minimum_hours": 8
+     },
+     "calculation": {
+      "billable_hours": 8,
+      "passenger_count": 5,
+      "vehicle_capacity": 6,
+      "requested_quantity": 1,
+      "required_quantity": 1,
+      "quantity": 1
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 24,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ],
+     "special_event": {
+      "id": 1308,
+      "name": "US Open",
+      "no_rates": false
+     }
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 1432,
+    "rate_record_type": "SpecialEventHourlyRate",
+    "effective_rate_amount": 23100,
+    "requested_quantity": 1,
+    "required_quantity": 1,
+    "passenger_count": 5,
+    "capacity_adjusted": false,
+    "billable_hours": 8,
+    "cancellation_hours": 24,
+    "minimum": 8,
+    "warnings": []
+   },
+   "warnings": [
+    "No transfer rates found"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  }
+ ],
+ "aggregate_total": 333872,
+ "currency": "USD",
+ "persisted": false,
+ "estimate_type": "approximate",
+ "pricing_summary": {
+  "estimate_type": "approximate",
+  "currency_code": "USD",
+  "status": "priced",
+  "total_amount": 333872
+ }
+}

@@ -1,0 +1,12 @@
+{
+  "normalize": {"client": "Yerdle", "prepared_by": "Ayush Bhargava", "title": "IOL Invitational — Whistler Ground Transportation", "alternative": ["jun9_scenario2:jun9_scenario1"]},
+  "edits": {"meta": {"service_area": "Whistler, BC"}, "personalization": {"cover": "event-planners"}},
+  "adjustments": [],
+  "engine_subtotal_cents": 1600000,
+  "total_cents": 1280000,
+  "leg_count": 3,
+  "option_b_total_cents": 960000,
+  "contains": ["$12,800.00", "$9,600.00", "Preferred client discount", "Option B", "B1", "Vancouver, Canada partners", "$500.00"],
+  "not_contains": ["Stop 2", "hourly fallback", "basis points", "custom_discount", "temporary"],
+  "pdf_pages": 4
+}

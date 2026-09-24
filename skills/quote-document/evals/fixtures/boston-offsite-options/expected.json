@@ -1,0 +1,12 @@
+{
+  "normalize": {"client": "Yerdle", "prepared_by": "Ayush Bhargava", "title": "Boston Offsite — Ground Transportation", "alternative": ["departure_9_18_sprinter:departure_9_18_minibus"]},
+  "edits": {"personalization": {"cover": "event-planners"}, "legs": {"departure_9_18_minibus": {"stops": {"1": {"label": "BOS – Boston Logan International"}}}, "departure_9_18_sprinter": {"stops": {"1": {"label": "BOS – Boston Logan International"}}}}},
+  "adjustments": ["Fuel surcharge|percent|5"],
+  "engine_subtotal_cents": 935520,
+  "total_cents": 982296,
+  "leg_count": 3,
+  "option_b_total_cents": 917629,
+  "contains": ["$9,822.96", "$9,176.29", "Option B", "B1", "Mercedes Sprinter Van"],
+  "not_contains": ["Stop 2", "hourly fallback"],
+  "pdf_pages": 4
+}

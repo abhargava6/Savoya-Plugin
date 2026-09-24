@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Reassemble a full plugin tree from an installed (or working) skill folder.
+
+The installed plugin exposes only skills/quote-document/; the plugin-root files
+(plugin.json, .mcp.json, README, CONTRIBUTING) are kept in assets/plugin-root/
+so the plugin can be rebuilt and repackaged from any environment where the
+skill is mounted — e.g. a claude.ai / Cowork chat doing the weekly pass.
+
+Usage: rebuild_plugin.py <skill_dir> <out_dir> [--bump patch|minor|major] [--package out.plugin]
+"""
+import argparse, json, os, shutil, zipfile
+
+def bump(v, part):
+    a = [int(x) for x in v.split(".")]
+    i = {"major": 0, "minor": 1, "patch": 2}[part]
+    a[i] += 1
+    for j in range(i + 1, 3): a[j] = 0
+    return ".".join(map(str, a))
+
+ap = argparse.ArgumentParser()
+ap.add_argument("skill_dir"); ap.add_argument("out_dir")
+ap.add_argument("--bump", choices=["patch", "minor", "major"], default=None)
+ap.add_argument("--package", default=None)
+a = ap.parse_args()
+
+root = a.out_dir
+if os.path.exists(root): shutil.rmtree(root)
+os.makedirs(os.path.join(root, ".claude-plugin"))
+import glob
+skill_dst = os.path.join(root, "skills", "quote-document")
+shutil.copytree(a.skill_dir, skill_dst, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"))
+# sibling skills: source tree (skills/<name>) or installed mounts (savoya-quoting:<name>)
+parent = os.path.dirname(os.path.abspath(a.skill_dir))
+siblings = [d for d in glob.glob(os.path.join(parent, "*")) if os.path.isdir(d) and os.path.exists(os.path.join(d, "SKILL.md"))
+            and os.path.abspath(d) != os.path.abspath(a.skill_dir)]
+for d in siblings:
+    name = os.path.basename(d).split(":")[-1]
+    if name.startswith("savoya-quoting") or name == "quote-document":
+        continue
+    if not os.path.basename(d).startswith("savoya-quoting:") and os.path.basename(parent) != "skills":
+        continue  # installed mount: only take our own plugin's skills
+    shutil.copytree(d, os.path.join(root, "skills", name), ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"))
+    print(f"  + skill {name}")
+pr = os.path.join(skill_dst, "assets", "plugin-root")
+shutil.copy(os.path.join(pr, ".mcp.json"), os.path.join(root, ".mcp.json"))
+shutil.copy(os.path.join(pr, "README.md"), os.path.join(root, "README.md"))
+shutil.copy(os.path.join(pr, "CONTRIBUTING.md"), os.path.join(root, "CONTRIBUTING.md"))
+for extra in ("RUNBOOK.md", "SETUP.md"):
+    if os.path.exists(os.path.join(pr, extra)):
+        shutil.copy(os.path.join(pr, extra), os.path.join(root, extra))
+manifest = json.load(open(os.path.join(pr, "plugin.json")))
+ap_version = os.environ.get("PLUGIN_VERSION")
+if ap_version:
+    manifest["version"] = ap_version
+elif a.bump:
+    manifest["version"] = bump(manifest["version"], a.bump)
+if ap_version or a.bump:
+    for dest in (os.path.join(pr, "plugin.json"),
+                 os.path.join(a.skill_dir, "assets", "plugin-root", "plugin.json")):  # write back to SOURCE too
+        try:
+            json.dump(manifest, open(dest, "w"), indent=2)
+        except OSError:
+            pass  # installed mounts are read-only; the packaged copy carries the version
+json.dump(manifest, open(os.path.join(root, ".claude-plugin", "plugin.json"), "w"), indent=2)
+print(f"Rebuilt {root} at version {manifest['version']}")
+if a.package:
+    with zipfile.ZipFile(a.package, "w", zipfile.ZIP_DEFLATED) as z:
+        for dp, dn, fn in os.walk(root):
+            dn[:] = [d for d in dn if d != "__pycache__"]
+            for f in fn:
+                if f.endswith(".pyc") or f == ".DS_Store": continue
+                p = os.path.join(dp, f); z.write(p, os.path.relpath(p, root))
+    print(f"Packaged {a.package} ({os.path.getsize(a.package)//1024} KB)")

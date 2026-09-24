@@ -1,0 +1,230 @@
+{
+ "contract_version": 1,
+ "aggregate_total": 1600000,
+ "currency": "USD",
+ "persisted": false,
+ "estimate_type": "approximate",
+ "pricing_summary": {
+  "estimate_type": "approximate",
+  "currency_code": "USD",
+  "status": "priced",
+  "total_amount": 1600000,
+  "calculation": {
+   "quote_unit_count": 3
+  }
+ },
+ "quote_units": [
+  {
+   "key": "jun9_scenario1",
+   "label": "Jun 9 - Scenario 1: 2 coaches all day (8 hrs) guided tour, PA system, IOL Invitational Group signage",
+   "passenger_count": 75,
+   "pickup_date": "2027-06-09T09:00:00-07:00",
+   "stops": [
+    {
+     "name": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     },
+     "service_area_source": "nearest"
+    },
+    {
+     "name": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     },
+     "duration": 8
+    }
+   ],
+   "requested_stop_count": 2,
+   "value_option": {
+    "vehicle_type": {
+     "id": 6,
+     "name": "Coach Bus",
+     "capacity": 50
+    },
+    "quoteable": true,
+    "estimate_type": "approximate",
+    "unit_total": 320000,
+    "quantity": 2,
+    "line_total": 640000,
+    "pricing_summary": {
+     "total_amount": 640000,
+     "per_vehicle_total_amount": 320000,
+     "pricing_method": "hourly",
+     "rate": {
+      "source": "custom",
+      "rate_amount_before_temporary_discount": 50000,
+      "effective_rate_amount": 40000,
+      "billing_unit": "hour"
+     },
+     "calculation": {
+      "billable_hours": 8,
+      "passenger_count": 75,
+      "vehicle_capacity": 50,
+      "quantity": 2
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 2000,
+      "temporary_rate_used": true
+     }
+    },
+    "pricing_source": "custom_rate",
+    "rate_type": "hourly",
+    "rate_label": "Coach Bus hourly",
+    "billable_hours": 8
+   },
+   "warnings": [
+    "No hourly rates found",
+    "No transfer rates found",
+    "No local providers are available for this reservation. Availability will be confirmed from our local providers in Vancouver, Canada. Additional drive time will be incurred on the reservation.",
+    "Coach Bus hourly is a temporary user-supplied rate and was not saved in Savoya",
+    "No transfer rate found; approximate estimate uses hourly fallback"
+   ],
+   "quantity": 2
+  },
+  {
+   "key": "jun9_scenario2",
+   "label": "Jun 9 - Scenario 2: 2 coaches, 4 hrs each, guided tour, PA system, IOL Invitational Group signage",
+   "passenger_count": 75,
+   "pickup_date": "2027-06-09T09:00:00-07:00",
+   "stops": [
+    {
+     "name": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     }
+    },
+    {
+     "name": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     },
+     "duration": 4
+    }
+   ],
+   "requested_stop_count": 2,
+   "value_option": {
+    "vehicle_type": {
+     "id": 6,
+     "name": "Coach Bus",
+     "capacity": 50
+    },
+    "quoteable": true,
+    "estimate_type": "approximate",
+    "unit_total": 160000,
+    "quantity": 2,
+    "line_total": 320000,
+    "pricing_summary": {
+     "total_amount": 320000,
+     "per_vehicle_total_amount": 160000,
+     "pricing_method": "hourly",
+     "rate": {
+      "source": "custom",
+      "rate_amount_before_temporary_discount": 50000,
+      "effective_rate_amount": 40000,
+      "billing_unit": "hour"
+     },
+     "calculation": {
+      "billable_hours": 4,
+      "passenger_count": 75,
+      "vehicle_capacity": 50,
+      "quantity": 2
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 2000,
+      "temporary_rate_used": true
+     }
+    },
+    "pricing_source": "custom_rate",
+    "rate_type": "hourly",
+    "rate_label": "Coach Bus hourly",
+    "billable_hours": 4
+   },
+   "warnings": [
+    "No hourly rates found",
+    "No transfer rates found",
+    "No local providers are available for this reservation.",
+    "Coach Bus hourly is a temporary user-supplied rate and was not saved in Savoya"
+   ],
+   "quantity": 2
+  },
+  {
+   "key": "jun10_shuttle",
+   "label": "Jun 10 - Continuous shuttle, 2 coaches, 8 hrs, The Westin <> Fairmont Chateau Whistler Golf Club",
+   "passenger_count": 75,
+   "pickup_date": "2027-06-10T07:00:00-07:00",
+   "stops": [
+    {
+     "name": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     }
+    },
+    {
+     "name": "Fairmont Chateau Whistler Golf Club and The Chalet Restaurant",
+     "address": "4612 Blackcomb Way",
+     "service_area": {
+      "id": 11146,
+      "name": "Vancouver, Canada"
+     },
+     "duration": 8
+    }
+   ],
+   "requested_stop_count": 2,
+   "value_option": {
+    "vehicle_type": {
+     "id": 6,
+     "name": "Coach Bus",
+     "capacity": 50
+    },
+    "quoteable": true,
+    "estimate_type": "approximate",
+    "unit_total": 320000,
+    "quantity": 2,
+    "line_total": 640000,
+    "pricing_summary": {
+     "total_amount": 640000,
+     "per_vehicle_total_amount": 320000,
+     "pricing_method": "hourly",
+     "rate": {
+      "source": "custom",
+      "rate_amount_before_temporary_discount": 50000,
+      "effective_rate_amount": 40000,
+      "billing_unit": "hour"
+     },
+     "calculation": {
+      "billable_hours": 8,
+      "passenger_count": 75,
+      "vehicle_capacity": 50,
+      "quantity": 2
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 2000,
+      "temporary_rate_used": true
+     }
+    },
+    "pricing_source": "custom_rate",
+    "rate_type": "hourly",
+    "rate_label": "Coach Bus hourly",
+    "billable_hours": 8
+   },
+   "warnings": [
+    "No hourly rates found",
+    "No transfer rates found",
+    "No local providers are available for this reservation.",
+    "Coach Bus hourly is a temporary user-supplied rate and was not saved in Savoya"
+   ],
+   "quantity": 2
+  }
+ ]
+}

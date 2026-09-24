@@ -1,0 +1,737 @@
+{
+ "contract_version": 1,
+ "quote_units": [
+  {
+   "key": "offsite_9_16_minibus",
+   "label": "Wed 9/16 Offsite - Hyatt Regency > Classic Harbor Line > Hyatt Regency (5:45pm, ~120 pax) - Mini Bus 6-hr block",
+   "passenger_count": 120,
+   "pickup_date": "2026-09-16T17:45:00-04:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "Hyatt Regency Boston Harbor",
+     "address": "101 Harborside Drive",
+     "postal_code": "02128",
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     }
+    },
+    {
+     "name": "Classic Harbor Line Boston",
+     "address": "60 Rowes Wharf",
+     "postal_code": "02110",
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     },
+     "duration": 2.25
+    },
+    {
+     "name": "Hyatt Regency Boston Harbor",
+     "address": "101 Harborside Drive",
+     "postal_code": "02128",
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     }
+    }
+   ],
+   "requested_stop_count": 3,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 7,
+      "name": "Mini Bus",
+      "capacity": 41,
+      "classification": "other"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 187104,
+     "quantity": 3,
+     "line_total": 561312,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 561312,
+      "per_vehicle_total_amount": 187104,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 53396,
+       "source": "rack",
+       "rate_amount_before_temporary_discount": 31184,
+       "effective_rate_amount": 31184,
+       "billing_unit": "hour",
+       "minimum_hours": 6
+      },
+      "calculation": {
+       "billable_hours": 6,
+       "vehicle_capacity": 41,
+       "requested_quantity": 1,
+       "required_quantity": 3,
+       "quantity": 3
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 48,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ]
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 53396,
+     "rate_record_type": "HourlyRate",
+     "effective_rate_amount": 31184,
+     "requested_quantity": 1,
+     "required_quantity": 3,
+     "capacity_adjusted": true,
+     "billable_hours": 6,
+     "cancellation_hours": 48,
+     "minimum": 6,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 7,
+     "name": "Mini Bus",
+     "capacity": 41,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 187104,
+    "quantity": 3,
+    "line_total": 561312,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 561312,
+     "per_vehicle_total_amount": 187104,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53396,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 31184,
+      "effective_rate_amount": 31184,
+      "billing_unit": "hour",
+      "minimum_hours": 6
+     },
+     "calculation": {
+      "billable_hours": 6,
+      "vehicle_capacity": 41,
+      "requested_quantity": 1,
+      "required_quantity": 3,
+      "quantity": 3
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 48,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53396,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 31184,
+    "requested_quantity": 1,
+    "required_quantity": 3,
+    "capacity_adjusted": true,
+    "billable_hours": 6,
+    "cancellation_hours": 48,
+    "minimum": 6,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 7,
+     "name": "Mini Bus",
+     "capacity": 41,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 187104,
+    "quantity": 3,
+    "line_total": 561312,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 561312,
+     "per_vehicle_total_amount": 187104,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53396,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 31184,
+      "effective_rate_amount": 31184,
+      "billing_unit": "hour",
+      "minimum_hours": 6
+     },
+     "calculation": {
+      "billable_hours": 6,
+      "vehicle_capacity": 41,
+      "requested_quantity": 1,
+      "required_quantity": 3,
+      "quantity": 3
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 48,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53396,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 31184,
+    "requested_quantity": 1,
+    "required_quantity": 3,
+    "capacity_adjusted": true,
+    "billable_hours": 6,
+    "cancellation_hours": 48,
+    "minimum": 6,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "warnings": [
+    "No transfer rates found",
+    "Transfer rates do not apply to itineraries with intermediate or as-directed stops; using hourly pricing",
+    "Passenger count requires 3 Mini Bus vehicles based on capacity 41"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  },
+  {
+   "key": "departure_9_18_minibus",
+   "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Mini Bus",
+   "passenger_count": 80,
+   "pickup_date": "2026-09-18T12:00:00-04:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "Hyatt Regency Boston Harbor",
+     "address": "101 Harborside Drive",
+     "postal_code": "02128",
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     }
+    },
+    {
+     "airport": {
+      "id": 4655910
+     },
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     },
+     "flight": {
+      "commercial_tbd": true,
+      "flight_type": "departure",
+      "scheduled_time": "2026-09-18T14:30:00-04:00"
+     }
+    }
+   ],
+   "requested_stop_count": 2,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 7,
+      "name": "Mini Bus",
+      "capacity": 41,
+      "classification": "other"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 187104,
+     "quantity": 2,
+     "line_total": 374208,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 374208,
+      "per_vehicle_total_amount": 187104,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 53396,
+       "source": "rack",
+       "rate_amount_before_temporary_discount": 31184,
+       "effective_rate_amount": 31184,
+       "billing_unit": "hour",
+       "minimum_hours": 6
+      },
+      "calculation": {
+       "billable_hours": 6,
+       "vehicle_capacity": 41,
+       "requested_quantity": 1,
+       "required_quantity": 2,
+       "quantity": 2
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 48,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ]
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 53396,
+     "rate_record_type": "HourlyRate",
+     "effective_rate_amount": 31184,
+     "requested_quantity": 1,
+     "required_quantity": 2,
+     "capacity_adjusted": true,
+     "billable_hours": 6,
+     "cancellation_hours": 48,
+     "minimum": 6,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 7,
+     "name": "Mini Bus",
+     "capacity": 41,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 187104,
+    "quantity": 2,
+    "line_total": 374208,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 374208,
+     "per_vehicle_total_amount": 187104,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53396,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 31184,
+      "effective_rate_amount": 31184,
+      "billing_unit": "hour",
+      "minimum_hours": 6
+     },
+     "calculation": {
+      "billable_hours": 6,
+      "vehicle_capacity": 41,
+      "requested_quantity": 1,
+      "required_quantity": 2,
+      "quantity": 2
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 48,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53396,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 31184,
+    "requested_quantity": 1,
+    "required_quantity": 2,
+    "capacity_adjusted": true,
+    "billable_hours": 6,
+    "cancellation_hours": 48,
+    "minimum": 6,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 7,
+     "name": "Mini Bus",
+     "capacity": 41,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 187104,
+    "quantity": 2,
+    "line_total": 374208,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 374208,
+     "per_vehicle_total_amount": 187104,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53396,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 31184,
+      "effective_rate_amount": 31184,
+      "billing_unit": "hour",
+      "minimum_hours": 6
+     },
+     "calculation": {
+      "billable_hours": 6,
+      "vehicle_capacity": 41,
+      "requested_quantity": 1,
+      "required_quantity": 2,
+      "quantity": 2
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 48,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53396,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 31184,
+    "requested_quantity": 1,
+    "required_quantity": 2,
+    "capacity_adjusted": true,
+    "billable_hours": 6,
+    "cancellation_hours": 48,
+    "minimum": 6,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "warnings": [
+    "No transfer rates found",
+    "Passenger count requires 2 Mini Bus vehicles based on capacity 41"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  },
+  {
+   "key": "departure_9_18_sprinter",
+   "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Sprinter alternative",
+   "passenger_count": 80,
+   "pickup_date": "2026-09-18T12:00:00-04:00",
+   "travel_coordination_profile_id": 201890,
+   "stops": [
+    {
+     "name": "Hyatt Regency Boston Harbor",
+     "address": "101 Harborside Drive",
+     "postal_code": "02128",
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     }
+    },
+    {
+     "airport": {
+      "id": 4655910
+     },
+     "service_area": {
+      "id": 11192,
+      "name": "Boston, MA"
+     },
+     "flight": {
+      "commercial_tbd": true,
+      "flight_type": "departure",
+      "scheduled_time": "2026-09-18T14:30:00-04:00"
+     }
+    }
+   ],
+   "requested_stop_count": 2,
+   "vehicle_options": [
+    {
+     "vehicle_type": {
+      "id": 26,
+      "name": "Mercedes Sprinter Van",
+      "capacity": 13,
+      "classification": "other"
+     },
+     "quoteable": true,
+     "persisted": false,
+     "estimate_type": "approximate",
+     "unit_total": 44660,
+     "quantity": 7,
+     "line_total": 312620,
+     "pricing_summary": {
+      "estimate_type": "approximate",
+      "currency_code": "USD",
+      "status": "priced",
+      "total_amount": 312620,
+      "per_vehicle_total_amount": 44660,
+      "pricing_method": "hourly",
+      "rate": {
+       "id": 53696,
+       "source": "rack",
+       "rate_amount_before_temporary_discount": 22330,
+       "effective_rate_amount": 22330,
+       "billing_unit": "hour",
+       "minimum_hours": 2
+      },
+      "calculation": {
+       "billable_hours": 2,
+       "vehicle_capacity": 13,
+       "requested_quantity": 1,
+       "required_quantity": 7,
+       "quantity": 7
+      },
+      "adjustments": {
+       "custom_discount_basis_points": 0,
+       "temporary_rate_used": false
+      },
+      "cancellation_hours": 2,
+      "warnings": [
+       "No transfer rate found; approximate estimate uses hourly fallback"
+      ]
+     },
+     "pricing_source": "core_rate",
+     "rate_type": "hourly",
+     "rate_id": 53696,
+     "rate_record_type": "HourlyRate",
+     "effective_rate_amount": 22330,
+     "requested_quantity": 1,
+     "required_quantity": 7,
+     "capacity_adjusted": true,
+     "billable_hours": 2,
+     "cancellation_hours": 2,
+     "minimum": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    }
+   ],
+   "value_option": {
+    "vehicle_type": {
+     "id": 26,
+     "name": "Mercedes Sprinter Van",
+     "capacity": 13,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 44660,
+    "quantity": 7,
+    "line_total": 312620,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 312620,
+     "per_vehicle_total_amount": 44660,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53696,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 22330,
+      "effective_rate_amount": 22330,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 2,
+      "vehicle_capacity": 13,
+      "requested_quantity": 1,
+      "required_quantity": 7,
+      "quantity": 7
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53696,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 22330,
+    "requested_quantity": 1,
+    "required_quantity": 7,
+    "capacity_adjusted": true,
+    "billable_hours": 2,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "elevated_option": {
+    "vehicle_type": {
+     "id": 26,
+     "name": "Mercedes Sprinter Van",
+     "capacity": 13,
+     "classification": "other"
+    },
+    "quoteable": true,
+    "persisted": false,
+    "estimate_type": "approximate",
+    "unit_total": 44660,
+    "quantity": 7,
+    "line_total": 312620,
+    "pricing_summary": {
+     "estimate_type": "approximate",
+     "currency_code": "USD",
+     "status": "priced",
+     "total_amount": 312620,
+     "per_vehicle_total_amount": 44660,
+     "pricing_method": "hourly",
+     "rate": {
+      "id": 53696,
+      "source": "rack",
+      "rate_amount_before_temporary_discount": 22330,
+      "effective_rate_amount": 22330,
+      "billing_unit": "hour",
+      "minimum_hours": 2
+     },
+     "calculation": {
+      "billable_hours": 2,
+      "vehicle_capacity": 13,
+      "requested_quantity": 1,
+      "required_quantity": 7,
+      "quantity": 7
+     },
+     "adjustments": {
+      "custom_discount_basis_points": 0,
+      "temporary_rate_used": false
+     },
+     "cancellation_hours": 2,
+     "warnings": [
+      "No transfer rate found; approximate estimate uses hourly fallback"
+     ]
+    },
+    "pricing_source": "core_rate",
+    "rate_type": "hourly",
+    "rate_id": 53696,
+    "rate_record_type": "HourlyRate",
+    "effective_rate_amount": 22330,
+    "requested_quantity": 1,
+    "required_quantity": 7,
+    "capacity_adjusted": true,
+    "billable_hours": 2,
+    "cancellation_hours": 2,
+    "minimum": 2,
+    "warnings": [
+     "No transfer rate found; approximate estimate uses hourly fallback"
+    ]
+   },
+   "warnings": [
+    "No transfer rates found"
+   ],
+   "persisted": false,
+   "estimate_type": "approximate",
+   "quantity": 1
+  }
+ ],
+ "aggregate_total": 1248140,
+ "currency": "USD",
+ "persisted": false,
+ "estimate_type": "approximate",
+ "pricing_summary": {
+  "estimate_type": "approximate",
+  "currency_code": "USD",
+  "status": "priced",
+  "total_amount": 1248140
+ },
+ "presentation": {
+  "version": 1,
+  "view": "quote_result",
+  "data": {
+   "total_amount": 1248140,
+   "quote_units": [
+    {
+     "key": "offsite_9_16_minibus",
+     "date": "2026-09-16T17:45:00-04:00",
+     "stops": [
+      {
+       "order": 1,
+       "label": "Hyatt Regency Boston Harbor",
+       "address": "101 Harborside Drive"
+      },
+      {
+       "order": 2,
+       "label": "Classic Harbor Line Boston",
+       "address": "60 Rowes Wharf"
+      },
+      {
+       "order": 3,
+       "label": "Hyatt Regency Boston Harbor",
+       "address": "101 Harborside Drive"
+      }
+     ]
+    },
+    {
+     "key": "departure_9_18_minibus",
+     "date": "2026-09-18T12:00:00-04:00",
+     "stops": [
+      {
+       "order": 1,
+       "label": "Hyatt Regency Boston Harbor",
+       "address": "101 Harborside Drive"
+      },
+      {
+       "order": 2,
+       "label": "Stop 2"
+      }
+     ]
+    },
+    {
+     "key": "departure_9_18_sprinter",
+     "date": "2026-09-18T12:00:00-04:00",
+     "stops": [
+      {
+       "order": 1,
+       "label": "Hyatt Regency Boston Harbor",
+       "address": "101 Harborside Drive"
+      },
+      {
+       "order": 2,
+       "label": "Stop 2"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

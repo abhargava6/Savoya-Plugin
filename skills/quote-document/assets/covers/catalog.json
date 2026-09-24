@@ -1,0 +1,53 @@
+{
+  "_note": "Audience cover pages for the PDF quote. Key = value of personalization.cover in quote.json. 'custom' uses the generated dark cover (with cover_image_url if provided). Ask the user which cover fits the client; default to general.",
+  "covers": [
+    {
+      "key": "general",
+      "file": "general.jpg",
+      "title": "The Trusted Ground Transportation Partner For Your Organization",
+      "audience": "Any corporate client; default when the buyer's role is unknown or mixed."
+    },
+    {
+      "key": "executive-assistants",
+      "file": "executive-assistants.jpg",
+      "title": "\u2026For Executive Assistants",
+      "audience": "EA or chief-of-staff booking for one or a few executives; sedan/SUV-heavy quotes."
+    },
+    {
+      "key": "event-planners",
+      "file": "event-planners.jpg",
+      "title": "\u2026For Meetings & Events Planners",
+      "audience": "Meeting/event planners, agencies, offsites, conferences, weddings run by a planner."
+    },
+    {
+      "key": "high-demand-events",
+      "file": "high-demand-events.jpg",
+      "title": "Transportation Built For High-Demand Events",
+      "audience": "Large multi-city or summit-scale programs, VIP guest movement, sponsor/attendee logistics."
+    },
+    {
+      "key": "security-teams",
+      "file": "security-teams.jpg",
+      "title": "\u2026For Security Teams",
+      "audience": "Executive protection / corporate security buyers; duty-of-care framing."
+    },
+    {
+      "key": "flight-departments",
+      "file": "flight-departments.jpg",
+      "title": "\u2026For Flight Departments",
+      "audience": "Corporate aviation, FBO-to-destination, crew and passenger ground from private flights."
+    },
+    {
+      "key": "athletic-recruiters",
+      "file": "athletic-recruiters.jpg",
+      "title": "\u2026For Athletic Recruiters",
+      "audience": "College athletics: official visits, staff movements, recruit transport."
+    },
+    {
+      "key": "custom",
+      "file": null,
+      "title": "(generated)",
+      "audience": "When the user supplies a hosted hero image or wants the event name on the cover; the renderer draws it."
+    }
+  ]
+}

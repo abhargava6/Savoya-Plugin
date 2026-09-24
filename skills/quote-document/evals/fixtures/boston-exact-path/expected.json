@@ -1,0 +1,12 @@
+{
+  "_note": "Exact pricing path. Lines show standard rates; the engine's 30% contracted discount is a document line. Total must equal the engine aggregate_total of $7,945.00.",
+  "normalize": {"client": "Yerdle", "prepared_by": "Ayush Bhargava", "title": "Boston Offsite — Ground Transportation"},
+  "edits": {"personalization": {"cover": "event-planners"}},
+  "adjustments": [],
+  "engine_subtotal_cents": 1135000,
+  "total_cents": 794500,
+  "leg_count": 2,
+  "contains": ["$11,350.00", "$7,945.00", "Preferred client discount", "$405.00", "Boston Logan", "Mercedes Sprinter Van"],
+  "not_contains": ["Stop 2", "basis points", "label needed"],
+  "pdf_pages": 3
+}

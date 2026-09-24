@@ -1,0 +1,16 @@
+{
+  "adjustments": [
+    "Fuel surcharge|percent|5"
+  ],
+  "leg_count": 9,
+  "engine_subtotal_cents": 4303392,
+  "contains": [
+    "Date to be confirmed",
+    "continued",
+    "A9"
+  ],
+  "not_contains": [
+    "Stop 2"
+  ],
+  "pdf_pages": 5
+}

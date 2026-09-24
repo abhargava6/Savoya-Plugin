@@ -1,0 +1,15 @@
+{
+  "_note": "Height-aware pagination must keep every ref and line total on the page.",
+  "adjustments": [],
+  "leg_count": 6,
+  "engine_subtotal_cents": 4374000,
+  "contains": [
+    "A6",
+    "Line notes",
+    "continued"
+  ],
+  "not_contains": [
+    "Stop 2"
+  ],
+  "pdf_pages": 5
+}

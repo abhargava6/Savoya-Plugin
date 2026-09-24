@@ -1,0 +1,8 @@
+{
+  "_note": "Where session captures are uploaded. Set drive_folder_id to the shared 'Quote Captures' folder once; every install of this plugin version uploads there. Local fallback is ~/.savoya-quoting/captures/ when Drive isn't connected.",
+  "drive_folder_id": "10_4J8mcjNhOTgEZo6Qhcpi6QgbcNj5uR",
+  "drive_folder_name": "SAVOYA_QUOTE_CAPTURE_DIR",
+  "mode": "automatic",
+  "feedback_prompt": "nonblocking",
+  "drive_folder_url": "https://drive.google.com/drive/folders/10_4J8mcjNhOTgEZo6Qhcpi6QgbcNj5uR"
+}

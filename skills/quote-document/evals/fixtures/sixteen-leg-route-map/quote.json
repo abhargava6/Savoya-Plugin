@@ -1,0 +1,864 @@
+{
+  "meta": {
+    "client": "Yerdle",
+    "profile_id": 201890,
+    "prepared_by": "Ayush Bhargava",
+    "prepared_on": "2026-09-14",
+    "valid_until": "2026-09-21",
+    "estimate_type": "approximate",
+    "currency": "USD",
+    "title": "Boston Leadership Offsite \u2014 Ground Transportation",
+    "reference": null,
+    "travel_coordinator": "Desiree Strobel",
+    "service_area": "Boston, MA"
+  },
+  "legs": [
+    {
+      "key": "L0",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-13T07:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A1",
+      "route": {
+        "drive_min": 20,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L1",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-14T08:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A2",
+      "route": {
+        "drive_min": 21,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L2",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-15T09:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A3",
+      "route": {
+        "drive_min": 22,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L3",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-13T10:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A4",
+      "route": {
+        "drive_min": 23,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L4",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-14T11:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A5",
+      "route": {
+        "drive_min": 24,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L5",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-15T12:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A6",
+      "route": {
+        "drive_min": 25,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L6",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-13T13:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A7",
+      "route": {
+        "drive_min": 26,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L7",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-14T14:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A8",
+      "route": {
+        "drive_min": 27,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L8",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-15T15:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A9",
+      "route": {
+        "drive_min": 28,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L9",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-13T16:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A10",
+      "route": {
+        "drive_min": 29,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L10",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-14T07:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A11",
+      "route": {
+        "drive_min": 30,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L11",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-15T08:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A12",
+      "route": {
+        "drive_min": 31,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L12",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-13T09:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A13",
+      "route": {
+        "drive_min": 32,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L13",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-14T10:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A14",
+      "route": {
+        "drive_min": 33,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L14",
+      "service_area": "Boston, MA",
+      "label": "Leg 1 \u2014 Offsite Dinner",
+      "date": "2027-06-15T11:00:00-04:00",
+      "passenger_count": 120,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 3
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "Classic Harbor Line Boston",
+          "address": "60 Rowes Wharf",
+          "kind": "address",
+          "wait_hours": 2.25,
+          "marker": 2
+        },
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 3
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 561312
+      },
+      "client_notes": [
+        "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
+        "Three coaches staged at the Hyatt Regency from 5:30pm."
+      ],
+      "ref": "A15",
+      "route": {
+        "drive_min": 34,
+        "source": "engine"
+      }
+    },
+    {
+      "key": "L15",
+      "service_area": "Boston, MA",
+      "label": "Leg 2 \u2014 Departure",
+      "date": "2027-06-13T12:00:00-04:00",
+      "passenger_count": 80,
+      "vehicle": {
+        "name": "Mini Bus",
+        "capacity": 41,
+        "quantity": 2
+      },
+      "stops": [
+        {
+          "label": "Hyatt Regency Boston Harbor",
+          "address": "101 Harborside Drive",
+          "kind": "address",
+          "marker": 1
+        },
+        {
+          "label": "BOS \u2013 Boston Logan International",
+          "kind": "airport",
+          "flight": {
+            "tbd": true,
+            "type": "departure",
+            "scheduled_time": "2026-09-18T14:30:00-04:00"
+          },
+          "marker": 2
+        }
+      ],
+      "pricing": {
+        "method": "hourly",
+        "rate_cents": 31184,
+        "billable_hours": 6,
+        "minimum_hours": 6,
+        "cancellation_hours": 48,
+        "special_event": null,
+        "per_vehicle_cents": 187104,
+        "line_total_cents": 374208
+      },
+      "client_notes": [
+        "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
+      ],
+      "ref": "A16",
+      "route": {
+        "drive_min": 35,
+        "source": "engine"
+      }
+    }
+  ],
+  "engine_subtotal_cents": 7484160,
+  "adjustments": [],
+  "total_cents": 7484160,
+  "personalization": {
+    "cover_image_url": null,
+    "client_logo_url": null,
+    "event_name": "Yerdle Leadership Offsite",
+    "intro_note": "Thanks for bringing the Yerdle leadership team to Boston. We'll have three coaches staged at the Hyatt Regency for Wednesday's harbor dinner and two ready for Friday's departure to Logan. Your on-site coordinator will text you when vehicles are in position.",
+    "pull_quote": null,
+    "pull_quote_attribution": null,
+    "account_manager": {
+      "name": "Ayush Bhargava",
+      "title": "Product & Engineering, Savoya",
+      "email": "abhargava@savoya.com",
+      "phone": null
+    },
+    "closing_note": "Looking forward to hosting your team in Boston."
+  },
+  "terms": [
+    "Our pricing includes all charges EXCLUDING: variable fees such as parking, airport fees, tolls, and state taxes where applicable. We bill these charges at cost as they are incurred.",
+    "Our drivers are well compensated and additional gratuity is not expected.",
+    "Transfer rates include up to 30 minutes of complimentary wait time. Additional wait time is billed in 15 minute increments at the market hourly rate. Partial quarter hour increments are rounded to the next quarter hour.",
+    "Trips with stops are billed hourly. Hourly trips are billed garage to garage.",
+    "We have a 2-hour cancellation policy unless otherwise noted above.",
+    "This is a quoting tool and therefore builds quotes. This is not a final price nor is it guaranteed pricing."
+  ],
+  "internal": {
+    "rate_ids": [
+      53396
+    ],
+    "warnings": [
+      "No transfer rates found",
+      "Passenger count requires 2 Mini Bus vehicles based on capacity 41",
+      "Passenger count requires 3 Mini Bus vehicles based on capacity 41",
+      "Transfer rates do not apply to itineraries with intermediate or as-directed stops; using hourly pricing"
+    ],
+    "placeholders": [
+      "departure_9_18_minibus: flight time 2026-09-18T14:30:00-04:00 is a placeholder (TBD flight)"
+    ],
+    "dropped_units": [
+      "departure_9_18_sprinter"
+    ]
+  },
+  "route_map": {
+    "png": "ROUTE_MAP_PNG",
+    "attribution": "\u00a9 OpenStreetMap contributors"
+  }
+}
