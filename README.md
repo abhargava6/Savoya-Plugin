@@ -87,7 +87,8 @@ they are the regression suite.
 - `CONTRIBUTING.md` — conventions for the skills themselves
 - `CHANGELOG.md` — what changed and why
 
-Two working documents are **not** in this commit because they were never part of the
-packaged plugin: `CLAUDE.md` (working conventions, read automatically by Claude Code in
-this folder) and `ENGINEERING.md` (open items for Savoya engineering). Copy your current
-versions into the repo root — they belong here, and the engineer will look for them.
+- `CLAUDE.md` — working conventions, read automatically by Claude Code in this folder
+
+`ENGINEERING.md` (open items for Savoya engineering) is **not** in this repo — it was
+never part of the packaged plugin. Copy the current version into the repo root; the
+conventions in `CLAUDE.md` refer to it.
