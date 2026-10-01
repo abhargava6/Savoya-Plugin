@@ -1,0 +1,34 @@
+{
+  "persisted": false,
+  "currency": "USD",
+  "aggregate_total": 42672,
+  "quote_units": [
+    {
+      "key": "dallas_transfer",
+      "label": "Dallas transfer",
+      "quantity": 1,
+      "unit_total": 42672,
+      "line_total": 42672,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 6,
+      "pickup_date": "2026-11-15T18:00:00-06:00",
+      "stops": [
+        {"name": "5732 Moss Creek Trail", "address": "5732 Moss Creek Trail, Dallas, TX"},
+        {"name": "AT&T Stadium", "address": "1 AT&T Way, Arlington, TX"}
+      ],
+      "pricing_summary": {
+        "estimate_type": "exact",
+        "status": "priced",
+        "pricing_method": "hourly",
+        "cancellation_hours": 2,
+        "rate": {"base_rate_amount": 23700, "effective_rate_amount": 21336, "minimum_hours": 2},
+        "calculation": {"billable_hours": 2, "quantity": 1, "passenger_count": 6},
+        "adjustments": {"discount_basis_points": 1000, "fuel_surcharge_basis_points": 0},
+        "per_vehicle_total_amount": 42672,
+        "total_amount": 42672
+      },
+      "warnings": []
+    }
+  ],
+  "pricing_summary": {"currency_code": "USD", "total_amount": 42672}
+}

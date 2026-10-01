@@ -1,0 +1,8 @@
+{
+  "normalize": {"client": "Bain & Company", "prepared_by": "Savoya", "title": "Dallas Ground Transportation Quote"},
+  "engine_subtotal_cents": null,
+  "total_cents": 42672,
+  "leg_count": 1,
+  "contains": ["$426.72", "SUV", "AT&amp;T Stadium"],
+  "not_contains": ["Option B", "basis points", "Transportation subtotal"]
+}

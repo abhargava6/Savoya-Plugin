@@ -39,5 +39,7 @@ Marketing cover PDFs live in `covers-src/` (plugin root, not shipped). The skill
 ## Two skills, one regression
 `quote-document/scripts/regress.py` covers both: rendering fixtures and the `handoff/` fixture that proves the intake → document path yields the same numbers as the manual path. Intake's behavior evals are in `quote-intake/evals/evals.json` (skill-creator loop; they assert on tool-call sequence and unit structure, not rendering).
 
+Pricing assertions must compare copied fields directly with exact MCP fixtures. Never add a test or renderer that recomputes an aggregate from line totals; Core owns that arithmetic. Do not run Rails tests from this repository.
+
 ## Rules vs history
 `skills/quote-document/RULES.md` is what Claude reads before rendering — keep it short and constraint-only. `feedback-archive.md` is the dated record of what was observed and why; new findings go there, and `RULES.md` changes only when a finding creates or alters a constraint.

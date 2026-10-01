@@ -8,9 +8,9 @@ Then one row per leg with columns:
 `Date | Leg | Route | Passengers | Vehicle | Qty | Basis (Hourly/Transfer) | Hours | Rate | Cancellation | Leg total`
 
 Below the legs:
-- Engine subtotal = `SUM` of leg totals (formula, not a pasted number)
-- One row per adjustment; percent adjustments as `=subtotal*value/100` so the client can flex the discount and watch the total move
-- Total = subtotal + SUM(adjustments)
+- Copy any Core-returned subtotal as a value; omit the row when Core did not return one.
+- Show returned adjustment metadata without inventing amounts.
+- Copy the Core aggregate total as a value. Do not use pricing formulas.
 
 Amounts formatted `$#,##0.00`. Freeze the header row. Copper fill (#B87333, white text) on the header row; light copper tint (#F7EDE4) on the total row.
 

@@ -20,7 +20,7 @@ Dark brand theme from `design-system.md` (page #0F0F0F, cards #1A1A1A, copper #B
 
 ## When to hand-edit the output
 - Long itineraries (>6 legs): consider grouping cards by date with a date header row.
-- Options comparison: the script renders `alternative_of` legs as "Option B" cards; check the totals block only sums the recommended option.
+- The handoff contains one complete selected Core option. Do not add synthetic comparison cards or totals.
 - Anything the script prints as a WARNING to stderr — it lists unresolved "Stop N" labels and placeholder flags.
 
 ## Copy-paste into Front/Gmail/Outlook

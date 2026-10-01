@@ -2,7 +2,10 @@
   "mcpServers": {
     "savoya": {
       "type": "http",
-      "url": "https://mcp-acceptance.savoya.net/mcp"
+      "url": "https://mcp-acceptance.savoya.net/mcp",
+      "oauth": {
+        "clientId": "https://mcp-acceptance.savoya.net/oauth/clients/claude.json"
+      }
     }
   }
 }

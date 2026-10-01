@@ -33,7 +33,6 @@ Every question in either skill that has enumerable answers **must** be asked wit
 | discount_pct | `No discount` · `10%` · `20%` · `Other…` (then ask the number in prose) |
 | fuel (on the quote) | `Keep it` · `Take it off` |
 | fuel (not on the quote) | `Add 5%` · `Leave it off` |
-| greeter_cost *(only when the client asked)* | `Leave it off — note it as arranged separately` · `Add a cost…` (then ask the amount in prose) |
 | cover | your recommendation first, then two plausible alternates, then `Show all / upload my own` → if chosen, list the rest in prose |
 | personalization | `Use those defaults` · `Change something` |
 | map | `Add the route map` · `Skip it` |

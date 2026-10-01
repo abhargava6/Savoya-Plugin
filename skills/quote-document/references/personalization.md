@@ -12,7 +12,7 @@ Everything here is optional. Ask the user which of these they want; don't add an
 | `pull_quote` + attribution | A client testimonial, or a line about the event | Copper-bordered callout between legs and totals | Sidebar on cover or after totals | — |
 | `account_manager` | Name, title, email, phone | Signature card at bottom | Last page contact block | Footer row |
 | `closing_note` | "Looking forward to hosting your team in Boston." | Above terms | Before terms page | — |
-| route map | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py` → drive time on each leg + "Route overview" page (static OSM map, numbered stops) | — | Page after Option B, before rate card | Distance/time columns |
+| route map | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py` → drive time on each leg + "Route overview" page (static OSM map, numbered stops) | — | Page before rate card | Distance/time columns |
 | `client_notes` (per leg) | Operational detail the client should know | Under the leg | Under the leg | Notes column |
 
 ## Audience covers (`personalization.cover`)

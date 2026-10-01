@@ -3,14 +3,13 @@
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/render_print.py quote.json out.pdf [--html out.print.html] [--no-cover]` renders three pages and converts with Chromium (Playwright) or wkhtmltopdf. Read `client-safe-rules.md` before hand-editing the print HTML.
 
 ## Benchmark
-This format was designed against a CSM-built quote (Access TCA wedding, Hartford, Aug 2026). Keep what that document got right — line refs with notes, hero total, standard-vs-net rate card, explicit cancellation table — and fix what it got wrong: flat gray type with no hierarchy, pricing buried at the foot of the page, a half-empty page, the marketing cover competing with the quote.
+Keep line refs with notes, a hero total, Core-returned effective rates, and an explicit cancellation table. Never derive net rates or adjustment totals.
 
 ## Pages
 1. **Cover** — one of the marketing audience covers from `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/covers/` (`personalization.cover` or `--cover key`), stitched in front of the body with pypdf. `custom` draws the generated cover instead: Savoya logo (+ client logo), event name headline, "Prepared for [client]", dates, value-prop tiles, contact footer, with `cover_image_url` as a full-bleed photo. Skip with `--no-cover` for quick revisions.
 2. **Quote** — dark header bar. Title + event subtitle; meta grid (prepared for/by, travel coordinator, service area, passengers, date, valid until, discount %, fuel surcharge %); **hero estimated total** top right; intro note; line table grouped by day (Ref · Service with route/time · Basis · Min · Qty · Hrs/veh · Rate · Total) with per-day subtotals when there's more than one day; line notes left, pricing breakdown right.
-3. **Option B** (only when `--alternative` was used) — same layout as the quote page for the swapped lines, with a breakdown that adds the unchanged Option A lines back in so the hero shows a *program* total the client can compare directly against Option A. Page count becomes 4.
-4. **Route overview** (only when `route_map.py` was run) — static OpenStreetMap map with numbered stops, plus a Ref · Route · Distance · Drive time table. Drive times come from OSRM and are labeled as planning estimates. Attribution is rendered automatically.
-5. **Rate card** — one row per vehicle type used: standard rate over net rate (copper), minimum, minimum total (standard over net), cancellation. Legend explains what "net" means. Cancellation-policy table, closing note + account-manager card, terms verbatim.
+3. **Route overview** (only when `route_map.py` was run) — static OpenStreetMap map with numbered stops, plus a Ref · Route · Distance · Drive time table. Drive times come from OSRM and are labeled as planning estimates. Attribution is rendered automatically.
+4. **Rate card** — one row per vehicle type used: returned effective rate, returned per-vehicle total, minimum, and cancellation. Cancellation-policy table, closing note + account-manager card, terms verbatim.
 
 Page numbers and the confidential footer are automatic.
 
@@ -18,8 +17,8 @@ Page numbers and the confidential footer are automatic.
 | Document element | quote.json field |
 |---|---|
 | Hero total | `total_cents` |
-| Discount % / Fuel surcharge % in header | global `percent` adjustments (negative = discount) |
-| Net rates on rate card | standard × global discount × global surcharge |
+| Discount % / Fuel surcharge % in header | Core-returned adjustment metadata |
+| Rates on rate card | Core-returned effective rates |
 | Line notes | `legs[].client_notes` |
 | Event pricing flag on a line | `legs[].pricing.special_event` |
 | "Flight details to be confirmed" | any stop with `flight.tbd` |

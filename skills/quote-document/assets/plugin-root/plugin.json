@@ -1,7 +1,7 @@
 {
   "name": "savoya-quoting",
-  "version": "0.22.0",
-  "description": "Savoya quoting: quote-intake (client request → engine quote, one question, value/elevated, refine, handoff) and quote-document (handoff → client-facing PDF / email copy / HTML / DOCX / XLSX through six fixed questions). Bundles the Savoya MCP connector.",
+  "version": "0.23.0",
+  "description": "Savoya quoting with exact Core-owned pricing, complete option comparisons, non-persisted temporary pricing, and client-ready PDF, email, HTML, DOCX, and XLSX exports.",
   "author": {
     "name": "Savoya Product & Engineering"
   },

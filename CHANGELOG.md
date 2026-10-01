@@ -3,6 +3,16 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.0
+- Removed active routing to the retired approximate and single-vehicle option tools.
+- Standardized selected packages on `calculate_quote_units`, comparisons on `generate_quote_options`, and temporary rates/discounts on `calculate_temporary_quote_units`.
+- Added handoff contract v3 with an authoritative selected `raw_quote.json`, reproducible `source_request.json`, option/tool provenance, exact/non-persisted validation, and document-stage discount re-quoting.
+- Passenger IDs are omitted unless the user names a passenger; `passenger_count` remains authoritative for capacity sizing. Vehicle IDs and capacities now come from Core previews/resolvers.
+- Removed local pricing arithmetic, synthetic document options, fuel overrides, priced greeter fees, and spreadsheet pricing formulas. Renderers copy Core effective rates and totals directly.
+- Verification now compares quantity and monetary fields directly with the raw Core result without assuming line totals sum to the aggregate total.
+- Added safe client-cache behavior and a developer cache-clear command.
+- Added `rebuild_plugin.py --mcp-url` for packaged-only public-tunnel testing while preserving acceptance as the checked-in default. Both acceptance and local packages now carry the OAuth client ID that matches their MCP host, so users do not need to paste it during connector setup.
+
 ## 0.22.0
 - **Questions are now gated by format.** `decide.py order_for()` drops the `cover` and
   `map` questions once the format is known not to use them. Only the PDF and the

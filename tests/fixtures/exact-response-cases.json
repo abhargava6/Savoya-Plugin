@@ -1,0 +1,97 @@
+{
+  "ordinary": {
+    "persisted": false,
+    "currency": "USD",
+    "aggregate_total": 0,
+    "quote_units": [{
+      "key": "u1", "quantity": 1, "unit_total": 0, "line_total": 0,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 6,
+      "pricing_summary": {
+        "estimate_type": "exact", "status": "priced", "pricing_method": "transfer",
+        "rate": {"base_rate_amount": 0, "effective_rate_amount": 0},
+        "adjustments": {"discount_basis_points": 0, "fuel_surcharge_basis_points": 0}
+      }
+    }]
+  },
+  "temporary_rate": {
+    "persisted": false,
+    "currency": "USD",
+    "aggregate_total": 50000,
+    "quote_units": [{
+      "key": "u1", "quantity": 1, "unit_total": 50000, "line_total": 50000,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 4,
+      "pricing_summary": {
+        "estimate_type": "exact", "status": "priced", "pricing_method": "transfer",
+        "rate": {"base_rate_amount": 50000, "effective_rate_amount": 50000},
+        "adjustments": {"temporary_rate_used": true, "temporary_discount_basis_points": 0}
+      }
+    }]
+  },
+  "temporary_discount": {
+    "persisted": false,
+    "currency": "USD",
+    "aggregate_total": 45000,
+    "quote_units": [{
+      "key": "u1", "quantity": 1, "unit_total": 45000, "line_total": 45000,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 4,
+      "pricing_summary": {
+        "estimate_type": "exact", "status": "priced", "pricing_method": "transfer",
+        "subtotal_amount": 50000,
+        "rate": {"base_rate_amount": 50000, "rate_amount_before_temporary_discount": 50000, "effective_rate_amount": 45000},
+        "adjustments": {"temporary_rate_used": false, "temporary_discount_basis_points": 1000, "temporary_discount_amount": 5000, "temporary_discount_label": "Presentation discount"}
+      }
+    }]
+  },
+  "combined": {
+    "persisted": false,
+    "currency": "USD",
+    "aggregate_total": 45000,
+    "quote_units": [{
+      "key": "u1", "quantity": 1, "unit_total": 45000, "line_total": 45000,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 4,
+      "pricing_summary": {
+        "estimate_type": "exact", "status": "priced", "pricing_method": "transfer",
+        "subtotal_amount": 50000,
+        "rate": {"base_rate_amount": 40000, "rate_amount_before_temporary_discount": 50000, "effective_rate_amount": 45000},
+        "adjustments": {"temporary_rate_used": true, "temporary_discount_basis_points": 1000, "temporary_discount_amount": 5000, "temporary_discount_label": "Presentation discount"}
+      }
+    }]
+  },
+  "blocked": {
+    "persisted": false,
+    "currency": "USD",
+    "aggregate_total": null,
+    "quote_units": [{
+      "key": "u1", "quantity": null, "unit_total": null, "line_total": null,
+      "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+      "passenger_count": 4,
+      "pricing_summary": {"estimate_type": "exact", "status": "rate_unavailable", "warnings": ["No rate available"]}
+    }]
+  },
+  "complete_comparison": {
+    "options": [
+      {
+        "key": "value", "label": "Value",
+        "result": {
+          "persisted": false, "currency": "USD", "aggregate_total": 85000,
+          "quote_units": [
+            {"key": "u1", "quantity": 2, "unit_total": 42500, "line_total": 85000, "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6}, "passenger_count": 8, "pricing_summary": {"estimate_type": "exact", "status": "priced"}}
+          ]
+        }
+      },
+      {
+        "key": "elevated", "label": "Elevated",
+        "result": {
+          "persisted": false, "currency": "USD", "aggregate_total": 100000,
+          "quote_units": [
+            {"key": "u1", "quantity": 1, "unit_total": 100000, "line_total": 100000, "vehicle_type": {"id": 26, "name": "Mercedes Sprinter Van", "capacity": 13}, "passenger_count": 8, "pricing_summary": {"estimate_type": "exact", "status": "priced"}}
+          ]
+        }
+      }
+    ]
+  }
+}

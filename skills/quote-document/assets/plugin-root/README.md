@@ -1,42 +1,28 @@
-# Savoya Quoting plugin
+# Savoya Quoting plugin 0.23
 
-Bundles the Savoya MCP connector with a `quote-document` skill that turns engine quotes into client-ready documents.
+Claude plugin for exact, non-persisted Savoya quotes and client-ready exports.
 
-## Components
 | Component | Purpose |
 |---|---|
-| `.mcp.json` | Savoya quoting MCP — acceptance URL. For production, change the URL and bump the version (env-var expansion isn't relied on). Auth is OAuth via `dev.auth.savoya.net`, scope `access:savoya_mcp`; CSM accounts need that scope. |
-| `skills/quote-intake` | Client request → **exact** engine quote (`generate_quote_options` / `calculate_quote_units`): resolve client + stops (parallel), one question, `plan_approximate` quote, value/elevated summary, refine loop, handoff |
-| `skills/quote-document` | Handoff → client-facing document: six forced questions (discount, fuel, cover, personalization, map, format), then PDF / email copy / HTML / DOCX / XLSX |
+| `.mcp.json` | Matching acceptance MCP endpoint and OAuth client ID |
+| `quote-intake` | Resolve requests, preserve the rate-sheet choice, call exact Core-backed tools, select one complete option, and write handoff contract v3 |
+| `quote-document` | Re-quote temporary document discounts through MCP, then render Core-returned values as PDF, email, HTML, DOCX, or XLSX |
 
-## Who it's for
-Savoya ops, sales, and CSMs building quotes for clients. Not for client-side coordinators.
+Savoya MCP/Core owns vehicle metadata, capacity sizing, rates, discounts, and totals. The plugin owns conversation, presentation, capture, and exports. It never persists a reservation or recalculates final money.
 
-## Connecting to Savoya (every CSM, first use)
-The plugin registers the Savoya MCP server at `https://mcp-acceptance.savoya.net/mcp`. On first tool call Cowork starts an OAuth sign-in with `dev.auth.savoya.net`.
+## Supported quote paths
 
-If Cowork asks for an **OAuth client ID**, paste exactly:
+- Selected package: `calculate_quote_units`
+- Complete comparisons: `generate_quote_options`
+- Temporary rates/discounts: `calculate_temporary_quote_units`
+
+## Build
+
+```bash
+python3 skills/quote-document/scripts/regress.py --pdf
+PLUGIN_VERSION=0.23.0 python3 skills/quote-document/scripts/rebuild_plugin.py \
+  skills/quote-document /tmp/savoya-quoting-acceptance \
+  --package /tmp/savoya-quoting-0.23.0.plugin
 ```
-https://mcp-acceptance.savoya.net/oauth/clients/claude.json
-```
-Leave client secret blank (it's a public PKCE client). Then sign in with your Savoya account. Your account must carry the `access:savoya_mcp` scope — if sign-in succeeds but tool calls fail with 403, ask engineering to grant that scope; it's not a plugin problem.
 
-That client document lists only the claude.ai callback URL. It works for claude.ai and Cowork. For **Claude Code**, use `claude mcp add --transport http savoya https://mcp-acceptance.savoya.net/mcp` and let it register its own client via Auth0's dynamic registration endpoint.
-
-## Before handing this to a CSM
-Run `python3 skills/quote-document/scripts/preflight.py --admin` on their machine and follow `SETUP.md`. Without it everything still works except native PDF, full verification and route maps — and CSMs are never shown install commands.
-
-## One-time setup (plugin owner)
-1. Create a shared Drive folder, e.g. `Savoya Quote Captures`, restricted to the team — captures contain client names and pricing.
-2. Put its folder ID in `skills/quote-document/assets/capture.json` → `drive_folder_id`. Repackage.
-3. Each CSM installs the plugin and connects Google Drive in Cowork. That's it.
-
-## Improving it
-Every session ends with a two-question check-in and a one-command capture to `~/.savoya-quoting/captures/`.
-See `CONTRIBUTING.md` for the daily/weekly loop, and run `skills/quote-document/scripts/regress.py --pdf` before repackaging.
-
-## Flow
-`quote-intake` runs when a request is pasted; it ends with "want the client PDF or email?" — no is a valid end (quote-only capture). Yes hands `handoff/intake.json` to `quote-document`, which asks nothing about the quote. Contract: `skills/quote-intake/references/handoff-contract.md`.
-
-## Roadmap
-- When the MCP gains a composite quote tool or compact responses, `quote-intake`'s call plan shrinks; nothing else changes.
+For local testing, add `--mcp-url https://<active-public-tunnel>/mcp`. It changes the packaged MCP endpoint and OAuth client ID to the same public host without modifying the checked-in config. Claude cannot reach localhost; the tunnel must match the MCP public URL and Auth0 audience. Clear the developer cache, reconnect OAuth, and start a new conversation after switching environments.

@@ -4,10 +4,11 @@
 Usage: render_print.py quote.json out.pdf [--html out.html] [--no-cover]
 
 Pages: (1) cover — brand + audience/value strip, (2) quote — hero total, line
-table with refs, pricing breakdown, line notes, (3) rate card — standard vs net
+table with refs, Core pricing detail, line notes, and a rate card
 rates, minimums, cancellation table, terms. Renders via Playwright/Chromium;
 falls back to wkhtmltopdf if Playwright isn't available.
 """
+
 import argparse
 import datetime as dt
 import html
@@ -30,7 +31,6 @@ def notes_of(leg):
     return [str(x) for x in n if str(x).strip()]
 
 
-
 LOGO = "https://res.cloudinary.com/dctq8l4sp/image/upload/v1776808626/savoya-logo_dlhiha.png"
 COPPER, COPPER_DARK, AMBER = "#B87333", "#8B4513", "#F59E0B"
 INK, GRAY, MUTED, RULE, TINT = "#1A1A1A", "#5C5650", "#8A837C", "#E6E1DC", "#F7EDE4"
@@ -41,7 +41,7 @@ def e(s):
 
 
 def money(c):
-    return f"${(c or 0)/100:,.2f}"
+    return "—" if c is None else f"${c/100:,.2f}"
 
 
 def day(iso, fmt="%a %m/%d/%Y"):
@@ -62,23 +62,9 @@ def hrs(h):
     return f"{h:g} hr" if h is not None else "—"
 
 
-def global_pct(q, negative):
-    """Sum of global percent adjustments that are discounts (negative) or surcharges."""
-    tot = 0.0
-    for a in q.get("adjustments", []):
-        if a["type"] == "percent" and not a.get("applies_to") and not a.get("waived"):
-            if (a["value"] < 0) == negative:
-                tot += a["value"]
-    return tot
-
-
-def net_rate(rate_cents, disc_pct, sur_pct):
-    v = rate_cents * (1 + disc_pct / 100.0)
-    v = v * (1 + sur_pct / 100.0)
-    return int(round(v))
-
-
-COVERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "covers")
+COVERS_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "assets", "covers"
+)
 
 
 def cover_choice(q, cli):
@@ -89,10 +75,15 @@ def cover_choice(q, cli):
     cat = json.load(open(os.path.join(COVERS_DIR, "catalog.json"), encoding="utf-8"))
     entry = next((c for c in cat["covers"] if c["key"] == key), None)
     if not entry or not entry.get("file"):
-        sys.exit(f"Unknown cover '{key}'. Options: " + ", ".join(c["key"] for c in cat["covers"]))
+        sys.exit(
+            f"Unknown cover '{key}'. Options: "
+            + ", ".join(c["key"] for c in cat["covers"])
+        )
     path = os.path.join(COVERS_DIR, entry["file"])
     if not os.path.exists(path):
-        sys.exit(f"Cover image missing: {path} — run scripts/make_covers.py <covers-src> to pre-render it")
+        sys.exit(
+            f"Cover image missing: {path} — run scripts/make_covers.py <covers-src> to pre-render it"
+        )
     return key, path
 
 
@@ -101,11 +92,14 @@ def cover_asset_page(cover_img):
     Chromium emits one single-origin PDF — no merged content streams (macOS Preview breaks on those),
     and no rasterization at quote time (that costs ~20s cold)."""
     import base64
+
     ext = os.path.splitext(cover_img)[1].lower().lstrip(".")
     mime = "jpeg" if ext in ("jpg", "jpeg") else ext
     b64 = base64.b64encode(open(cover_img, "rb").read()).decode()
-    return (f'<section class="page blank" style="background:#000;display:flex;align-items:center;justify-content:center;">'
-            f'<img src="data:image/{mime};base64,{b64}" style="height:11in;width:auto;max-width:8.5in;display:block;"></section>')
+    return (
+        f'<section class="page blank" style="background:#000;display:flex;align-items:center;justify-content:center;">'
+        f'<img src="data:image/{mime};base64,{b64}" style="height:11in;width:auto;max-width:8.5in;display:block;"></section>'
+    )
 
 
 def blank_black_page():
@@ -116,10 +110,16 @@ def blank_black_page():
 def cover_page(q):
     pz = q.get("personalization", {})
     hero = pz.get("cover_image_url")
-    bg = (f"background:linear-gradient(180deg,rgba(15,15,15,.55),rgba(15,15,15,.92)),url('{e(hero)}') center/cover;"
-          if hero else "background:radial-gradient(1200px 600px at 30% 10%,#2a1f16 0%,#0F0F0F 60%);")
-    client_logo = (f"<img src='{e(pz['client_logo_url'])}' style='height:34px;margin-left:18px;vertical-align:middle;filter:brightness(1.1);'>"
-                   if pz.get("client_logo_url") else "")
+    bg = (
+        f"background:linear-gradient(180deg,rgba(15,15,15,.55),rgba(15,15,15,.92)),url('{e(hero)}') center/cover;"
+        if hero
+        else "background:radial-gradient(1200px 600px at 30% 10%,#2a1f16 0%,#0F0F0F 60%);"
+    )
+    client_logo = (
+        f"<img src='{e(pz['client_logo_url'])}' style='height:34px;margin-left:18px;vertical-align:middle;filter:brightness(1.1);'>"
+        if pz.get("client_logo_url")
+        else ""
+    )
     event = pz.get("event_name") or q["meta"].get("title")
     dates = sorted({day(l["date"], "%B %-d, %Y") for l in q["legs"] if l.get("date")})
     date_line = " · ".join(dates[:3]) + (" …" if len(dates) > 3 else "")
@@ -145,55 +145,81 @@ def cover_page(q):
 
 def quote_page(q):
     m, pz = q["meta"], q.get("personalization", {})
-    disc, sur = global_pct(q, True), global_pct(q, False)
+    adjustments = q.get("adjustments") or {}
+    disc = adjustments.get("temporary_discount_basis_points") or adjustments.get(
+        "discount_basis_points"
+    )
+    sur = adjustments.get("fuel_surcharge_basis_points")
     meta_cells = [
         ("Prepared for", m.get("client")),
         ("Prepared by", m.get("prepared_by")),
         ("Travel coordinator", m.get("travel_coordinator")),
         ("Service area", m.get("service_area")),
-        ("Passengers", str(max((l.get("passenger_count") or 0) for l in q["legs"])) if q["legs"] else None),
+        (
+            "Passengers",
+            (
+                str(max((l.get("passenger_count") or 0) for l in q["legs"]))
+                if q["legs"]
+                else None
+            ),
+        ),
         ("Date", day(m.get("prepared_on"), "%m/%d/%Y")),
         ("Valid until", day(m.get("valid_until"), "%m/%d/%Y")),
-        ("Discount", f"{abs(disc):g}%" if disc else None),
-        ("Fuel surcharge", f"{sur:g}%" if sur else None),
+        ("Discount", f"{disc / 100:g}%" if disc else None),
+        ("Fuel surcharge", f"{sur / 100:g}%" if sur else None),
     ]
-    meta_html = "".join(f"<div><label>{e(k)}</label><span>{e(v)}</span></div>" for k, v in meta_cells if v)
+    meta_html = "".join(
+        f"<div><label>{e(k)}</label><span>{e(v)}</span></div>"
+        for k, v in meta_cells
+        if v
+    )
 
-    return quote_page_for(q, [l for l in q["legs"] if not l.get("alternative_of")], meta_html, pz, m, "Group travel quote", option=None)
+    return quote_page_for(
+        q, q["legs"], meta_html, pz, m, "Group travel quote", option=None
+    )
 
 
 def option_page(q):
-    alts = [l for l in q["legs"] if l.get("alternative_of")]
-    if not alts:
-        return ""
-    ob = q.get("option_b") or {}
-    return quote_page_for(q, alts, "", q.get("personalization", {}), q["meta"], "Option B", option=ob)
+    return ""
 
 
 def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     # group legs by date
     groups = {}
     for l in legs_in:
-        groups.setdefault(day(l.get("date"), "%A — %m/%d/%Y") or "Date to be confirmed", []).append(l)
+        groups.setdefault(
+            day(l.get("date"), "%A — %m/%d/%Y") or "Date to be confirmed", []
+        ).append(l)
 
     def row_html(l):
-            p, v = l["pricing"], l["vehicle"]
-            route = " → ".join(e(s["label"]) for s in l["stops"])
-            when = time_of(l.get("date"))
-            basis = "Hourly" if p["method"] == "hourly" else "Transfer"
-            ev = f"<div class='ev'>&#9888; Event pricing — {e(p['special_event']['name'])}</div>" if p.get("special_event") else ""
-            rt = l.get("route")
-            if rt:
-                bits = []
-                if rt.get("distance_mi"):
-                    bits.append(f"~{rt['distance_mi']:g} mi")
-                if rt.get("drive_min"):
-                    bits.append(f"~{rt['drive_min']} min drive")
-                drive = f" <span class='cap'>· {' / '.join(bits)}</span>" if bits else ""
-            else:
-                drive = ""
-            tbd = "<div class='tbd'>Flight details to be confirmed</div>" if any(s.get("kind") == "airport" and s.get("flight", {}).get("tbd") for s in l["stops"]) else ""
-            return f"""<tr>
+        p, v = l["pricing"], l["vehicle"]
+        route = " → ".join(e(s["label"]) for s in l["stops"])
+        when = time_of(l.get("date"))
+        basis = "Hourly" if p["method"] == "hourly" else "Transfer"
+        ev = (
+            f"<div class='ev'>&#9888; Event pricing — {e(p['special_event']['name'])}</div>"
+            if p.get("special_event")
+            else ""
+        )
+        rt = l.get("route")
+        if rt:
+            bits = []
+            if rt.get("distance_mi"):
+                bits.append(f"~{rt['distance_mi']:g} mi")
+            if rt.get("drive_min"):
+                bits.append(f"~{rt['drive_min']} min drive")
+            drive = f" <span class='cap'>· {' / '.join(bits)}</span>" if bits else ""
+        else:
+            drive = ""
+        tbd = (
+            "<div class='tbd'>Flight details to be confirmed</div>"
+            if any(
+                s.get("kind") == "airport" and s.get("flight", {}).get("tbd")
+                for s in l["stops"]
+            )
+            else ""
+        )
+        return f"""<tr>
   <td class='ref'>{e(l.get('ref'))}</td>
   <td class='svc'><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>
       <div class='route'>{when}{' · ' if when else ''}{route}{drive}</div>{ev}{tbd}</td>
@@ -206,21 +232,26 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
 
     # --- pagination by estimated height, not leg count. A leg with three long client_notes
     # occupies several times the space of a bare one; counting legs clipped real quotes.
-    FIRST_BUDGET, CONT_BUDGET = 54, 64      # units calibrated against the fixture renders
-    GROUP_COST = 4                          # a date header + its subtotal row
+    FIRST_BUDGET, CONT_BUDGET = 54, 64  # units calibrated against the fixture renders
+    GROUP_COST = 4  # a date header + its subtotal row
 
     def leg_cost(l):
         # client_notes render in their own block below, not in the leg row
-        c = 7                               # route line, vehicle line, cancellation
-        c += 2 * max(0, len(l.get("stops") or []) - 2)          # extra stops wrap the route line
+        c = 7  # route line, vehicle line, cancellation
+        c += 2 * max(
+            0, len(l.get("stops") or []) - 2
+        )  # extra stops wrap the route line
         if (l.get("pricing") or {}).get("special_event"):
             c += 2
-        if any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") for s in (l.get("stops") or [])):
+        if any(
+            s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd")
+            for s in (l.get("stops") or [])
+        ):
             c += 1
         return c
 
     def notes_cost(legs_with_notes):
-        c = 4 if legs_with_notes else 0     # the "Line notes" heading
+        c = 4 if legs_with_notes else 0  # the "Line notes" heading
         for l in legs_with_notes:
             for n in notes_of(l):
                 c += 2 + len(str(n)) // 60  # notes wrap hard in a narrow column
@@ -235,7 +266,9 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             pages_of_legs.append(cur)
             cur, used, last_g, budget = [], 0, None, CONT_BUDGET
             cost = leg_cost(l) + GROUP_COST
-        cur.append((g, l)); used += cost; last_g = g
+        cur.append((g, l))
+        used += cost
+        last_g = g
     if cur:
         pages_of_legs.append(cur)
     if not pages_of_legs:
@@ -245,56 +278,40 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
         out, last = [], None
         for gname, l in chunk:
             if gname != last:
-                out.append(f"<tr class='group'><td colspan='8'>{e(gname)}</td></tr>"); last = gname
+                out.append(f"<tr class='group'><td colspan='8'>{e(gname)}</td></tr>")
+                last = gname
             out.append(row_html(l))
-            if len(groups) > 1 and l is groups[gname][-1]:
-                gsub = sum((x["pricing"]["line_total_cents"] or 0) for x in groups[gname])
-                out.append(f"<tr class='gsub'><td colspan='7'>{e(gname)} subtotal</td><td class='num'>{money(gsub)}</td></tr>")
         return out
 
-    if option is None:
-        adj_rows = "".join(
-            f"<tr><td>{e(a['label'])}{(' ('+format(abs(a['value']),'g')+'%)') if a['type']=='percent' else ''}"
-            f"{(' — '+e(next((l.get('ref') for l in q['legs'] if l['key']==a.get('applies_to')),''))) if a.get('applies_to') else ''}</td>"
-            f"<td class='num'>{'−' if a['amount_cents']<0 else ''}{money(abs(a['amount_cents']))}</td></tr>"
-            for a in q.get("adjustments", []) if not a.get("waived"))
-        sub_cents, tot_cents, tot_label = q["engine_subtotal_cents"], q["total_cents"], "Estimated group total"
-    else:
-        # Option B: same global adjustments recomputed on this option's subtotal
-        adj_rows, run = "", option["subtotal_cents"]
-        if option.get("carried_refs"):
-            adj_rows += (f"<tr><td class='cap'>Option B lines</td><td class='num cap'>{money(option['alt_subtotal_cents'])}</td></tr>"
-                         f"<tr><td class='cap'>Unchanged from Option A ({e(', '.join(option['carried_refs']))})</td><td class='num cap'>{money(option['carried_subtotal_cents'])}</td></tr>")
-        for a in q.get("adjustments", []):
-            if a.get("applies_to") or a.get("waived"):
-                continue
-            amt = round(run * a["value"] / 100.0) if a["type"] == "percent" else round(a["value"] * 100)
-            run += amt
-            adj_rows += (f"<tr><td>{e(a['label'])}{(' ('+format(abs(a['value']),'g')+'%)') if a['type']=='percent' else ''}</td>"
-                         f"<td class='num'>{'−' if amt<0 else ''}{money(abs(amt))}</td></tr>")
-        sub_cents, tot_cents, tot_label = option["subtotal_cents"], option["total_cents"], "Option B program total"
+    adj_rows, sub_cents, tot_cents, tot_label = (
+        "",
+        q.get("package_subtotal_cents"),
+        q["total_cents"],
+        "Estimated group total",
+    )
 
-    notes = "".join(f"<tr><td class='ref'>{e(l.get('ref'))}</td><td>{'<br>'.join(e(n) for n in notes_of(l))}</td></tr>"
-                    for l in legs_in if notes_of(l))
-    notes_html = f"<h3>Line notes</h3><table class='notes'>{notes}</table>" if notes else ""
-    intro = f"<p class='intro'>{e(pz['intro_note'])}</p>" if (option is None and pz.get("intro_note")) else ""
+    notes = "".join(
+        f"<tr><td class='ref'>{e(l.get('ref'))}</td><td>{'<br>'.join(e(n) for n in notes_of(l))}</td></tr>"
+        for l in legs_in
+        if notes_of(l)
+    )
+    notes_html = (
+        f"<h3>Line notes</h3><table class='notes'>{notes}</table>" if notes else ""
+    )
+    intro = (
+        f"<p class='intro'>{e(pz['intro_note'])}</p>"
+        if (option is None and pz.get("intro_note"))
+        else ""
+    )
     primary_ref = ""
-    if option is not None:
-        pr = {l["key"]: l.get("ref") for l in q["legs"]}
-        pairs = ", ".join(f"{l.get('ref')} replaces {pr.get(l.get('alternative_of'),'?')}" for l in legs_in)
-        head = f"""<div class="head"><div class="head-l"><h2>Option B <span class='cap'>· alternative vehicle plan</span></h2>
-      <div class='sub'>Same dates and routing as Option A; {e(pairs)}. Choose either option — totals are not additive.</div></div>
-      <div class="hero"><label>Option B program total</label><div class="amt">{money(tot_cents)}</div>
-      <div class="hero-sub">vs. Option A {money(q['total_cents'])}</div></div></div>"""
-    else:
-        head = f"""<div class="head">
+    head = f"""<div class="head">
     <div class="head-l">
       <h2>{e(m.get('title'))}</h2>
       {f"<div class='sub'>{e(pz['event_name'])}</div>" if pz.get('event_name') else ''}
       <div class="meta">{meta_html}</div>
     </div>
-    <div class="hero"><label>Estimated total{' · Option A' if q.get('option_b') else ''}</label><div class="amt">{money(q['total_cents'])}</div>
-      <div class="hero-sub">{len(legs_in)} line item{'s' if len(legs_in)!=1 else ''} · all rates in USD{' · Option B on the next page' if q.get('option_b') else ''}</div></div>
+    <div class="hero"><label>Estimated total</label><div class="amt">{money(q['total_cents'])}</div>
+      <div class="hero-sub">{len(legs_in)} line item{'s' if len(legs_in)!=1 else ''} · all rates in USD</div></div>
   </div>"""
 
     thead = "<thead><tr><th>Ref</th><th>Service</th><th class='num'>Basis</th><th class='num'>Min</th><th class='num'>Qty</th><th class='num'>Hrs / veh</th><th class='num'>Rate</th><th class='num'>Total</th></tr></thead>"
@@ -302,7 +319,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     split = f"""<div class="split">
     <div>{notes_html}</div>
     <table class="breakdown">
-      <tr><td>Transportation subtotal</td><td class='num'>{money(sub_cents)}</td></tr>
+      {f"<tr><td>Core subtotal</td><td class='num'>{money(sub_cents)}</td></tr>" if sub_cents is not None else ''}
       {adj_rows}
       <tr class='total'><td>{e(tot_label)}</td><td class='num'>{money(tot_cents)}</td></tr>
     </table>
@@ -312,8 +329,10 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     # the notes + breakdown block needs room: if the last page is more than half full, give it its own page
     # the notes + breakdown block needs room; give it its own page when it won't fit
     legs_with_notes = [l for l in legs_in if notes_of(l)]
-    block_cost = notes_cost(legs_with_notes) + 12          # + the breakdown table
-    last_used = sum(leg_cost(l) for _, l in pages_of_legs[-1]) + GROUP_COST * len({g for g, _ in pages_of_legs[-1]})
+    block_cost = notes_cost(legs_with_notes) + 12  # + the breakdown table
+    last_used = sum(leg_cost(l) for _, l in pages_of_legs[-1]) + GROUP_COST * len(
+        {g for g, _ in pages_of_legs[-1]}
+    )
     room = (FIRST_BUDGET if n == 1 else CONT_BUDGET) - last_used
     summary_own_page = block_cost > room
     for idx, chunk in enumerate(pages_of_legs):
@@ -343,31 +362,48 @@ def route_page(q):
     if not rm or not os.path.exists(rm.get("png", "")):
         return ""
     import base64
+
     b64 = base64.b64encode(open(rm["png"], "rb").read()).decode()
     rows = []
     for l in q["legs"]:
-        if l.get("alternative_of"):
-            continue
         rt = l.get("route") or {}
-        stops = " → ".join(f"<b>{s.get('marker','')}</b> {e(s['label'])}" if s.get("marker") else e(s["label"]) for s in l["stops"])
-        rows.append(f"<tr><td class='ref'>{e(l.get('ref'))}</td><td>{day(l.get('date'))}<div class='route'>{stops}</div></td>"
-                    f"<td class='num'>{str(rt.get('distance_mi')) + ' mi' if rt.get('distance_mi') else '—'}</td><td class='num'>{('~'+str(rt['drive_min'])+' min') if rt else '—'}</td></tr>")
+        stops = " → ".join(
+            (
+                f"<b>{s.get('marker','')}</b> {e(s['label'])}"
+                if s.get("marker")
+                else e(s["label"])
+            )
+            for s in l["stops"]
+        )
+        rows.append(
+            f"<tr><td class='ref'>{e(l.get('ref'))}</td><td>{day(l.get('date'))}<div class='route'>{stops}</div></td>"
+            f"<td class='num'>{str(rt.get('distance_mi')) + ' mi' if rt.get('distance_mi') else '—'}</td><td class='num'>{('~'+str(rt['drive_min'])+' min') if rt else '—'}</td></tr>"
+        )
     # paginate: the map takes roughly half the first page
     FIRST_R, CONT_R = 6, 16
     chunks, i = [], 0
     while i < len(rows):
         cap = FIRST_R if not chunks else CONT_R
-        chunks.append(rows[i:i + cap]); i += cap
+        chunks.append(rows[i : i + cap])
+        i += cap
     if not chunks:
         chunks = [[]]
     thead = "<thead><tr><th>Ref</th><th>Route</th><th class='num'>Distance</th><th class='num'>Drive time</th></tr></thead>"
-    legend = (f"<p class='legend'>Drive times are typical-traffic estimates for planning; garage-to-garage billing "
-              f"and wait time follow the terms. {e(rm.get('attribution',''))}.</p>")
+    legend = (
+        f"<p class='legend'>Drive times are typical-traffic estimates for planning; garage-to-garage billing "
+        f"and wait time follow the terms. {e(rm.get('attribution',''))}.</p>"
+    )
     out = []
     for idx, chunk in enumerate(chunks):
         first, last = idx == 0, idx == len(chunks) - 1
-        img = (f'<img src="data:image/png;base64,{b64}" style="width:100%;border:1px solid {RULE};'
-               f'border-radius:8px;margin:10pt 0 14pt;">') if first else ""
+        img = (
+            (
+                f'<img src="data:image/png;base64,{b64}" style="width:100%;border:1px solid {RULE};'
+                f'border-radius:8px;margin:10pt 0 14pt;">'
+            )
+            if first
+            else ""
+        )
         out.append(f"""
 <section class="page">
   <header class="bar"><img src="{LOGO}" style="height:26px;"><span>Route overview{'' if first else ' · continued'}</span></header>
@@ -381,40 +417,51 @@ def route_page(q):
 
 
 def ratecard_page(q):
-    disc, sur = global_pct(q, True), global_pct(q, False)
     seen, rows, cx_rows = {}, [], []
     for l in q["legs"]:
         p, v = l["pricing"], l["vehicle"]
-        k = (v["name"], p["method"], p["rate_cents"], p.get("special_event", {}) and p["special_event"].get("name"))
+        k = (
+            v["name"],
+            p["method"],
+            p["rate_cents"],
+            p.get("special_event", {}) and p["special_event"].get("name"),
+        )
         if k in seen:
             continue
         seen[k] = True
         rate = p["rate_cents"] if p["method"] == "hourly" else p["per_vehicle_cents"]
-        net = net_rate(rate, disc, sur)
         minimum = p.get("minimum_hours") if p["method"] == "hourly" else None
-        min_total = rate * minimum if minimum else rate
-        net_min = net_rate(min_total, disc, sur)
-        tag = f" <span class='cap'>· {e(p['special_event']['name'])} event rate</span>" if p.get("special_event") else ""
-        rows.append(f"""<tr><td><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>{tag}</td>
+        min_total = p.get("per_vehicle_cents")
+        tag = (
+            f" <span class='cap'>· {e(p['special_event']['name'])} event rate</span>"
+            if p.get("special_event")
+            else ""
+        )
+        rows.append(
+            f"""<tr><td><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>{tag}</td>
           <td class='num'>{'Hourly' if p['method']=='hourly' else 'Transfer'}</td>
-          <td class='num'><div>{money(rate)}</div><div class='net'>{money(net)}</div></td>
+          <td class='num'>{money(rate)}</td>
           <td class='num'>{hrs(minimum) if minimum else '—'}</td>
-          <td class='num'><div>{money(min_total)}</div><div class='net'>{money(net_min)}</div></td>
-          <td class='num'>{p.get('cancellation_hours')} hr</td></tr>""")
-        cx_rows.append(f"<tr><td>{e(v['name'])} ({v.get('capacity')} pax)</td><td class='num'>{p.get('cancellation_hours')} hr</td><td class='num'>{hrs(minimum) if minimum else '—'}</td></tr>")
-    legend = []
-    if disc:
-        legend.append(f"{abs(disc):g}% group discount")
-    if sur:
-        legend.append(f"{sur:g}% fuel surcharge")
-    legend_txt = ("Upper figure is the standard rate. Lower figure is net of the " + " and ".join(legend) + ".") if legend else "Standard rates shown."
+          <td class='num'>{money(min_total)}</td>
+          <td class='num'>{p.get('cancellation_hours')} hr</td></tr>"""
+        )
+        cx_rows.append(
+            f"<tr><td>{e(v['name'])} ({v.get('capacity')} pax)</td><td class='num'>{p.get('cancellation_hours')} hr</td><td class='num'>{hrs(minimum) if minimum else '—'}</td></tr>"
+        )
+    legend_txt = "Rates and totals shown exactly as returned by Savoya Core."
     terms = "".join(f"<li>{e(t)}</li>" for t in q.get("terms", []))
     am = (q.get("personalization") or {}).get("account_manager") or {}
     contact = ""
     if am.get("name"):
-        bits = " · ".join(e(x) for x in [am.get("title"), am.get("email"), am.get("phone")] if x)
+        bits = " · ".join(
+            e(x) for x in [am.get("title"), am.get("email"), am.get("phone")] if x
+        )
         contact = f"<div class='contact'><label>Your Savoya contact</label><b>{e(am['name'])}</b><span>{bits}</span></div>"
-    closing = f"<p class='closing'>{e(q['personalization']['closing_note'])}</p>" if (q.get("personalization") or {}).get("closing_note") else ""
+    closing = (
+        f"<p class='closing'>{e(q['personalization']['closing_note'])}</p>"
+        if (q.get("personalization") or {}).get("closing_note")
+        else ""
+    )
 
     return f"""
 <section class="page">
@@ -533,44 +580,78 @@ ul.terms li {{ margin-bottom:3pt; }}
 
 def render_html(q, cover="custom", cover_pdf=None):
     """cover: 'custom' (generated), 'none', or 'asset' (rasterized marketing cover from cover_pdf)."""
-    first = cover_page(q) if cover == "custom" else (cover_asset_page(cover_pdf) if cover == "asset" and cover_pdf else "")
+    first = (
+        cover_page(q)
+        if cover == "custom"
+        else (cover_asset_page(cover_pdf) if cover == "asset" and cover_pdf else "")
+    )
     pages = first + quote_page(q) + option_page(q) + route_page(q) + ratecard_page(q)
     has_cover = cover != "none"
     total = pages.count('class="pn"') + (1 if has_cover else 0)
     n = 1 if has_cover else 0
     while '<span class="pn"></span>' in pages:
         n += 1
-        pages = pages.replace('<span class="pn"></span>', f'<span>Page {n} of {total}</span>', 1)
-    bar = ("<div class='printbar'>"
-           "<b>To save this as a PDF:</b>"
-           "<span id='how'>press Ctrl/&#8984;+P, then choose Save as PDF</span>"
-           "<button onclick='window.print()'>Print / Save as PDF</button>"
-           "<span class='tip'>set margins to <b>None</b> and turn off headers &amp; footers</span>"
-           "</div>"
-           "<script>(function(){var m=navigator.platform||'';var h=document.getElementById('how');"
-           "if(/Mac/i.test(m)){h.innerHTML='press \\u2318+P, then open the PDF menu (bottom-left) and choose Save as PDF';}"
-           "else if(/Win/i.test(m)){h.innerHTML='press Ctrl+P, then set Destination to Microsoft Print to PDF';}})();</script>")
+        pages = pages.replace(
+            '<span class="pn"></span>', f"<span>Page {n} of {total}</span>", 1
+        )
+    bar = (
+        "<div class='printbar'>"
+        "<b>To save this as a PDF:</b>"
+        "<span id='how'>press Ctrl/&#8984;+P, then choose Save as PDF</span>"
+        "<button onclick='window.print()'>Print / Save as PDF</button>"
+        "<span class='tip'>set margins to <b>None</b> and turn off headers &amp; footers</span>"
+        "</div>"
+        "<script>(function(){var m=navigator.platform||'';var h=document.getElementById('how');"
+        "if(/Mac/i.test(m)){h.innerHTML='press \\u2318+P, then open the PDF menu (bottom-left) and choose Save as PDF';}"
+        "else if(/Win/i.test(m)){h.innerHTML='press Ctrl+P, then set Destination to Microsoft Print to PDF';}})();</script>"
+    )
     return f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{e(q['meta'].get('title'))} — Savoya</title><style>{CSS}</style></head><body>{bar}{pages}</body></html>"
 
 
 def to_pdf(html_path, pdf_path):
     try:
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             b = p.chromium.launch()
             pg = b.new_page()
             pg.goto("file://" + os.path.abspath(html_path), wait_until="load")
             try:
-                pg.wait_for_load_state("networkidle", timeout=2500)  # web fonts; falls back to system fonts
+                pg.wait_for_load_state(
+                    "networkidle", timeout=2500
+                )  # web fonts; falls back to system fonts
             except Exception:
                 pass
-            pg.pdf(path=pdf_path, format="Letter", print_background=True, margin={"top": "0", "bottom": "0", "left": "0", "right": "0"})
+            pg.pdf(
+                path=pdf_path,
+                format="Letter",
+                print_background=True,
+                margin={"top": "0", "bottom": "0", "left": "0", "right": "0"},
+            )
             b.close()
         return "playwright"
     except Exception as ex:  # noqa
         if shutil.which("wkhtmltopdf"):
-            subprocess.run(["wkhtmltopdf", "-q", "--page-size", "Letter", "-T", "0", "-B", "0", "-L", "0", "-R", "0",
-                            "--enable-local-file-access", html_path, pdf_path], check=True)
+            subprocess.run(
+                [
+                    "wkhtmltopdf",
+                    "-q",
+                    "--page-size",
+                    "Letter",
+                    "-T",
+                    "0",
+                    "-B",
+                    "0",
+                    "-L",
+                    "0",
+                    "-R",
+                    "0",
+                    "--enable-local-file-access",
+                    html_path,
+                    pdf_path,
+                ],
+                check=True,
+            )
             return "wkhtmltopdf"
         return None  # caller reports the degradation; the HTML is already on disk
 
@@ -581,15 +662,26 @@ def main():
     ap.add_argument("pdf")
     ap.add_argument("--html", default=None)
     ap.add_argument("--no-cover", action="store_true")
-    ap.add_argument("--cover", default=None, help="cover key from assets/covers/catalog.json, or 'custom'")
-    ap.add_argument("--cover-file", default=None, help="user-uploaded cover (PDF or image); rasterized once for this quote")
+    ap.add_argument(
+        "--cover",
+        default=None,
+        help="cover key from assets/covers/catalog.json, or 'custom'",
+    )
+    ap.add_argument(
+        "--cover-file",
+        default=None,
+        help="user-uploaded cover (PDF or image); rasterized once for this quote",
+    )
     a = ap.parse_args()
     with open(a.quote, encoding="utf-8") as f:
         q = json.load(f)
     for l in q["legs"]:
         for s in l["stops"]:
             if s.get("needs_label"):
-                print(f"WARNING: {l['key']} has unlabeled stop '{s['label']}'", file=sys.stderr)
+                print(
+                    f"WARNING: {l['key']} has unlabeled stop '{s['label']}'",
+                    file=sys.stderr,
+                )
     for p in q.get("internal", {}).get("placeholders", []):
         print("PLACEHOLDER: " + p, file=sys.stderr)
     html_path = a.html or (os.path.splitext(a.pdf)[0] + ".print.html")
@@ -597,16 +689,37 @@ def main():
         mode, cover_path, key = "none", None, "none"
     elif a.cover_file:
         import subprocess, tempfile
+
         src = a.cover_file
         if src.lower().endswith(".pdf"):
             if not shutil.which("pdftoppm"):
-                sys.exit("Uploaded cover is a PDF but pdftoppm isn't installed on this machine "
-                         "(brew install poppler). Ask the user for an image version, or pick a catalog cover.")
+                sys.exit(
+                    "Uploaded cover is a PDF but pdftoppm isn't installed on this machine "
+                    "(brew install poppler). Ask the user for an image version, or pick a catalog cover."
+                )
             stem = os.path.join(tempfile.gettempdir(), "savoya-uploaded-cover")
-            subprocess.run(["pdftoppm", "-r", "170", "-png", "-singlefile", "-f", "1", "-l", "1", src, stem], check=True)
+            subprocess.run(
+                [
+                    "pdftoppm",
+                    "-r",
+                    "170",
+                    "-png",
+                    "-singlefile",
+                    "-f",
+                    "1",
+                    "-l",
+                    "1",
+                    src,
+                    stem,
+                ],
+                check=True,
+            )
             try:
                 from PIL import Image
-                Image.open(stem + ".png").convert("RGB").save(stem + ".jpg", "JPEG", quality=84, optimize=True)
+
+                Image.open(stem + ".png").convert("RGB").save(
+                    stem + ".jpg", "JPEG", quality=84, optimize=True
+                )
                 src = stem + ".jpg"
             except ImportError:
                 src = stem + ".png"  # larger, but works
@@ -621,14 +734,19 @@ def main():
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import importlib
+
             pf = importlib.import_module("preflight_helpers")
             hint = pf.print_to_pdf_hint()
         except Exception:
             hint = "open it in your browser, then Print → Save as PDF"
         print("PDF output isn't set up on this computer.")
         print(f"Full document written as a web page: {html_path}")
-        print(f"  → deliver that file and tell the user: {hint} — it produces the same document.")
-        print("  → do NOT show install commands to the user; PDF setup is a one-time IT task (see SETUP.md).")
+        print(
+            f"  → deliver that file and tell the user: {hint} — it produces the same document."
+        )
+        print(
+            "  → do NOT show install commands to the user; PDF setup is a one-time IT task (see SETUP.md)."
+        )
         sys.exit(3)
     print(f"Wrote {a.pdf} via {eng}, cover={key} (html: {html_path})")
 

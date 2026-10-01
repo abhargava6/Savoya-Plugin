@@ -3,228 +3,33 @@
   "evals": [
     {
       "id": 1,
-      "name": "boston-offsite-multi-vehicle-alternatives",
-      "prompt": "Here's the Boston offsite quote we just ran (raw_quote.json attached \u2014 it has both Mini Bus and Sprinter units for the 9/18 departure). Go with Mini Bus for both days, add the 5% fuel surcharge and $150 special handling for the Wednesday offsite, and make me an HTML email I can send to Yerdle.",
-      "expected_output": "One HTML file. Two legs (9/16 offsite as a single 6-hour block with wait at Rowes Wharf; 9/18 departure to BOS). Sprinter unit dropped. Airport stop labeled BOS \u2013 Boston Logan International with 'Flight details to be confirmed'. Subtotal $9,355.20, fuel surcharge $467.76, special handling $150.00, total $9,972.96. Terms verbatim. User told the 2:30pm flight was a placeholder.",
-      "files": [
-        "fixtures/boston_raw_quote.json"
-      ],
+      "name": "document-stage-discount-requote",
+      "prompt": "The selected package is final. Add a 10% discount and make the PDF.",
+      "expected_output": "The skill prepares a 10% whole-package temporary request, calls calculate_temporary_quote_units, replaces raw_quote.json, renormalizes, renders, and verifies copied Core values.",
       "assertions": [
-        {
-          "name": "sprinter-alternative-excluded",
-          "check": "output does not contain 'Sprinter'"
-        },
-        {
-          "name": "no-stop-n-placeholder",
-          "check": "output does not match /Stop \\d/"
-        },
-        {
-          "name": "airport-labeled",
-          "check": "output contains 'Boston Logan'"
-        },
-        {
-          "name": "tbd-flight-disclosed",
-          "check": "output contains 'to be confirmed'"
-        },
-        {
-          "name": "subtotal-correct",
-          "check": "output contains '$9,355.20'"
-        },
-        {
-          "name": "total-correct",
-          "check": "output contains '$9,972.96'"
-        },
-        {
-          "name": "no-engine-vocab",
-          "check": "output does not contain 'hourly fallback' and does not contain 'rate_id' and does not contain 'inventory'"
-        },
-        {
-          "name": "terms-verbatim",
-          "check": "output contains 'This is a quoting tool and therefore builds quotes.'"
-        },
-        {
-          "name": "cancellation-per-leg",
-          "check": "output contains '48 hours' at least twice"
-        },
-        {
-          "name": "fuel-bullet-conditional",
-          "check": "terms include the 5% fuel bullet only because a fuel line was added"
-        },
-        {
-          "name": "email-in-chat-no-connector",
-          "check": "the email appears as a copy-ready block in the reply with the PDF presented alongside; no mail-connector tool is called"
-        },
-        {
-          "name": "single-question-with-defaults",
-          "check": "exactly one question is asked between the rate sheet and the deliverable, listing defaults (discount, fuel, cover, event name, intro, contact, map) so 'go' completes it"
-        },
-        {
-          "name": "questions-use-picker",
-          "check": "every enumerable question is asked with ask_user_input_v0, one per turn, never as bare prose"
-        },
-        {
-          "name": "verify-before-deliver",
-          "check": "verify_document.py runs after rendering and before the reply; a FAIL is fixed and re-verified, never delivered"
-        },
-        {
-          "name": "feedback-fix-then-log",
-          "check": "the first deliverable ends with 'Anything you'd like changed?'; a named change is fixed and re-delivered before capture, and the capture carries --change and --fixed"
-        }
+        {"name": "requote", "check": "calculate_temporary_quote_units is called with temporary_discount on every unit"},
+        {"name": "authoritative-result", "check": "the new MCP response replaces raw_quote.json before normalization"},
+        {"name": "no-local-discount", "check": "apply_adjustments.py is not used and no discount amount or total is calculated locally"}
       ]
     },
     {
       "id": 2,
-      "name": "three-city-suv-special-event",
-      "prompt": "Take the 3-city SUV hourly quote (Orlando, LA, NYC \u2014 4 hours each, 4 adults + 1 child) and put it in a Word doc for the client. No adjustments.",
-      "expected_output": "One DOCX. Three legs. NYC leg carries a visible 'Event pricing in effect for US Open' callout with 8-hour minimum and 24-hour cancellation; Orlando and LA show 4 hours \u00d7 $186.34 with 2-hour minimum. Total $3,338.72. Light print theme. No rate ids or inventory counts.",
-      "files": [
-        "fixtures/three_city_raw_quote.json"
-      ],
+      "name": "unsupported-greeter-fee",
+      "prompt": "Add a $150 greeter fee and waive the fuel surcharge on this quote.",
+      "expected_output": "The plugin clearly explains that these monetary changes are unsupported, keeps Core pricing unchanged, and may add a non-priced operational note for the greeter.",
       "assertions": [
-        {
-          "name": "special-event-visible",
-          "check": "document text contains 'US Open'"
-        },
-        {
-          "name": "nyc-8hr-minimum",
-          "check": "document text contains '8-hour minimum'"
-        },
-        {
-          "name": "total-correct",
-          "check": "document text contains '$3,338.72'"
-        },
-        {
-          "name": "no-engine-vocab",
-          "check": "document text does not contain 'rack' and does not contain 'fallback'"
-        },
-        {
-          "name": "user-warned-about-event",
-          "check": "chat response mentions the special event to the user"
-        },
-        {
-          "name": "no-fuel-bullet",
-          "check": "terms omit the 5% fuel bullet (no fuel line on this quote)"
-        },
-        {
-          "name": "single-question-with-defaults",
-          "check": "exactly one question is asked between the rate sheet and the deliverable, listing defaults (discount, fuel, cover, event name, intro, contact, map) so 'go' completes it"
-        },
-        {
-          "name": "questions-use-picker",
-          "check": "every enumerable question is asked with ask_user_input_v0, one per turn, never as bare prose"
-        },
-        {
-          "name": "verify-before-deliver",
-          "check": "verify_document.py runs after rendering and before the reply; a FAIL is fixed and re-verified, never delivered"
-        },
-        {
-          "name": "feedback-fix-then-log",
-          "check": "the first deliverable ends with 'Anything you'd like changed?'; a named change is fixed and re-delivered before capture, and the capture carries --change and --fixed"
-        }
+        {"name": "no-mutation", "check": "raw_quote.json and all monetary values remain unchanged"},
+        {"name": "clear-boundary", "check": "the response does not imply the unsupported fee or waiver is included"}
       ]
     },
     {
       "id": 3,
-      "name": "irvine-discount-requote",
-      "prompt": "For the Irvine Yerdle transfers (2 Mini Bus 3/20 AM, 1 Mini Bus 3/20 PM), the client wants 10% off. Update the quote and send me the email version with a short intro note from me.",
-      "expected_output": "Skill re-runs plan_approximate_quote_units with custom_discount_basis_points=1000 rather than computing 10% itself, re-normalizes, renders HTML with an intro note. Discount shown as a labeled line, not 'basis points'. Fuel surcharge question asked once.",
-      "files": [],
+      "name": "zero-value-preservation",
+      "prompt": "Build an export from the attached exact result, which legitimately contains zero-valued rates and totals.",
+      "expected_output": "Zero values remain zero, no fallback value is substituted, and verification compares directly with the raw result.",
       "assertions": [
-        {
-          "name": "engine-requote-used",
-          "check": "conversation includes a plan_approximate_quote_units call with custom_discount_basis_points"
-        },
-        {
-          "name": "no-manual-discount-math",
-          "check": "no adjustment of type percent with a negative value was added via apply_adjustments"
-        },
-        {
-          "name": "discount-labeled-plainly",
-          "check": "output does not contain 'basis points' and does not contain 'bps'"
-        },
-        {
-          "name": "fuel-surcharge-asked",
-          "check": "chat response asks whether to add the fuel surcharge"
-        },
-        {
-          "name": "intro-note-present",
-          "check": "output contains the intro note text"
-        },
-        {
-          "name": "email-in-chat-no-connector",
-          "check": "the email appears as a copy-ready block in the reply with the PDF presented alongside; no mail-connector tool is called"
-        },
-        {
-          "name": "single-question-with-defaults",
-          "check": "exactly one question is asked between the rate sheet and the deliverable, listing defaults (discount, fuel, cover, event name, intro, contact, map) so 'go' completes it"
-        },
-        {
-          "name": "questions-use-picker",
-          "check": "every enumerable question is asked with ask_user_input_v0, one per turn, never as bare prose"
-        },
-        {
-          "name": "verify-before-deliver",
-          "check": "verify_document.py runs after rendering and before the reply; a FAIL is fixed and re-verified, never delivered"
-        },
-        {
-          "name": "feedback-fix-then-log",
-          "check": "the first deliverable ends with 'Anything you'd like changed?'; a named change is fixed and re-delivered before capture, and the capture carries --change and --fixed"
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "name": "wedding-pdf-and-email-draft-csm-benchmark",
-      "prompt": "Access TCA wedding, Sunday 5/30/2027 at Stonehurst at Hampton Valley, Hartford CT. 120 guests. Two Sprinters for the wedding party (one carrying dresses/garment bags, 6 pax each, ~25 mi) and three Mini Buses covering 3:00pm and 3:15pm outbound waves plus the 11:00pm return \u2014 continuous charter, 9 billable hours each. 25% group discount, 5% fuel surcharge. Travel coordinator is Desiree Strobel. Give me the PDF and draft the email to her.",
-      "expected_output": "Three-page PDF: cover, quote page with A1/A2/A3 refs and line notes (garment bags on A1; wave coverage and continuous-charter rationale on A3), hero total $10,900.58, breakdown subtotal $13,842.00 \u2192 discount \u2212$3,460.50 \u2192 fuel +$519.08; rate card page with standard/net pairs and a 168-hr cancellation on the Mini Bus. Email draft with subject, three-line summary, total, validity date; created via mail connector only after the user confirms; never sent.",
-      "files": [
-        "fixtures/wedding_quote.json (already-normalized quote.json; skip normalize, apply the two adjustments, render)"
-      ],
-      "assertions": [
-        {
-          "name": "total-matches-csm-reference",
-          "check": "PDF text contains '$10,900.58'"
-        },
-        {
-          "name": "fuel-compounds-after-discount",
-          "check": "PDF text contains '$519.08'"
-        },
-        {
-          "name": "line-refs-present",
-          "check": "PDF text contains 'A1' and 'A2' and 'A3'"
-        },
-        {
-          "name": "net-rate-shown",
-          "check": "PDF text contains '$349.65' (444 \u00d7 .75 \u00d7 1.05)"
-        },
-        {
-          "name": "seven-terms-bullets",
-          "check": "PDF text contains '2-hour cancellation policy unless otherwise noted'"
-        },
-        {
-          "name": "page-numbers",
-          "check": "page 2 footer shows 'Page 2 of 3' (visual check \u2014 letter-spacing may split the text for extractors)"
-        },
-        {
-          "name": "email-in-chat-no-connector",
-          "check": "the email appears as a copy-ready block in the reply with the PDF presented alongside; no mail-connector tool is called"
-        },
-        {
-          "name": "single-question-with-defaults",
-          "check": "exactly one question is asked between the rate sheet and the deliverable, listing defaults (discount, fuel, cover, event name, intro, contact, map) so 'go' completes it"
-        },
-        {
-          "name": "questions-use-picker",
-          "check": "every enumerable question is asked with ask_user_input_v0, one per turn, never as bare prose"
-        },
-        {
-          "name": "verify-before-deliver",
-          "check": "verify_document.py runs after rendering and before the reply; a FAIL is fixed and re-verified, never delivered"
-        },
-        {
-          "name": "feedback-fix-then-log",
-          "check": "the first deliverable ends with 'Anything you'd like changed?'; a named change is fixed and re-delivered before capture, and the capture carries --change and --fixed"
-        }
+        {"name": "presence-copy", "check": "valid zero fields are present in normalized output"},
+        {"name": "direct-verification", "check": "verification does not sum line totals to derive aggregate_total"}
       ]
     }
   ]

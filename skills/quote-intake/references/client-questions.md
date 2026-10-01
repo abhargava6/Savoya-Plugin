@@ -27,7 +27,7 @@ The client's own questions that **don't change the pricing math**. They never bl
 |---|---|
 | "Is tax included?" / "Is gratuity included?" | the standard terms block already answers it — no extra work |
 | "What's your cancellation policy?" | the terms block plus the per-leg cancellation column — no extra work |
-| "Can you provide on-site staff / a greeter?" | **the document flow asks the user for a cost.** An amount becomes an "On-site coordinator" line on the quote and is named in the email; no amount means a client-facing note that it's arranged separately and not in the vehicle pricing |
+| "Can you provide on-site staff / a greeter?" | Add a client-facing note that it can be arranged separately and is not included in vehicle pricing. Do not add a local fee. |
 | Signage, PA system, luggage vehicle, waiting area | a client-facing line note on the relevant leg |
 
 ## Data-answered — the quote already contains the answer; say it out loud

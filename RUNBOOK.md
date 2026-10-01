@@ -23,3 +23,5 @@ python3 scripts/regress.py --fixtures /tmp/week --pdf
 python3 scripts/regress.py --pdf
 python3 scripts/rebuild_plugin.py . /tmp/build --bump patch --package ~/Desktop/savoya-quoting.plugin
 ```
+
+For a local MCP, replace the last line with a `PLUGIN_VERSION=...-local...` build and add `--mcp-url https://<active-public-tunnel>/mcp`. Never point a package at localhost and never rewrite the checked-in acceptance config.

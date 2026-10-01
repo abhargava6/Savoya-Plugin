@@ -1,348 +1,347 @@
 #!/usr/bin/env python3
-"""Normalize a Savoya engine quote result into canonical quote.json.
+"""Copy an exact Savoya Core quote into the presentation schema.
 
-Accepts the JSON returned by plan_approximate_quote_units, calculate_quote_units,
-or a single option from generate_quote_options.
-
-Usage:
-  normalize_quote.py raw_quote.json quote.json --client "Yerdle" [--prepared-by NAME]
-      [--select key1,key2] [--title TITLE] [--valid-days 7]
+No money is calculated here. Values are copied by field presence so valid zeroes
+remain zero and a missing value remains missing.
 """
-import argparse
-import datetime as dt
-import json
-import os
-import re
-import sys
+
+import argparse, datetime as dt, json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TERMS_PATH = os.path.join(HERE, "..", "assets", "terms.md")
 
 
-def load_terms():
+def present(mapping, key, default=None):
+    return mapping[key] if isinstance(mapping, dict) and key in mapping else default
+
+
+def load_terms(has_fuel=False, fuel_pct=None):
     terms = []
     try:
-        with open(TERMS_PATH, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("- "):
-                    terms.append(line[2:])
+        lines = open(TERMS_PATH, encoding="utf-8").read().splitlines()
     except FileNotFoundError:
-        pass
+        return terms
+    for line in lines:
+        line = line.strip()
+        if not line.startswith("- "):
+            continue
+        body = line[2:]
+        match = re.match(r"\[if:(\w+)\]\s*(.*)", body)
+        if match:
+            if match.group(1) == "fuel_surcharge" and has_fuel:
+                terms.append(
+                    match.group(2).replace(
+                        "{pct}",
+                        f"{fuel_pct:g}" if fuel_pct is not None else "the quoted",
+                    )
+                )
+            continue
+        terms.append(body)
     return terms
 
 
-def pick_option(unit):
-    """Return the vehicle option to use for a unit.
-    Exact path (calculate_quote_units / generate_quote_options result): the unit itself
-    carries the chosen vehicle, quantity and pricing_summary."""
-    if unit.get("pricing_summary") and unit.get("vehicle_type"):
-        return unit
-    if unit.get("value_option"):
-        return unit["value_option"]
-    opts = unit.get("vehicle_options") or []
-    priced = [o for o in opts if o.get("quoteable")]
-    if not priced:
-        return None
-    return min(priced, key=lambda o: o.get("line_total", 0))
-
-
-def stop_label(stop, presentation_stop):
-    """Best-effort client label for a stop. Flags 'Stop N' placeholders."""
-    if stop.get("name"):
-        return stop["name"], False
-    # exact path: airport stops carry display_name ("BOS - Boston Logan International")
-    if stop.get("display_name") and not str(stop["display_name"]).startswith("Stop "):
-        return stop["display_name"], False
-    if presentation_stop and presentation_stop.get("label") and not presentation_stop["label"].startswith("Stop "):
-        return presentation_stop["label"], False
+def stop_label(stop, presentation):
+    for value in (
+        stop.get("name"),
+        stop.get("display_name"),
+        (presentation or {}).get("label"),
+    ):
+        if value and not str(value).startswith("Stop "):
+            return value, False
     if stop.get("airport"):
         return "Airport (label needed)", True
     if stop.get("as_directed"):
-        city = (stop.get("service_area") or {}).get("name", "").split("/")[0].split(",")[0].strip()
-        return f"As directed — {city}" if city else "As directed", False
+        city = (
+            ((stop.get("service_area") or {}).get("name") or "")
+            .split("/")[0]
+            .split(",")[0]
+            .strip()
+        )
+        return (f"As directed — {city}" if city else "As directed"), False
     return "Stop (label needed)", True
 
 
-def normalize_stop(stop, presentation_stop):
-    label, needs_label = stop_label(stop, presentation_stop)
-    out = {"label": label}
-    if stop.get("address"):
+def normalize_stop(stop, presentation):
+    label, needs_label = stop_label(stop, presentation)
+    out = {"label": label, "kind": "airport" if stop.get("airport") else "address"}
+    if "address" in stop:
         out["address"] = stop["address"]
     if stop.get("airport"):
-        out["kind"] = "airport"
-        fl = stop.get("flight") or {}
+        flight = stop.get("flight") or {}
         out["flight"] = {
-            "tbd": bool(fl.get("commercial_tbd")),
-            "type": fl.get("flight_type"),
-            "scheduled_time": fl.get("scheduled_time"),
+            "tbd": bool(flight.get("commercial_tbd")),
+            "type": flight.get("flight_type"),
+            "scheduled_time": flight.get("scheduled_time"),
         }
-    else:
-        out["kind"] = "address"
-    pos = stop.get("position") or {}
-    if pos.get("latitude") is not None and pos.get("longitude") is not None:
-        out["lat"], out["lon"] = pos["latitude"], pos["longitude"]
     if stop.get("as_directed"):
-        out["kind"] = "as_directed"
-        out["as_directed"] = True
-    if stop.get("duration"):
+        out.update({"kind": "as_directed", "as_directed": True})
+    if "duration" in stop:
         out["wait_hours"] = stop["duration"]
+    position = stop.get("position") or {}
+    if position.get("latitude") is not None and position.get("longitude") is not None:
+        out["lat"], out["lon"] = position["latitude"], position["longitude"]
     if needs_label:
         out["needs_label"] = True
     return out
 
 
-def normalize_unit(unit, presentation_unit):
-    opt = pick_option(unit)
-    if not opt:
-        return None, [f"{unit.get('key')}: no quoteable vehicle option"]
-    ps = opt.get("pricing_summary", {})
-    rate = ps.get("rate", {})
-    pres_stops = (presentation_unit or {}).get("stops") or []
-    stops = []
-    for i, s in enumerate(unit.get("stops", [])):
-        stops.append(normalize_stop(s, pres_stops[i] if i < len(pres_stops) else None))
-    vt = opt.get("vehicle_type", {})
-    adj = ps.get("adjustments") or {}
-    std_rate = rate.get("base_rate_amount") or rate.get("rate_amount_before_temporary_discount")
-    eff_rate = rate.get("effective_rate_amount") or opt.get("effective_rate_amount")
-    bps = adj.get("discount_basis_points") or adj.get("custom_discount_basis_points") or 0
-    engine_discount_pct = None
-    if bps and std_rate and eff_rate and std_rate > eff_rate:
-        engine_discount_pct = bps / 100.0
-    engine_fuel_pct = (adj.get("fuel_surcharge_basis_points") or 0) / 100.0 or None
-    engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
-    service_area = next((s.get("service_area", {}).get("name") for s in unit.get("stops", []) if s.get("service_area")), None)
+def normalize_unit(unit, presentation):
+    summary, rate = (
+        unit.get("pricing_summary") or {},
+        (unit.get("pricing_summary") or {}).get("rate") or {},
+    )
+    calc, adj, vehicle = (
+        summary.get("calculation") or {},
+        summary.get("adjustments") or {},
+        unit.get("vehicle_type") or {},
+    )
+    source_stops, presentation_stops = (
+        unit.get("stops") or [],
+        (presentation or {}).get("stops") or [],
+    )
+    stops = [
+        normalize_stop(
+            stop, presentation_stops[i] if i < len(presentation_stops) else None
+        )
+        for i, stop in enumerate(source_stops)
+    ]
+    pricing = {
+        "method": present(summary, "pricing_method"),
+        "base_rate_cents": present(rate, "base_rate_amount"),
+        "rate_before_temporary_discount_cents": present(
+            rate, "rate_amount_before_temporary_discount"
+        ),
+        "effective_rate_cents": present(rate, "effective_rate_amount"),
+        "rate_cents": present(rate, "effective_rate_amount"),
+        "billable_hours": present(calc, "billable_hours"),
+        "minimum_hours": present(rate, "minimum_hours"),
+        "cancellation_hours": present(summary, "cancellation_hours"),
+        "per_vehicle_cents": present(
+            unit, "unit_total", present(summary, "per_vehicle_total_amount")
+        ),
+        "unit_total_cents": present(unit, "unit_total"),
+        "line_total_cents": present(unit, "line_total"),
+        "subtotal_cents": present(summary, "subtotal_amount"),
+        "per_vehicle_subtotal_cents": present(summary, "per_vehicle_subtotal_amount"),
+        "temporary_discount_amount_cents": present(adj, "temporary_discount_amount"),
+        "special_event": (
+            {"name": summary["special_event"].get("name")}
+            if summary.get("special_event")
+            else None
+        ),
+    }
+    service_area = next(
+        (
+            (s.get("service_area") or {}).get("name")
+            for s in source_stops
+            if s.get("service_area")
+        ),
+        None,
+    )
     leg = {
         "key": unit.get("key"),
         "service_area": service_area,
         "label": unit.get("label") or unit.get("key"),
-        "date": unit.get("pickup_date") or (presentation_unit or {}).get("date"),
-        "passenger_count": unit.get("passenger_count") or ps.get("calculation", {}).get("passenger_count"),
+        "date": present(unit, "pickup_date", (presentation or {}).get("date")),
+        "passenger_count": present(
+            unit, "passenger_count", present(calc, "passenger_count")
+        ),
         "vehicle": {
-            "name": vt.get("name"),
-            "capacity": vt.get("capacity"),
-            "quantity": opt.get("quantity") or ps.get("calculation", {}).get("quantity") or 1,
+            "id": vehicle.get("id"),
+            "name": vehicle.get("name"),
+            "capacity": vehicle.get("capacity"),
+            "quantity": present(unit, "quantity", present(calc, "quantity")),
         },
         "stops": stops,
-        "pricing": {
-            "method": ps.get("pricing_method"),
-            "rate_cents": std_rate if engine_discount_pct else eff_rate,
-            "billable_hours": opt.get("billable_hours") or ps.get("calculation", {}).get("billable_hours"),
-            "minimum_hours": rate.get("minimum_hours") or opt.get("minimum"),
-            "cancellation_hours": opt.get("cancellation_hours") or ps.get("cancellation_hours"),
-            "special_event": ({"name": ps["special_event"]["name"]} if ps.get("special_event") else None),
-            "per_vehicle_cents": opt.get("unit_total") or ps.get("per_vehicle_total_amount"),
-            "line_total_cents": opt.get("line_total") or ps.get("total_amount"),
-        },
+        "pricing": pricing,
+        "adjustments": adj,
+        "terms": summary.get("terms") or [],
+        "warnings": unit.get("warnings") or [],
         "client_notes": [],
     }
-    if engine_fuel_pct:
-        leg["engine_fuel_pct"] = engine_fuel_pct
-    if engine_handling_pct:
-        leg["engine_handling_pct"] = engine_handling_pct
-    tt = unit.get("travel_times") or []
-    if tt:
-        for i, s_ in enumerate(leg["stops"]):
-            if i < len(tt) and tt[i]:
-                s_["drive_minutes"] = tt[i]
-        leg["route"] = {"drive_min": int(sum(x for x in tt if x)), "source": "engine"}
-    if engine_discount_pct:
-        # Present standard rates on the line; the engine's discount becomes a visible line item.
-        qty = leg["vehicle"]["quantity"] or 1
-        if leg["pricing"]["method"] == "hourly":
-            per = std_rate * (leg["pricing"]["billable_hours"] or 0)
-        else:
-            per = round((opt.get("unit_total") or 0) * std_rate / eff_rate)
-        leg["pricing"]["per_vehicle_cents"] = int(per)
-        leg["pricing"]["line_total_cents"] = int(per * qty)
-        leg["engine_discount_pct"] = engine_discount_pct
-    # "No local providers" is client-relevant: surface it as a line note automatically.
-    for w in unit.get("warnings") or []:
-        if "No local providers" in w:
-            m = re.search(r"local providers in ([^.]+)\.", w)
-            city = m.group(1).strip() if m else (service_area or "a nearby market")
-            leg["client_notes"].append(f"Vehicles for this service are positioned from our {city} partners; additional drive time is included in the reservation.")
+    travel_times = unit.get("travel_times") or []
+    if travel_times:
+        for i, stop in enumerate(stops):
+            if i < len(travel_times) and travel_times[i] is not None:
+                stop["drive_minutes"] = travel_times[i]
+        leg["route"] = {
+            "drive_min": int(
+                sum(v for v in travel_times if isinstance(v, (int, float)))
+            ),
+            "source": "engine",
+        }
+    for warning in leg["warnings"]:
+        if "No local providers" in warning:
+            match = re.search(r"local providers in ([^.]+)\.", warning)
+            city = (
+                match.group(1).strip() if match else (service_area or "a nearby market")
+            )
+            leg["client_notes"].append(
+                f"Vehicles for this service are positioned from our {city} partners; additional drive time is included in the reservation."
+            )
             break
-    if leg["pricing"]["method"] != "hourly":
-        leg["pricing"]["billable_hours"] = None
-        leg["pricing"]["minimum_hours"] = None
-    internal = {
-        "rate_ids": [opt.get("rate_id")] if opt.get("rate_id") else [],
-        "warnings": list(unit.get("warnings") or []),
-        "placeholders": [],
-    }
-    for s in stops:
-        if s.get("kind") == "airport" and s.get("flight", {}).get("tbd"):
-            internal["placeholders"].append(
-                f"{leg['key']}: flight time {s['flight'].get('scheduled_time')} is a placeholder (TBD flight)")
-    return leg, internal
+    return leg
+
+
+def validate(raw):
+    errors = []
+    if raw.get("persisted") is not False:
+        errors.append("result must explicitly be non-persisted")
+    if raw.get("aggregate_total") is None:
+        errors.append("aggregate_total is required")
+    if not raw.get("quote_units"):
+        errors.append("quote_units are required")
+    for unit in raw.get("quote_units") or []:
+        key, summary = unit.get("key") or "unit", unit.get("pricing_summary") or {}
+        if summary.get("estimate_type") != "exact":
+            errors.append(f"{key} is not exact")
+        for field in ("quantity", "unit_total", "line_total"):
+            if field not in unit or unit[field] is None:
+                errors.append(f"{key} is missing {field}")
+    return errors
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("raw", nargs="?", default=None)
-    ap.add_argument("out")
-    ap.add_argument("--option", default=None,
-                    help="when raw is a generate_quote_options response, which option key to normalize")
-    ap.add_argument("--from-handoff", default=None, help="handoff dir from quote-intake; supplies raw, client, select, alternatives, placeholders")
-    ap.add_argument("--client", default=None)
-    ap.add_argument("--prepared-by", default=None)
-    ap.add_argument("--select", default=None, help="comma-separated unit keys to keep")
-    ap.add_argument("--title", default="Ground Transportation Quote")
-    ap.add_argument("--valid-days", type=int, default=7)
-    ap.add_argument("--alternative", action="append", default=[],
-                    help="altKey:primaryKey — mark altKey as Option B for primaryKey (kept, excluded from totals)")
-    args = ap.parse_args()
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("raw", nargs="?")
+    parser.add_argument("out")
+    parser.add_argument("--from-handoff")
+    parser.add_argument("--client")
+    parser.add_argument("--prepared-by")
+    parser.add_argument("--title", default="Ground Transportation Quote")
+    parser.add_argument("--valid-days", type=int, default=7)
+    args = parser.parse_args()
     handoff = None
     if args.from_handoff:
-        handoff = json.load(open(os.path.join(args.from_handoff, "intake.json"), encoding="utf-8"))
+        handoff = json.load(
+            open(os.path.join(args.from_handoff, "intake.json"), encoding="utf-8")
+        )
+        if handoff.get("contract") != 3:
+            sys.exit("Document generation requires handoff contract 3.")
         if not handoff.get("final"):
-            sys.exit("Handoff is not final — the quote hasn't been confirmed by the user.")
+            sys.exit("Handoff is not final — the quote has not been confirmed.")
         args.raw = args.raw or os.path.join(args.from_handoff, "raw_quote.json")
-        args.client = args.client or handoff["client"]["name"]
-        sel = handoff.get("selection", {})
-        if sel.get("select") and not args.select:
-            args.select = ",".join(sel["select"] + list((sel.get("alternatives") or {}).keys()))
-        for alt, prim in (sel.get("alternatives") or {}).items():
-            if f"{alt}:{prim}" not in args.alternative:
-                args.alternative.append(f"{alt}:{prim}")
+        args.client = args.client or (handoff.get("client") or {}).get("name")
     if not args.raw or not args.client:
-        sys.exit("Need raw_quote.json and --client, or --from-handoff <dir>")
-
-    with open(args.raw, encoding="utf-8") as f:
-        raw = json.load(f)
-
-    # generate_quote_options returns options[].result; each result is the single-package shape.
-    if raw.get("options") and raw.get("quote_units") is None:
-        keys = [o.get("key") for o in raw["options"]]
-        want = args.option or (handoff or {}).get("selected_option")
-        chosen = next((o for o in raw["options"] if o.get("key") == want), None)
-        if chosen is None:
-            if want:
-                sys.exit(f"Option {want!r} not in this response. Available: {keys}")
-            if len(raw["options"]) > 1:
-                sys.exit(f"This is a multi-option response ({keys}). Pass --option <key> for the one the user chose.")
-            chosen = raw["options"][0]
-        print(f"Using option {chosen.get('key')!r} from a multi-option response", file=sys.stderr)
-        raw = chosen.get("result") or {}
-
-    units = raw.get("quote_units") or []
-    pres_units = {u.get("key"): u for u in (raw.get("presentation", {}).get("data", {}).get("quote_units") or [])}
-    selected = set(k.strip() for k in args.select.split(",")) if args.select else None
-
-    alt_map = dict(a.split(":", 1) for a in args.alternative)
-    legs, dropped, warnings, placeholders, rate_ids = [], [], [], [], []
-    for u in units:
-        if selected is not None and u.get("key") not in selected:
-            dropped.append(u.get("key"))
+        sys.exit("Need raw_quote.json and --client, or --from-handoff <dir>.")
+    raw = json.load(open(args.raw, encoding="utf-8"))
+    errors = validate(raw)
+    if errors:
+        sys.exit("Refusing to normalize: " + "; ".join(errors))
+    presentation = {
+        u.get("key"): u
+        for u in (
+            ((raw.get("presentation") or {}).get("data") or {}).get("quote_units") or []
+        )
+    }
+    legs = [
+        normalize_unit(unit, presentation.get(unit.get("key")))
+        for unit in raw["quote_units"]
+    ]
+    for index, leg in enumerate(legs):
+        leg["ref"] = f"A{index + 1}"
+    top = raw.get("pricing_summary") or {}
+    top_adj = dict(top.get("adjustments") or {})
+    for key in (
+        "discount_basis_points",
+        "fuel_surcharge_basis_points",
+        "special_handling_basis_points",
+        "temporary_discount_basis_points",
+        "temporary_discount_amount",
+        "temporary_discount_label",
+        "temporary_rate_used",
+    ):
+        if key in top_adj:
             continue
-        leg, internal = normalize_unit(u, pres_units.get(u.get("key")))
-        if leg is None:
-            warnings.extend(internal)
-            continue
-        legs.append(leg)
-        warnings.extend(internal["warnings"])
-        placeholders.extend(internal["placeholders"])
-        rate_ids.extend(internal["rate_ids"])
-
-    if selected is None and len(units) > 1 and not alt_map:
-        print("WARNING: no --select given; keeping ALL units: "
-              + ", ".join(u.get("key", "?") for u in units)
-              + ". If any are alternatives for the same leg, re-run with --select.", file=sys.stderr)
-
-    for leg in legs:
-        for s in leg["stops"]:
-            if s.get("needs_label"):
-                print(f"WARNING: {leg['key']} has an unlabeled stop ('{s['label']}'). "
-                      f"Set stops[].label from the resolve_itinerary_stops display_name.", file=sys.stderr)
-    for p in placeholders:
-        print(f"PLACEHOLDER: {p}", file=sys.stderr)
-
-    for leg in legs:
-        if leg["key"] in alt_map:
-            leg["alternative_of"] = alt_map[leg["key"]]
-    primaries = [l for l in legs if not l.get("alternative_of")]
-    alts = [l for l in legs if l.get("alternative_of")]
-    for i, leg in enumerate(primaries):
-        leg["ref"] = f"A{i+1}"
-    for i, leg in enumerate(alts):
-        leg["ref"] = f"B{i+1}"
+        values = {
+            (leg.get("adjustments") or {}).get(key)
+            for leg in legs
+            if key in (leg.get("adjustments") or {})
+        }
+        if len(values) == 1:
+            top_adj[key] = values.pop()
+    fuel_bps = top_adj.get("fuel_surcharge_basis_points")
+    if fuel_bps is None:
+        values = {
+            (leg.get("adjustments") or {}).get("fuel_surcharge_basis_points")
+            for leg in legs
+        }
+        values.discard(None)
+        fuel_bps = values.pop() if len(values) == 1 else None
     today = dt.date.today()
-    subtotal = sum(l["pricing"]["line_total_cents"] or 0 for l in legs if not l.get("alternative_of"))
-    adjustments = []
-    # engine-applied fuel surcharge, if the result carries one (field names vary; check the common ones)
-    ps_top = raw.get("pricing_summary") or {}
-    fuel = None
-    for src in (ps_top, raw):
-        for k in ("fuel_surcharge_percent", "fuel_surcharge_pct", "fuel_surcharge"):
-            v = src.get(k)
-            if isinstance(v, (int, float)) and v:
-                fuel = float(v) if v < 100 else None
-            elif isinstance(v, dict) and (v.get("percent") or v.get("rate")):
-                fuel = float(v.get("percent") or v.get("rate"))
-    if fuel:
-        adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fuel, "applies_to": None,
-                            "source": "engine", "amount_cents": 0})
-    pcts = {l.get("engine_discount_pct") for l in legs if l.get("engine_discount_pct")}
-    if len(pcts) == 1:
-        pct = pcts.pop()
-        adjustments.append({"label": "Preferred client discount", "type": "percent", "value": -pct,
-                            "applies_to": None, "source": "engine", "amount_cents": 0})
-    elif len(pcts) > 1:
-        print("WARNING: legs carry different engine discounts; leaving effective rates as-is", file=sys.stderr)
-    hnd = {l.get("engine_handling_pct") for l in legs if l.get("engine_handling_pct")}
-    if len(hnd) == 1:
-        adjustments.append({"label": "Special handling", "type": "percent", "value": hnd.pop(),
-                            "applies_to": None, "source": "engine", "amount_cents": 0})
-    fpc = {l.get("engine_fuel_pct") for l in legs if l.get("engine_fuel_pct")}
-    if len(fpc) == 1:
-        adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fpc.pop(),
-                            "applies_to": None, "source": "engine", "amount_cents": 0})
     quote = {
         "meta": {
             "client": args.client,
-            "profile_id": next((u.get("travel_coordination_profile_id") for u in units if u.get("travel_coordination_profile_id")), None),
+            "profile_id": next(
+                (
+                    u.get("travel_coordination_profile_id")
+                    for u in raw["quote_units"]
+                    if u.get("travel_coordination_profile_id")
+                ),
+                None,
+            ),
             "prepared_by": args.prepared_by,
             "prepared_on": today.isoformat(),
             "valid_until": (today + dt.timedelta(days=args.valid_days)).isoformat(),
-            "estimate_type": raw.get("estimate_type") or raw.get("pricing_summary", {}).get("estimate_type"),
-            "currency": raw.get("currency") or raw.get("pricing_summary", {}).get("currency_code") or "USD",
+            "estimate_type": "exact",
+            "currency": raw.get("currency") or top.get("currency_code") or "USD",
             "title": args.title,
             "reference": None,
             "travel_coordinator": None,
-            "service_area": next((l.get("service_area") for l in legs if l.get("service_area")), None),
+            "service_area": next(
+                (l.get("service_area") for l in legs if l.get("service_area")), None
+            ),
         },
         "legs": legs,
-        "engine_total_cents": raw.get("aggregate_total") or (raw.get("pricing_summary") or {}).get("total_amount"),
-        "engine_subtotal_cents": subtotal,
-        "adjustments": adjustments,
-        "total_cents": subtotal + sum(a["amount_cents"] for a in adjustments),
+        "engine_total_cents": raw["aggregate_total"],
+        "engine_subtotal_cents": present(top, "subtotal_amount"),
+        "package_subtotal_cents": present(top, "subtotal_amount"),
+        "adjustments": top_adj,
+        "total_cents": raw["aggregate_total"],
         "personalization": {
             "cover": "general",
-            "cover_image_url": None, "client_logo_url": None, "event_name": None,
-            "intro_note": None, "pull_quote": None, "pull_quote_attribution": None,
-            "account_manager": {"name": args.prepared_by, "title": None, "email": None, "phone": None},
+            "cover_image_url": None,
+            "client_logo_url": None,
+            "event_name": None,
+            "intro_note": None,
+            "pull_quote": None,
+            "pull_quote_attribution": None,
+            "account_manager": {
+                "name": args.prepared_by,
+                "title": None,
+                "email": None,
+                "phone": None,
+            },
             "closing_note": None,
         },
-        "terms": [],  # filled by apply_adjustments (conditional bullets)
+        "terms": load_terms(
+            fuel_bps is not None and fuel_bps != 0,
+            (fuel_bps / 100.0) if fuel_bps is not None else None,
+        ),
         "internal": {
-            "rate_ids": sorted(set(r for r in rate_ids if r)),
-            "warnings": sorted(set(warnings)),
-            "placeholders": placeholders + list((handoff or {}).get("placeholders") or []),
-            "dropped_units": dropped,
-            "intake": ({"quote_mode": handoff.get("quote_mode"), "ambiguities": handoff.get("ambiguities"),
-                        "rationale": {u["key"]: u.get("rationale") for u in handoff.get("units", [])}} if handoff else None),
+            "raw_quote_path": os.path.abspath(args.raw),
+            "source_tool": (handoff or {}).get("source_tool"),
+            "warnings": sorted({w for leg in legs for w in leg.get("warnings") or []}),
+            "placeholders": list((handoff or {}).get("placeholders") or []),
+            "intake": (
+                {
+                    "quote_mode": handoff.get("quote_mode"),
+                    "ambiguities": handoff.get("ambiguities"),
+                    "rationale": {
+                        u["key"]: u.get("rationale") for u in handoff.get("units", [])
+                    },
+                }
+                if handoff
+                else None
+            ),
         },
     }
-    sys.path.insert(0, HERE)
-    from apply_adjustments import recompute
-    quote = recompute(quote)
-    with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(quote, f, indent=2)
-    print(f"Wrote {args.out}: {len(legs)} leg(s), engine subtotal ${subtotal/100:,.2f}"
-          + (f", dropped {dropped}" if dropped else ""))
+    with open(args.out, "w", encoding="utf-8") as handle:
+        json.dump(quote, handle, indent=2)
+        handle.write("\n")
+    print(
+        f"Wrote {args.out}: {len(legs)} leg(s), Core total ${raw['aggregate_total'] / 100:,.2f}"
+    )
 
 
 if __name__ == "__main__":

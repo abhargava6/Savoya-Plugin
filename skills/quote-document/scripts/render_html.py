@@ -4,6 +4,7 @@
 Usage: render_html.py quote.json out.html
 Warnings about unlabeled stops or placeholders go to stderr.
 """
+
 import datetime as dt
 import html
 import json
@@ -22,7 +23,6 @@ def notes_of(leg):
     return [str(x) for x in n if str(x).strip()]
 
 
-
 LOGO = "https://res.cloudinary.com/dctq8l4sp/image/upload/v1776808626/savoya-logo_dlhiha.png"
 
 BG, CARD, BORDER = "#0F0F0F", "#1A1A1A", "#2A2A2A"
@@ -37,7 +37,7 @@ def e(s):
 
 
 def money(cents):
-    return f"${(cents or 0)/100:,.2f}"
+    return "—" if cents is None else f"${cents/100:,.2f}"
 
 
 def fmt_date(iso):
@@ -76,10 +76,14 @@ def leg_card(leg):
             line += f" <span style='color:{AMBER};font-size:11px;'>&#9432; Flight details to be confirmed</span>"
         if s.get("wait_hours"):
             line += f"<br><span style='color:{MUTED};font-size:12px;padding-left:18px;'>{'As directed — ' if s.get('as_directed') else 'Wait on site — approx. '}{hours_txt(s['wait_hours'])}</span>"
-        rows.append(f"<tr><td style='padding:4px 0;font-size:13px;line-height:1.5;color:{GRAY};font-family:{SANS};'>{line}</td></tr>")
+        rows.append(
+            f"<tr><td style='padding:4px 0;font-size:13px;line-height:1.5;color:{GRAY};font-family:{SANS};'>{line}</td></tr>"
+        )
     stops_html = "".join(rows)
 
-    veh = f"{v['quantity']} × {e(v['name'])}" + (f" ({v['capacity']} passengers each)" if v.get("capacity") else "")
+    veh = f"{v['quantity']} × {e(v['name'])}" + (
+        f" ({v['capacity']} passengers each)" if v.get("capacity") else ""
+    )
     pax = f"{leg['passenger_count']} passengers" if leg.get("passenger_count") else ""
 
     if p["method"] == "hourly":
@@ -89,27 +93,44 @@ def leg_card(leg):
         if v["quantity"] > 1:
             basis += f" · {money(p['per_vehicle_cents'])} per vehicle"
     else:
-        basis = f"Transfer · {money(p['per_vehicle_cents'])}" + (" per vehicle" if v["quantity"] > 1 else "")
+        basis = f"Transfer · {money(p['per_vehicle_cents'])}" + (
+            " per vehicle" if v["quantity"] > 1 else ""
+        )
 
-    cancel = f"Cancellation: {p['cancellation_hours']} hours' notice" if p.get("cancellation_hours") is not None else ""
+    cancel = (
+        f"Cancellation: {p['cancellation_hours']} hours' notice"
+        if p.get("cancellation_hours") is not None
+        else ""
+    )
 
     callout = ""
     if p.get("special_event"):
-        callout = (f"<tr><td style='padding:10px 0 0;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
-                   f"<td style='background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 12px;"
-                   f"font-family:{SANS};font-size:12px;color:{AMBER};'>&#9888;&nbsp; Event pricing in effect for {e(p['special_event']['name'])}"
-                   + (f": {p['minimum_hours']:g}-hour minimum" if p.get("minimum_hours") else "")
-                   + (f", {p['cancellation_hours']}-hour cancellation" if p.get("cancellation_hours") else "")
-                   + ".</td></tr></table></td></tr>")
+        callout = (
+            f"<tr><td style='padding:10px 0 0;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+            f"<td style='background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 12px;"
+            f"font-family:{SANS};font-size:12px;color:{AMBER};'>&#9888;&nbsp; Event pricing in effect for {e(p['special_event']['name'])}"
+            + (
+                f": {p['minimum_hours']:g}-hour minimum"
+                if p.get("minimum_hours")
+                else ""
+            )
+            + (
+                f", {p['cancellation_hours']}-hour cancellation"
+                if p.get("cancellation_hours")
+                else ""
+            )
+            + ".</td></tr></table></td></tr>"
+        )
 
     notes = ""
     if notes_of(leg):
-        items = "".join(f"<div style='padding:2px 0;'><span style='color:{COPPER};'>&#9679;</span>&nbsp; {e(n)}</div>" for n in notes_of(leg))
+        items = "".join(
+            f"<div style='padding:2px 0;'><span style='color:{COPPER};'>&#9679;</span>&nbsp; {e(n)}</div>"
+            for n in notes_of(leg)
+        )
         notes = f"<tr><td style='padding:10px 0 0;font-family:{SANS};font-size:12px;color:{GRAY};'>{items}</td></tr>"
 
     opt_badge = ""
-    if leg.get("alternative_of"):
-        opt_badge = f"<span style='font-family:{SANS};font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER_LIGHT};'>Option</span><br>"
 
     return f"""
 <tr><td style="padding:0 0 24px;">
@@ -134,22 +155,20 @@ def leg_card(leg):
 
 
 def totals_card(q):
-    rows = [f"<tr><td style='font-family:{SANS};font-size:13px;color:{GRAY};padding:4px 0;'>Transportation subtotal</td>"
-            f"<td align='right' style='font-family:{SANS};font-size:13px;color:{WHITE};padding:4px 0;'>{money(q['engine_subtotal_cents'])}</td></tr>"]
-    for a in q.get("adjustments", []):
-        if a.get("waived"):
-            continue
-        label = a["label"]
-        if a["type"] == "percent":
-            label += f" ({a['value']:g}%)"
-        amt = a["amount_cents"]
-        txt = ("−" if amt < 0 else "") + money(abs(amt))
-        rows.append(f"<tr><td style='font-family:{SANS};font-size:13px;color:{GRAY};padding:4px 0;'>{e(label)}</td>"
-                    f"<td align='right' style='font-family:{SANS};font-size:13px;color:{WHITE};padding:4px 0;'>{txt}</td></tr>")
-    rows.append(f"<tr><td colspan='2' style='padding-top:10px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
-                f"<td style='height:1px;background:linear-gradient(90deg,{COPPER},transparent);font-size:1px;line-height:1px;'>&nbsp;</td></tr></table></td></tr>")
-    rows.append(f"<tr><td style='font-family:{SANS};font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER};padding-top:10px;'>Total{' · Option A' if q.get('option_b') else ''}</td>"
-                f"<td align='right' style='font-family:{SERIF};font-size:30px;color:{WHITE};padding-top:6px;'>{money(q['total_cents'])}</td></tr>")
+    rows = []
+    if q.get("package_subtotal_cents") is not None:
+        rows.append(
+            f"<tr><td style='font-family:{SANS};font-size:13px;color:{GRAY};padding:4px 0;'>Core subtotal</td>"
+            f"<td align='right' style='font-family:{SANS};font-size:13px;color:{WHITE};padding:4px 0;'>{money(q['package_subtotal_cents'])}</td></tr>"
+        )
+    rows.append(
+        f"<tr><td colspan='2' style='padding-top:10px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+        f"<td style='height:1px;background:linear-gradient(90deg,{COPPER},transparent);font-size:1px;line-height:1px;'>&nbsp;</td></tr></table></td></tr>"
+    )
+    rows.append(
+        f"<tr><td style='font-family:{SANS};font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER};padding-top:10px;'>Total</td>"
+        f"<td align='right' style='font-family:{SERIF};font-size:30px;color:{WHITE};padding-top:6px;'>{money(q['total_cents'])}</td></tr>"
+    )
     return f"""
 <tr><td style="padding:0 0 24px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{CARD};border:1px solid rgba(184,115,51,0.2);border-radius:14px;">
@@ -169,44 +188,59 @@ def render(q):
     for w in warn:
         print("WARNING: " + w, file=sys.stderr)
 
-    header_right = (f"<td align='right'><img src='{e(pz['client_logo_url'])}' height='32' alt='' style='display:block;height:32px;'></td>"
-                    if pz.get("client_logo_url") else "")
-    cover = (f"<tr><td style='padding:0 0 24px;'><img src='{e(pz['cover_image_url'])}' width='600' alt='' style='display:block;width:100%;max-width:600px;border-radius:14px;'></td></tr>"
-             if pz.get("cover_image_url") else "")
+    header_right = (
+        f"<td align='right'><img src='{e(pz['client_logo_url'])}' height='32' alt='' style='display:block;height:32px;'></td>"
+        if pz.get("client_logo_url")
+        else ""
+    )
+    cover = (
+        f"<tr><td style='padding:0 0 24px;'><img src='{e(pz['cover_image_url'])}' width='600' alt='' style='display:block;width:100%;max-width:600px;border-radius:14px;'></td></tr>"
+        if pz.get("cover_image_url")
+        else ""
+    )
     subtitle_bits = [x for x in [pz.get("event_name"), m.get("client")] if x]
-    intro = (f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(pz['intro_note'])}</td></tr>"
-             if pz.get("intro_note") else "")
+    intro = (
+        f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(pz['intro_note'])}</td></tr>"
+        if pz.get("intro_note")
+        else ""
+    )
     quote_block = ""
     if pz.get("pull_quote"):
-        quote_block = (f"<tr><td style='padding:0 0 24px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
-                       f"<td style='border-left:3px solid {COPPER};padding:6px 16px;font-family:{SERIF};font-size:17px;line-height:1.5;color:{WHITE};font-style:italic;'>"
-                       f"&ldquo;{e(pz['pull_quote'])}&rdquo;"
-                       + (f"<div style='font-family:{SANS};font-size:12px;color:{MUTED};font-style:normal;padding-top:6px;'>— {e(pz['pull_quote_attribution'])}</div>" if pz.get("pull_quote_attribution") else "")
-                       + "</td></tr></table></td></tr>")
+        quote_block = (
+            f"<tr><td style='padding:0 0 24px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
+            f"<td style='border-left:3px solid {COPPER};padding:6px 16px;font-family:{SERIF};font-size:17px;line-height:1.5;color:{WHITE};font-style:italic;'>"
+            f"&ldquo;{e(pz['pull_quote'])}&rdquo;"
+            + (
+                f"<div style='font-family:{SANS};font-size:12px;color:{MUTED};font-style:normal;padding-top:6px;'>— {e(pz['pull_quote_attribution'])}</div>"
+                if pz.get("pull_quote_attribution")
+                else ""
+            )
+            + "</td></tr></table></td></tr>"
+        )
     am = pz.get("account_manager") or {}
     contact = ""
     if am.get("name"):
         lines = [x for x in [am.get("title"), am.get("email"), am.get("phone")] if x]
-        contact = (f"<tr><td style='padding:0 0 24px;'><table role='presentation' cellpadding='0' cellspacing='0' style='background:{CARD};border:1px solid {BORDER};border-radius:12px;'>"
-                   f"<tr><td style='padding:14px 18px;font-family:{SANS};font-size:13px;color:{GRAY};'>"
-                   f"<div style='font-family:{SANS};font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER};padding-bottom:4px;'>Your Savoya contact</div>"
-                   f"<div style='color:{WHITE};font-size:15px;'>{e(am['name'])}</div>"
-                   + "".join(f"<div>{e(x)}</div>" for x in lines) + "</td></tr></table></td></tr>")
-    closing = (f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(pz['closing_note'])}</td></tr>"
-               if pz.get("closing_note") else "")
-    terms = "".join(f"<div style='padding:3px 0;'><span style='color:{COPPER};'>&#9679;</span>&nbsp; {e(t)}</div>" for t in q.get("terms", []))
+        contact = (
+            f"<tr><td style='padding:0 0 24px;'><table role='presentation' cellpadding='0' cellspacing='0' style='background:{CARD};border:1px solid {BORDER};border-radius:12px;'>"
+            f"<tr><td style='padding:14px 18px;font-family:{SANS};font-size:13px;color:{GRAY};'>"
+            f"<div style='font-family:{SANS};font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER};padding-bottom:4px;'>Your Savoya contact</div>"
+            f"<div style='color:{WHITE};font-size:15px;'>{e(am['name'])}</div>"
+            + "".join(f"<div>{e(x)}</div>" for x in lines)
+            + "</td></tr></table></td></tr>"
+        )
+    closing = (
+        f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(pz['closing_note'])}</td></tr>"
+        if pz.get("closing_note")
+        else ""
+    )
+    terms = "".join(
+        f"<div style='padding:3px 0;'><span style='color:{COPPER};'>&#9679;</span>&nbsp; {e(t)}</div>"
+        for t in q.get("terms", [])
+    )
 
-    primaries = [l for l in q["legs"] if not l.get("alternative_of")]
-    alts = [l for l in q["legs"] if l.get("alternative_of")]
-    legs_html = "".join(leg_card(l) for l in primaries)
+    legs_html = "".join(leg_card(l) for l in q["legs"])
     option_html = ""
-    if alts and q.get("option_b"):
-        ob = q["option_b"]
-        option_html = (f"<tr><td style='padding:8px 0 12px;font-family:{SANS};font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:{COPPER};'>Option B — alternative vehicle plan</td></tr>"
-                       f"<tr><td style='padding:0 0 16px;font-family:{SANS};font-size:13px;color:{GRAY};'>Same dates and routing. Choose either option — totals are not additive.</td></tr>"
-                       + "".join(leg_card(l) for l in alts)
-                       + f"<tr><td style='padding:0 0 24px;' align='right'><span style='font-family:{SANS};font-size:11px;color:{MUTED};'>Option B program total&nbsp;&nbsp;</span>"
-                         f"<span style='font-family:{SERIF};font-size:24px;color:{WHITE};'>{money(ob['total_cents'])}</span></td></tr>")
 
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
