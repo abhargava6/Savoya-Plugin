@@ -2,14 +2,12 @@
 """Apply document-level adjustments to quote.json and recompute totals.
 
 The engine subtotal is never changed. Adjustments apply IN LIST ORDER on the
-running total, so a 25% discount followed by a 5% fuel surcharge computes the
-surcharge on the discounted amount — matching how Savoya bills. Leg-scoped
-adjustments (applies_to) use that leg's total as the base instead.
-Negative values are discounts: --add "Group discount|percent|-25".
+running total. Document PERCENTAGE lines are refused (C2): percentages belong to
+Core. Flat document lines are still applied, on top of Core's total.
+Leg-scoped adjustments (applies_to) use that leg's total as the base instead.
 
 Usage:
-  apply_adjustments.py quote.json --add "Fuel surcharge|percent|5"
-  apply_adjustments.py quote.json --add "Special handling|flat|150|offsite_9_16_minibus"
+  apply_adjustments.py quote.json --add "On-site coordinator|flat|150|offsite_9_15_minibus"
   apply_adjustments.py quote.json --remove "Fuel surcharge"
   apply_adjustments.py quote.json --clear
   apply_adjustments.py quote.json            # just recompute
@@ -102,7 +100,32 @@ def recompute(quote):
         if adj.get("waived"):
             adj["amount_cents"] = 0
             continue
-        if adj["type"] == "percent":
+        if adj.get("source") != "engine" and adj["type"] == "percent":
+            # C2 — no document-sourced PERCENTAGE lines. This is where local money math
+            # lived: percentages compounded against a running subtotal, in list order, so a
+            # 25% discount followed by a 5% surcharge depended on which was entered first.
+            #
+            # Nothing legitimate calls it any more. The discount is a Core re-quote (C1,
+            # temporary_discount), fuel is Core's and no longer adjustable (C3), and a
+            # greeter is a priced Core unit (D1). A flat line is still allowed — a fallback
+            # on-site cost in a market with no greeter rate is a real amount a CSM was told,
+            # not a percentage of Savoya's number.
+            sys.exit(
+                f"REFUSING: '{adj['label']}' is a {adj['value']}% document line.\n"
+                "Percentages are not applied here any more — they are Savoya's to compute.\n"
+                "  • an additional discount → re-quote with calculate_temporary_quote_units\n"
+                "    and temporary_discount.basis_points, then rebuild from that response\n"
+                "  • the fuel surcharge → Core's, for the market; it is not adjustable here\n"
+                "  • a greeter or on-site coordinator → price it as a Savoya quote unit\n"
+                "A flat amount is still fine: --add \"Label|flat|<dollars>\".")
+        if adj.get("source") == "engine" and adj.get("amount_cents_fixed") is not None:
+            # C5 — an engine line's amount is Core's, not ours. normalize_quote computes it
+            # per unit at the granularity Core rounds at (per hour, per vehicle) and pins it
+            # here. Re-deriving it as a percentage of a running subtotal is what produced a
+            # 30-cent gap on a 5-vehicle Boston job, which the old code then hid by quietly
+            # adding the difference to this very line.
+            amount = adj["amount_cents_fixed"]
+        elif adj["type"] == "percent":
             amount = round(base * adj["value"] / 100.0)
         else:
             amount = round(adj["value"] * 100)
@@ -110,19 +133,33 @@ def recompute(quote):
         total += adj["amount_cents"]
     quote["total_cents"] = int(total)
 
-    # The engine's effective rate already folds in the contracted discount AND the fuel
-    # surcharge, rounded per vehicle. Reconstructing standard × (1-d) × (1+f) can differ by
-    # a cent or two. Absorb that residual into the last engine-sourced line so the document
-    # reconciles to the engine exactly — a client quote must not be off by pennies.
+    # C4 — FAIL CLOSED. This used to absorb any penny-level gap between our reconstruction
+    # and the engine total into the last engine-sourced line, so the document always
+    # reconciled. The contract forbids it: "If normalized data and the raw MCP result
+    # disagree, fail closed. Do not repair the difference with arithmetic."
+    #
+    # The gap was real, not noise. Core rounds the effective rate PER HOUR and multiplies;
+    # we were applying the same percentages to a subtotal. On a 5-vehicle Boston job that
+    # is 30 cents — invisible on $9,355, and exactly the kind of difference that hides a
+    # real one. Absorbing it also meant the engine line printed an amount that was not the
+    # percentage it claimed.
+    #
+    # Checked only when no document line has been added, because once a CSM adds a line the
+    # total is deliberately no longer the engine's.
     eng_total = quote.get("engine_total_cents")
     eng_lines = [a for a in quote.get("adjustments", []) if a.get("source") == "engine" and not a.get("waived")]
     doc_lines = [a for a in quote.get("adjustments", []) if a.get("source") != "engine" and not a.get("waived")]
-    if eng_total and eng_lines and not doc_lines:
-        residual = eng_total - quote["total_cents"]
-        if residual and abs(residual) <= max(50, len(quote["legs"]) * 10):
-            eng_lines[-1]["amount_cents"] += residual
-            eng_lines[-1]["rounded_to_engine"] = True
-            quote["total_cents"] = eng_total
+    if eng_total and eng_lines and not doc_lines and quote["total_cents"] != eng_total:
+        gap = quote["total_cents"] - eng_total
+        sys.exit(
+            "REFUSING TO RENDER: this document's total does not match Savoya's.\n"
+            f"  Savoya quoted   {eng_total/100:,.2f}\n"
+            f"  This document   {quote['total_cents']/100:,.2f}\n"
+            f"  Difference      {gap/100:+,.2f}\n"
+            "\nThe numbers on a client quote have to be Savoya's, so this stops here rather\n"
+            "than papering over the gap. Re-run the quote in intake and rebuild the document\n"
+            "from the fresh response. If it happens again on the same quote, that is a\n"
+            "Savoya-side report, not a plugin one — send the quote reference to engineering.")
 
     quote["terms"] = build_terms(quote)
     alts = [l for l in quote["legs"] if l.get("alternative_of")]

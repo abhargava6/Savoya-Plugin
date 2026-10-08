@@ -23,6 +23,7 @@ answer and the date, and only when Ayush says it is resolved.
 | **G1** | `greeter_fee` exists on the quote object but no tool can set it | 2026-10-08 | Open |
 | **G2** | `client_can_book` is missing from `presentation` rate-preview rows | 2026-10-08 | Open |
 | **G3** | `temporary_rate_used` is `false` at aggregate level while the unit says `true` | 2026-10-08 | Open |
+| **G4** | The quote response carries `excess_drive_time` but not the no-local-provider warning — we need **both** | 2026-10-08 | Open |
 
 ---
 
@@ -153,6 +154,50 @@ client-facing page.
 
 **Need:** fix the aggregate flag, or confirm it means something other than "any unit used a
 temporary rate".
+
+## G4 — The quote response needs the no-local-provider warning *and* `excess_drive_time`
+
+**Observed (2026-10-08)** `resolve_itinerary_stops` returns the sourcing warning; the quote
+response does not. The quote response instead sets `excess_drive_time: true`.
+
+**Evidence** Resolving The Westin Whistler returns, with
+`service_area_source: "nearest"`:
+
+```json
+"warnings": ["No local providers are available for this reservation. Availability will be
+confirmed from our local providers in Vancouver, Canada. Additional drive time will be
+incurred on the reservation."]
+```
+
+`calculate_temporary_quote_units` for the same stops returns **no such warning**, and the
+stop's own `service_area` comes back `null`. The only quote-side signal is:
+
+```json
+"excess_drive_time": true
+```
+
+and the billing consequence, which is substantial — `duration: 8` on the as-directed stop
+billed **12 hours**, 4 of them positioning, at $327.25/hr effective.
+
+**Why both are needed, not one.** They are different facts and a client needs both:
+
+| Signal | What it tells the client |
+|---|---|
+| no-local-provider warning | **where** the vehicle is coming from — "sourced from our Vancouver partners" |
+| `excess_drive_time` | **that the extra drive time is billed**, which is why the hours exceed the request |
+
+`excess_drive_time` alone cannot name the market, so a document built from the quote
+response can only say "a neighbouring market". A CSM looking at a 12-hour bill against an
+8-hour request, with no named source, has nothing to tell the client.
+
+**What we do meanwhile** The disclosure fires from either signal, and the wording falls back
+to generic when the market is unnamed. The precise name would also be fixable on our side by
+carrying the resolution warning through the handoff — but that only works when intake and
+document run in the same conversation, and it duplicates something Core already knows.
+
+**Need:** carry the no-local-provider warning (with the sourcing market named) on the quote
+response as well, alongside `excess_drive_time`. Confirm the two are intended to co-occur:
+no local provider → sourced from another market → excess drive time applies.
 
 ---
 

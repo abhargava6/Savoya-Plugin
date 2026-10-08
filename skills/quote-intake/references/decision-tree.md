@@ -105,7 +105,7 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 - `final: false` → **stop**: "The quote isn't final yet."
 - No handoff (quote from elsewhere) → fallback: save the response, ask which units are chosen, normalize with `--select` / `--alternative`.
 
-**L · Six questions, one per message, driven by the script**
+**L · Five questions, one per message, driven by the script**
 `decide.py --next` prints the next unanswered key and its exact question text; post that and nothing else; record the answer; repeat until `all answered`. Never batch, never skip, never reorder.
 
 1. **discount_pct** — a document-level line. **Never re-quote through the engine.** If the client's contracted discount is already on the quote, the question says this one is additional.

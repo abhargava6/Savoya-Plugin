@@ -656,6 +656,72 @@ def lint_positioned_from():
     return True
 
 
+def lint_money_ownership():
+    """Core owns the total. Prove it reconciles exactly, and that a gap refuses to render.
+
+    Two things used to be true and are not any more. The engine lines were re-derived as
+    percentages of a running subtotal, which disagreed with Core by cents because Core
+    rounds per hour and per vehicle; and the leftover was then quietly added to the last
+    engine line, so the document always "matched" while that line misstated its own
+    percentage. On a 5-vehicle Boston job the document overstated Core by 30 cents."""
+    import importlib.util
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(DEFAULT_FIXTURES, "boston-offsite", "raw_quote.json")
+    if not os.path.exists(fx):
+        print("  ○ money ownership: boston-offsite fixture missing, skipped")
+        return True
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        q = os.path.join(d, "quote.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), fx, q,
+                            "--client", "Yerdle", "--select",
+                            "offsite_9_15_minibus,departure_9_17_minibus"],
+                           capture_output=True, text=True)
+        if r.returncode or not os.path.exists(q):
+            print(f"  ✗ money ownership: normalize failed ({r.stderr.strip()[:120]})")
+            return False
+        with open(q) as fh:
+            quote = json.load(fh)
+
+        # 1. Exact, by construction — not by absorption.
+        if quote["total_cents"] != quote["engine_total_cents"]:
+            problems.append(f"document total {quote['total_cents']} != Core's "
+                            f"{quote['engine_total_cents']}")
+        # 2. No line may be quietly adjusted to make that true.
+        for a in quote.get("adjustments", []):
+            if a.get("rounded_to_engine"):
+                problems.append(f"{a['label']!r} was adjusted to force a match — the "
+                                f"residual absorption is supposed to be gone")
+        # 3. The engine lines must sum with the standard subtotal to Core's figure.
+        eng = sum(a.get("amount_cents") or 0 for a in quote.get("adjustments", [])
+                  if a.get("source") == "engine")
+        if quote["engine_subtotal_cents"] + eng != quote["engine_total_cents"]:
+            problems.append("standard subtotal + engine lines != Core's total")
+
+        # 4. A genuine disagreement must refuse to render, not be repaired.
+        skew = os.path.join(d, "skewed.json")
+        quote2 = json.loads(json.dumps(quote))
+        quote2["engine_total_cents"] = quote["engine_total_cents"] + 30
+        with open(skew, "w") as fh:
+            json.dump(quote2, fh)
+        r2 = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                             skew, "--clear"], capture_output=True, text=True)
+        if r2.returncode == 0:
+            problems.append("a 30-cent gap rendered anyway — C4 is not failing closed")
+        elif "REFUSING TO RENDER" not in (r2.stdout + r2.stderr):
+            problems.append("it failed, but without a message a CSM could act on")
+
+    if problems:
+        print("  ✗ money ownership")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ money ownership")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -765,6 +831,7 @@ def main():
     lint_ok = lint_presentation_render() and lint_ok
     lint_ok = lint_airport_shape() and lint_ok
     lint_ok = lint_positioned_from() and lint_ok
+    lint_ok = lint_money_ownership() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

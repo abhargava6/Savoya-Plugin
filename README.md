@@ -7,7 +7,7 @@ Bundles the Savoya MCP connector with a `quote-document` skill that turns engine
 |---|---|
 | `.mcp.json` | Savoya quoting MCP — acceptance URL. For production, change the URL and bump the version (env-var expansion isn't relied on). Auth is OAuth via `dev.auth.savoya.net`, scope `access:savoya_mcp`; CSM accounts need that scope. |
 | `skills/quote-intake` | Client request → **exact** engine quote (`generate_quote_options` / `calculate_quote_units`): resolve client + stops (parallel), two questions, value/elevated summary, refine loop, handoff |
-| `skills/quote-document` | Handoff → client-facing document: six forced questions (discount, fuel, cover, personalization, map, format), then PDF / email copy / HTML / DOCX / XLSX |
+| `skills/quote-document` | Handoff → client-facing document: five forced questions (discount, cover, personalization, map, format), then PDF / email copy / HTML / DOCX / XLSX |
 
 ## Who it's for
 Savoya ops, sales, and CSMs building quotes for clients. Not for client-side coordinators.

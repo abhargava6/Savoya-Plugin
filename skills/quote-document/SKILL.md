@@ -1,6 +1,6 @@
 ---
 name: quote-document
-description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, fuel surcharge, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount / take off the fuel surcharge", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. This skill does not build quotes from client requests; quote-intake does that.
+description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. This skill does not build quotes from client requests; quote-intake does that.
 compatibility: Requires the Savoya MCP connector (resolve_itinerary_stops, preview_rate_batch, calculate_quote_units / calculate_temporary_quote_units) and Python 3 for the bundled scripts. DOCX output uses the docx skill; PDF uses the pdf skill.
 ---
 
@@ -65,7 +65,7 @@ After normalizing, fix any `Stop N` labels (airport stops arrive unlabeled — u
 
 ## Stage 2 — The questions
 
-Six questions, fixed order, **one per message, wait after each**. You don't decide which comes next — the script does:
+Five questions, fixed order, **one per message, wait after each**. You don't decide which comes next — the script does:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py --next          # prints "next: <key>" and the exact question text

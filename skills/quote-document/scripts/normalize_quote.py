@@ -182,10 +182,19 @@ def normalize_unit(unit, presentation_unit):
     if engine_discount_pct:
         # Present standard rates on the line; the engine's discount becomes a visible line item.
         qty = leg["vehicle"]["quantity"] or 1
-        if leg["pricing"]["method"] == "hourly":
-            per = std_rate * (leg["pricing"]["billable_hours"] or 0)
+        hourly = leg["pricing"]["method"] == "hourly"
+        units = (leg["pricing"]["billable_hours"] or 0) if hourly else 1
+        if hourly:
+            per = std_rate * units
         else:
             per = round((opt.get("unit_total") or 0) * std_rate / eff_rate)
+        # Keep Core's own net alongside the standard presentation. C5 needs both: the
+        # standard figure is what the rate card shows, the net is what Core actually
+        # quoted, and the engine lines are pinned so standard + lines == net exactly.
+        leg["engine_net_line_cents"] = int(leg["pricing"]["line_total_cents"] or 0)
+        leg["engine_standard_rate_cents"] = int(std_rate)
+        leg["engine_rate_units"] = units
+        leg["engine_standard_line_cents"] = int(per * qty)
         leg["pricing"]["per_vehicle_cents"] = int(per)
         leg["pricing"]["line_total_cents"] = int(per * qty)
         leg["engine_discount_pct"] = engine_discount_pct
@@ -340,8 +349,21 @@ def main():
     pcts = {l.get("engine_discount_pct") for l in legs if l.get("engine_discount_pct")}
     if len(pcts) == 1:
         pct = pcts.pop()
+        # C5 — pin the amount, computed per leg at Core's own rounding granularity (per
+        # hour, then × hours × quantity) rather than as a percentage of the subtotal.
+        # Applying the percentage to a subtotal and applying it per hour differ by cents,
+        # and the engine total is Core's to state, not ours to approximate.
+        disc = 0
+        for l in legs:
+            if l.get("alternative_of"):
+                continue
+            std = l.get("engine_standard_rate_cents") or 0
+            rate_units = l.get("engine_rate_units") or 0
+            qty = (l.get("vehicle") or {}).get("quantity") or 1
+            disc -= round(std * pct / 100.0) * rate_units * qty
         adjustments.append({"label": "Preferred client discount", "type": "percent", "value": -pct,
-                            "applies_to": None, "source": "engine", "amount_cents": 0})
+                            "applies_to": None, "source": "engine", "amount_cents": 0,
+                            "amount_cents_fixed": int(disc)})
     elif len(pcts) > 1:
         print("WARNING: legs carry different engine discounts; leaving effective rates as-is", file=sys.stderr)
     hnd = {l.get("engine_handling_pct") for l in legs if l.get("engine_handling_pct")}
@@ -350,8 +372,27 @@ def main():
                             "applies_to": None, "source": "engine", "amount_cents": 0})
     fpc = {l.get("engine_fuel_pct") for l in legs if l.get("engine_fuel_pct")}
     if len(fpc) == 1:
+        # Fuel is pinned as the REMAINDER: Core's net minus (standard + discount). That makes
+        # standard + discount + fuel equal Core's aggregate exactly, by construction, which
+        # is the whole point of C5 — the document states Core's number, it does not
+        # approach it. Any genuine disagreement now surfaces through C4's fail-closed check
+        # rather than being absorbed into a line that then misstates its own percentage.
+        # engine_net_line_cents is Core's net for the leg. line_total_cents has by now been
+        # REPLACED with the standard-rate presentation, so reading it here would compare
+        # standard against standard and make fuel the whole discount.
+        net = sum((l.get("engine_net_line_cents")
+                   if l.get("engine_net_line_cents") is not None
+                   else (l["pricing"]["line_total_cents"] or 0))
+                  for l in legs if not l.get("alternative_of"))
+        std = sum((l.get("engine_standard_line_cents")
+                   if l.get("engine_standard_line_cents") is not None
+                   else (l["pricing"]["line_total_cents"] or 0))
+                  for l in legs if not l.get("alternative_of"))
+        disc_line = next((a for a in adjustments if a.get("label") == "Preferred client discount"), None)
+        disc_amt = (disc_line or {}).get("amount_cents_fixed") or 0
         adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fpc.pop(),
-                            "applies_to": None, "source": "engine", "amount_cents": 0})
+                            "applies_to": None, "source": "engine", "amount_cents": 0,
+                            "amount_cents_fixed": int(net - std - disc_amt)})
     quote = {
         "meta": {
             "client": args.client,

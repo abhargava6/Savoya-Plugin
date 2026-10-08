@@ -140,6 +140,42 @@ until the release is packaged.
   clean — which is a smaller job than rebuilding all ten. Phase 2 is blocked on the
   connector.
 
+### Group C — money ownership moves to Core
+
+- **C3 — the fuel question is gone.** Fuel is market-scoped and engine-applied, and nothing
+  in the contract subtracts it: `temporary_discount` is additive and a surcharge is not a
+  discount. The old `waive` already told the CSM the booking needed the waiver applied in
+  Savoya, so it was never really ours to give. **Five questions, not six.** The
+  `[if:fuel_surcharge]` terms bullet stays, because it reflects what Core applied.
+- **C1 — the discount is a Core re-quote.** `questions.md` used to say, in writing, *"Do not
+  re-quote through the engine."* That was right under the old contract and is wrong now.
+  The question calls `calculate_temporary_quote_units` with
+  `temporary_discount.basis_points` and rebuilds from the response, which returns
+  `subtotal_amount`, `total_amount`, `temporary_discount_amount` and the label — the whole
+  standard → discount → net line with nothing left to compute.
+- **C5 — engine line amounts are pinned to Core's own granularity.** They were re-derived as
+  percentages of a running subtotal; Core rounds **per hour and per vehicle**. On the
+  5-vehicle Boston job the document came out **30 cents above** Savoya's quote. The discount
+  is now computed per leg at Core's granularity and fuel is pinned as the remainder, so
+  standard + lines == Core's aggregate **by construction**.
+- **C4 — fail closed.** The old code absorbed any gap into the last engine-sourced line, so
+  the document always reconciled *and that line then misstated its own percentage*. Removed.
+  A mismatch now refuses to render, with a message naming both figures and the difference
+  and telling the CSM to re-quote — a bare failure would just look like a bug.
+- **C2 — no document percentage lines.** This is where local money math lived: percentages
+  compounded against a running subtotal in list order, so a 25% discount followed by a 5%
+  surcharge depended on which was entered first. Nothing legitimate calls it now. Flat lines
+  still apply, on top of Core's total — a fallback on-site cost is a real amount a CSM was
+  told, not a percentage of Savoya's number.
+- **New guard: money ownership.** Four assertions — the total equals Core's exactly, no line
+  carries `rounded_to_engine`, standard + engine lines == Core's aggregate, and a 30-cent gap
+  refuses to render with a usable message. Broken three ways, including restoring the
+  absorption.
+- **Two fixtures changed by design.** `access-tca-wedding` used a −25% group discount and a
+  5% fuel line, both document percentages; it keeps the discount as the flat amount it
+  resolved to and loses the fuel line. `nine-leg-pagination` loses its fuel line. Their
+  totals move accordingly — the announced visible regression, now visible.
+
 ## 0.22.1
 **The connector dropped two tools and the plugin was still calling them.** A live probe on
 7 October found nine tools where 22 September served ten:

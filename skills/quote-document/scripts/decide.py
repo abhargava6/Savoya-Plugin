@@ -2,10 +2,16 @@
 """Drive the document-flow questions from handoff/intake.json → decisions.
   decide.py --next            → prints the next unanswered key and its question text
   decide.py <key> <value>     → records the answer, prints the next key
-Keys, in order: discount_pct, fuel, cover, personalization, map, format."""
+Keys, in order: discount_pct, cover, personalization, map, format.
+
+The `fuel` question is gone (C3, 0.23.0). Fuel is market-scoped and engine-applied, and
+nothing in the contract subtracts it: `temporary_discount` is additive and a surcharge is
+not a discount. The old `waive` already told the CSM the booking needed the waiver applied
+in Savoya, so it was never ours to give. Core applies it; we present it as Core applied
+it."""
 import argparse, datetime as dt, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASE_ORDER = ["discount_pct", "fuel", "cover", "personalization", "map", "format"]
+BASE_ORDER = ["discount_pct", "cover", "personalization", "map", "format"]
 GREETER_RE = re.compile(r"greeter|on-?site (staff|support|coordinat)|meet (and|&) greet|hostess", re.I)
 
 
@@ -42,15 +48,14 @@ def order_for(intake):
         about cover pages and route maps afterwards reads as not listening."""
     o = list(BASE_ORDER)
     if any(GREETER_RE.search(q or "") for q in (intake.get("client_questions") or [])):
-        o.insert(o.index("fuel") + 1, "greeter_cost")
+        o.insert(o.index("discount_pct") + 1, "greeter_cost")
     fmt = normalize_format((intake.get("decisions") or {}).get("format"))
     if fmt and fmt not in PDF_LIKE:
         o = [k for k in o if k not in ("cover", "map")]
     return o
 QUESTIONS = {
-  "discount_pct": "Any discount for this client? A percentage, or none.{engine}",
-  "fuel": "{fuel}",
-  "greeter_cost": "The client asked about a greeter / on-site coordinator. Include it as a line on the quote? Give an amount (total, or per day and I'll multiply), or say leave it off and I'll note it as arranged separately.",
+  "discount_pct": "Any additional discount for this client? A whole percentage, or none. I'll re-quote it through Savoya rather than adjusting the number here.{engine}",
+  "greeter_cost": "The client asked about a greeter / on-site coordinator. How many hours? I'll price it through Savoya at the market rate. If this market has no greeter rate I'll come back and ask for a cost, or leave it off as arranged separately.",
   "cover": "Which cover?\n{covers}\n…or upload your own (PDF or image).",
   "personalization": "I'll use: event name \"{event}\", a two-line intro note from you, your contact card at the end, no client logo, no per-leg notes, no closing line. Confirm, or tell me what to change (logo URL, notes, closing line).",
   "map": "Add a route map with drive times? (about 15 seconds)",
@@ -61,7 +66,7 @@ ap.add_argument("--next", action="store_true"); ap.add_argument("--dir", default
 a = ap.parse_args()
 p = os.path.join(a.dir, "intake.json")
 if not os.path.exists(p):
-    sys.exit(f"No {p} — fallback path; ask the six questions in order without persistence.")
+    sys.exit(f"No {p} — fallback path; ask the five questions in order without persistence.")
 d = json.load(open(p, encoding="utf-8"))
 if a.key and a.value is not None:
     try: val = json.loads(a.value)
@@ -76,18 +81,11 @@ if not nxt:
 q = None
 try: q = json.load(open(a.quote, encoding="utf-8"))
 except Exception: pass
-# No fuel line on the quote: ask whether to add one, without naming a rate. The figure is
-# market-scoped (5% in most, 10% in London and others) and guessing it in the question put
-# a wrong number in front of the user.
-ctx = {"engine": "", "fuel": "There's no fuel surcharge on this quote — add one? If so, what percentage?",
-       "covers": "", "event": (d.get("client", {}).get("name") or "Client") + " — Ground Transportation"}
+ctx = {"engine": "", "covers": "",
+       "event": (d.get("client", {}).get("name") or "Client") + " — Ground Transportation"}
 if q:
     eng = [x for x in q.get("adjustments", []) if x.get("source") == "engine" and "discount" in x["label"].lower()]
     if eng: ctx["engine"] = f" (The engine already applied {abs(eng[0]['value']):g}% — this would be additional.)"
-    f = next((x for x in q.get("adjustments", []) if "fuel" in x["label"].lower()), None)
-    if f:
-        src = " (applied by the engine for this market)" if f.get("source") == "engine" else ""
-        ctx["fuel"] = f"The {abs(f['value']):g}% fuel surcharge is on the quote{src} — keep it or take it off?"
     ev = (q.get("personalization") or {}).get("event_name")
     if ev: ctx["event"] = ev
 try:
