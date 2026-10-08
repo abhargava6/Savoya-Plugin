@@ -54,10 +54,36 @@ until the release is packaged.
   other), the suppressed warning doesn't render on a priced unit, an *unrecognised* warning
   does, warnings dedupe across units, and suppression stays conditional on the unit having
   priced. Each was broken on purpose and seen to fail alone.
+- **Core's `presentation` block is now the CSM-facing view** (B8). New
+  `render_presentation.py` prints Core's own rows — `quote_result` and `blocked` field by
+  field from captured responses, the other views from whatever structure is actually
+  present rather than from field names we'd be guessing at. Three boundaries are enforced
+  by the suite, not just documented: it is internal and never client copy; a response with
+  no `presentation` block exits 3 so the caller falls back to `handoff.py summarize`; and a
+  presentation total that disagrees with the quote units prints **both** figures and says
+  so rather than silently preferring one. `presentation.actions` intents are named and
+  bound to nothing — the refine loop stays ours until they're documented.
+- The renderer also states **requested versus billed hours** where they differ (4 requested,
+  5.25 billed), which is what stops a CSM reading Core's positioning time as a bug.
+- **New guard: presentation render**, five assertions against a real captured response —
+  Core's figures appear verbatim, the suppressed warning doesn't, the requested-vs-billed
+  note does, an absent block falls back instead of rendering blank, and a total mismatch
+  surfaces with both numbers. Each broken on purpose. One of those breaks was real: the
+  renderer printed the suppressed passenger warning twice on its first run, because the
+  suppression lived in `handoff.py` and this was a third code path. It now imports that
+  constant.
 - Also recorded from the live tests: a greeter unit is pickup + an `as_directed` stop with a
   `duration` in hours, Core adds a constant +1.25h of positioning time on top of it, and a
   `duration` on a dropoff is ignored. Billable hours are Core's — send what the user asked
   for, show what Core billed, never back-solve.
+- **Fixture triage** (`evals/fixtures/TRIAGE.md`). The register said seven of ten fixtures
+  encoded the removed path; measured, it is eight, and the framing was wrong in a way that
+  matters: `estimate_type` runs **100 × approximate against 8 × exact**, and those fixtures
+  all **pass**. No live response can carry `approximate` any more, so the suite is green
+  while asserting a shape the server cannot produce. Triage splits the work honestly — five
+  need live captures, three are post-normalize and only carry a stale string, two are
+  clean — which is a smaller job than rebuilding all ten. Phase 2 is blocked on the
+  connector.
 
 ## 0.22.1
 **The connector dropped two tools and the plugin was still calling them.** A live probe on

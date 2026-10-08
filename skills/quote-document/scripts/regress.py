@@ -423,6 +423,80 @@ def lint_warning_surfacing():
     return True
 
 
+def lint_presentation_render():
+    """Render Core's presentation block from a REAL captured response, and prove the
+    three boundaries hold: fall back when the block is absent, surface a disagreement
+    between Core's own numbers, and apply B9's single suppression here too.
+
+    The renderer printed the suppressed passenger warning twice on its first run, because
+    the suppression lives in handoff.py and this was a third code path. It now imports
+    that constant; this guard is what keeps the paths agreeing."""
+    import importlib.util
+
+    skills = os.path.normpath(os.path.join(HERE, "..", ".."))
+    mod_path = os.path.join(skills, "quote-intake", "scripts", "render_presentation.py")
+    fx = os.path.join(skills, "quote-intake", "evals", "fixtures",
+                      "greeter-as-directed", "raw_quote.json")
+    try:
+        spec = importlib.util.spec_from_file_location("_rp", mod_path)
+        rp = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rp)
+        with open(fx) as fh:
+            raw = json.load(fh)
+    except Exception as e:
+        print(f"  ✗ presentation render: could not load ({e})")
+        return False
+
+    problems = []
+    out, code = rp.render(raw)
+    if code != 0 or not out:
+        problems.append(f"a real quote_result response did not render (exit {code})")
+        out = out or ""
+
+    # Core's figures must appear as Core sent them.
+    for want in ("$404.20", "Hourly Greeter/Coordinator", "5.25 hrs billable",
+                 "$76.99/hour", "2-hr cancel"):
+        if want not in out:
+            problems.append(f"missing from the render: {want!r}")
+
+    # B9's suppression applies here too, or the CSM sees the warning anyway and B9 is moot.
+    if "No passenger was selected" in out:
+        problems.append("the suppressed passenger warning was rendered")
+
+    # The requested-vs-billed note is the D1 user-flow requirement. 4 asked, 5.25 billed.
+    if "against 4 hrs requested" not in out:
+        problems.append("no requested-vs-billed note — a CSM who typed 4 hours sees 5.25 "
+                        "with no explanation")
+
+    # Absent block → exit 3 so the caller falls back, never a crash and never a blank.
+    _, code = rp.render({"quote_units": [], "aggregate_total": 0})
+    if code != 3:
+        problems.append(f"a response with no presentation block returned {code}, not 3")
+
+    # Core disagreeing with itself must be shown, not silently resolved.
+    skewed = json.loads(json.dumps(raw))
+    skewed["presentation"]["data"]["total_amount"] = 99999
+    out2, _ = rp.render(skewed)
+    if "disagree" not in out2 or "$999.99" not in out2 or "$404.20" not in out2:
+        problems.append("a presentation/unit total mismatch was not surfaced with both "
+                        "figures")
+
+    # An unrecognised view still renders something truthful rather than nothing.
+    odd = json.loads(json.dumps(raw))
+    odd["presentation"]["view"] = "some_future_view"
+    out3, code3 = rp.render(odd)
+    if code3 != 0 or "some_future_view" not in out3:
+        problems.append("an unrecognised presentation view did not render generically")
+
+    if problems:
+        print("  ✗ presentation render")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ presentation render")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -529,6 +603,7 @@ def main():
     lint_ok = lint_paths()
     lint_ok = lint_tool_contract() and lint_ok
     lint_ok = lint_warning_surfacing() and lint_ok
+    lint_ok = lint_presentation_render() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

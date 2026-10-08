@@ -123,8 +123,10 @@ an hourly temporary rate.**
 - **`presentation`** on every response: a `view` (`rate_preview`, `scenario_comparison`,
   `quote_result`, `blocked`), a `title`, severity-tagged `warnings`, pre-formatted rows, and
   `actions` carrying intents (`select_scenario`, `refine_quote`). This is the CSM-facing
-  view. It is **internal**: it carries rate ids and rack-versus-effective rates, so it
-  never becomes client copy.
+  view, rendered by `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py`.
+  It is **internal**: it carries rate ids and rack-versus-effective rates, so it never
+  becomes client copy. The `actions` intents are read and named, bound to nothing — the
+  refine loop stays ours until they are documented.
 - **Blocked responses** carry `status: "blocked"`, a typed `error_type`, a `client_error`
   with `category` and a CSM-ready `user_message`, and a `recovery` block with an actionable
   next step. Surface that wording rather than inventing one.

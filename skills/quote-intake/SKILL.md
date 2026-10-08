@@ -20,7 +20,7 @@ Never work around a missing reference by improvising the flow from memory — th
 ## Context budget
 - One `tool_search` at the start for the five tools a quote actually uses: `resolve_client resolve_itinerary_stops resolve_vehicle_types generate_quote_options calculate_quote_units`. Never search per tool.
 - `resolve_passengers` is **not** in that set — load it only when the user named a passenger, which is the only time we call it.
-- Never open a raw engine response to read it — `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize` does that. Save it to a file and summarize.
+- Never open a raw engine response to read it. Save it to a file, then run `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py` — it renders Core's own `presentation` block, which is what a CSM should see. Exit 3 means there was no such block; fall back to `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize`. Post the output as-is; rewording it is the drift this replaced.
 - **Call `resolve_vehicle_types` once per quote.** Core owns ids, capacity, `greeter`, `bus`,
   `limited_availability` and `client_can_book`. The old rule skipped the call to save
   context; the static table it relied on turned out to be wrong, not just stale (Exec Van

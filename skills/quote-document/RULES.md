@@ -47,6 +47,11 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   another vehicle, then `calculate_temporary_quote_units`. Never persisted — say so.
 - Always send `commercial_tbd: true` on airport stops, even when the client gave a flight number; the engine needs a resolved airline id and nothing resolves one. Keep the number as a client-facing note.
 - Never re-geocode a stop that already has coordinates; always qualify a geocode with the service area.
+- **Core's `presentation` block is the CSM-facing view, and internal.** `render_presentation.py`
+  prints it; it carries rate ids and rack-versus-effective rates, so **it never becomes client
+  copy**. The client document is built from `quote.json` by this skill, as before. A
+  presentation total that disagrees with the quote units is shown, both figures, never resolved
+  silently.
 - **Exactly one Core warning is suppressed**: "No passenger was selected", and only on a unit
   that priced — we send no `passenger_id` unless the user named one, so Core attaching an
   eligible passenger is the expected path. Everything else Core sends surfaces, including a
