@@ -76,6 +76,28 @@ until the release is packaged.
   `duration` in hours, Core adds a constant +1.25h of positioning time on top of it, and a
   `duration` on a dropoff is ignored. Billable hours are Core's — send what the user asked
   for, show what Core billed, never back-solve.
+- **Phase 2 captures: seven real fixtures** under `quote-intake/evals/fixtures/`, covering
+  all four `presentation` views. Two renderer guesses were wrong and were corrected against
+  the captures: `rate_preview` lives under `data.groups[]` (the guess fell through to a
+  generic dump), and the renderer showed the contracted 30% discount while the client was
+  getting 40% because it read `discount_basis_points` and ignored
+  `effective_discount_basis_points` — understating the discount on screen by a third. It
+  now prints the effective figure with its breakdown, plus Core's subtotal → total line.
+- **▲ A temporary rate is a BASE rate, and the client's discount comes off it.** $250.00/hr
+  supplied became **$192.50/hr** effective. Documented behaviour, but it means a CSM who
+  enters the partner's cost quotes the client 23% below it — a margin leak, catchable only
+  where the number is asked for. The decision tree and `RULES.md` now say so.
+- **C1 needs no local arithmetic.** Core returns `subtotal_amount`, `total_amount`,
+  `temporary_discount_amount` and `temporary_discount_label`, and discounts are **additive
+  in basis points** (30% + 10% = 4000 bps, not 37%). The old local `recompute()` compounded
+  in list order and would have disagreed with Core on exactly this case.
+- **Resolver rules from real behaviour.** "John Wayne Airport, Santa Ana, California"
+  resolved to nothing as an airport stop while `"SNA"` resolved first time — use the IATA
+  code. And the same location `id` can cover genuinely different addresses: "Anaheim
+  Convention Center" returned the venue, a Residence Inn and a Hampton Inn all under
+  `id: 4645260`, which is why the tree's rule is "same id **and** address".
+- The presentation guard now renders all seven fixtures and asserts per-view facts, plus
+  that none of them shows the suppressed passenger warning.
 - **Fixture triage** (`evals/fixtures/TRIAGE.md`). The register said seven of ten fixtures
   encoded the removed path; measured, it is eight, and the framing was wrong in a way that
   matters: `estimate_type` runs **100 × approximate against 8 × exact**, and those fixtures

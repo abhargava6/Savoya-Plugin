@@ -77,7 +77,8 @@ def _warn_lines(warnings, seen, priced=True):
             continue
         seen.add(msg)
         sev = (w.get("severity") if isinstance(w, dict) else None) or "warning"
-        out.append(f"- {'⚠' if sev == 'warning' else 'ℹ'} {msg}")
+        icon = {"error": "✗", "warning": "⚠"}.get(sev, "ℹ")
+        out.append(f"- {icon} {msg}")
     return out
 
 
@@ -121,9 +122,17 @@ def _pricing_bits(pr):
     if mh:
         bits.append(f"{hours(mh)} min")
     adj = pr.get("adjustments") or {}
-    d = pct(adj.get("discount_basis_points"))
-    if d:
-        bits.append(f"{d} discount")
+    saved = adj.get("discount_basis_points")
+    eff_d = adj.get("effective_discount_basis_points")
+    temp_d = adj.get("temporary_discount_basis_points")
+    if eff_d and eff_d != saved:
+        # Show what the CLIENT is actually getting, and where it came from. Printing only
+        # the contracted 30% while a temporary 10% is also applied understates the discount
+        # on screen by a third — and discounts are additive in basis points, not compounded.
+        label = adj.get("temporary_discount_label") or "temporary"
+        bits.append(f"{pct(eff_d)} discount ({pct(saved)} contracted + {pct(temp_d)} {label})")
+    elif saved:
+        bits.append(f"{pct(saved)} discount")
     f = pct(adj.get("fuel_surcharge_basis_points"))
     if f:
         bits.append(f"{f} fuel")
@@ -153,10 +162,23 @@ def _unit_block(u, currency, seen, raw_unit=None):
     pb = _pricing_bits(u.get("pricing"))
     if pb:
         out.append(f"  {pb}")
+    rps = (raw_unit or {}).get("pricing_summary") or {}
+    sub = rps.get("subtotal_amount")
+    if sub and sub != u.get("total_amount"):
+        off = sub - (u.get("total_amount") or 0)
+        out.append(f"  {money(sub, currency)} before the additional discount "
+                   f"− {money(off, currency)} = {money(u.get('total_amount'), currency)}")
     for s in u.get("stops") or []:
         label = s.get("label") or s.get("address") or "(stop)"
         dm = s.get("drive_minutes")
-        out.append(f"  {s.get('order', '•')}. {label}" + (f" — {dm} min drive" if dm else ""))
+        ft = s.get("flight_time")
+        extra = []
+        if dm:
+            extra.append(f"{dm} min drive")
+        if ft:
+            extra.append(f"flight {ft}")
+        out.append(f"  {s.get('order', '•')}. {label}"
+                   + (f" — {' · '.join(extra)}" if extra else ""))
     out += ["  " + ln for ln in _warn_lines(u.get("warnings"), seen)]
     out += ["  " + ln for ln in _hours_note(u, raw_unit)]
     return out
@@ -228,6 +250,10 @@ def render(raw):
         ce = raw.get("client_error") or {}
         msg = ce.get("user_message") or raw.get("message") or "This could not be priced."
         lines.append(f"**{msg}**")
+        seen.add(msg)   # the headline IS the warning; don't repeat it below
+        for issue in (data.get("issues") or []):
+            if isinstance(issue, str):
+                lines.append(f"- {issue}")
         rec = (ce.get("recovery") or {}).get("message")
         if rec:
             lines += ["", rec]
@@ -246,22 +272,63 @@ def render(raw):
         if bad:
             lines.append(f"✗ Could not be priced: {', '.join(bad)}")
 
-    elif view in ("scenario_comparison", "rate_preview"):
-        # Observed but not captured field-by-field. Render what is present; a guessed
-        # layout that silently omits a column is worse than a plain one that doesn't.
-        for group in (data.get("scenarios") or data.get("service_areas")
-                      or data.get("rows") or []):
-            head = group.get("label") or group.get("name") or group.get("key") or ""
-            tot = group.get("total_amount")
-            lines.append(f"**{head}**" + (f" — {money(tot, currency)}" if tot else ""))
-            strat = group.get("strategy")
+    elif view == "scenario_comparison":
+        for sc in data.get("scenarios") or []:
+            tot = sc.get("total_amount")
+            head = sc.get("label") or sc.get("key") or ""
+            lines.append(f"**{head}** — {money(tot, currency)}" if tot else f"**{head}**")
+            strat = sc.get("strategy")
             if strat:
-                # A label, not a lever: verified to change nothing in Core's maths.
+                # A label, not a lever: proven to change nothing in Core's maths, so it
+                # describes what the option IS and never explains why it costs what it does.
                 lines.append(f"  _labelled {strat}_")
-            lines += _generic({k: v for k, v in group.items()
-                               if k not in ("label", "name", "key", "total_amount", "strategy")}, 1)
+            for u in sc.get("quote_units") or []:
+                lines += ["  " + ln for ln in _unit_block(u, currency, seen)]
             lines.append("")
-        if not (data.get("scenarios") or data.get("service_areas") or data.get("rows")):
+        if not data.get("scenarios"):
+            lines += _generic(data)
+
+    elif view == "rate_preview":
+        # `data.groups[]`, one per route/date, each with `rows` per vehicle type. This was
+        # written from a guess first (scenarios/service_areas/rows) and corrected against a
+        # real capture — the shape is groups, and the guess rendered a generic dump.
+        for g in data.get("groups") or []:
+            head = g.get("label") or g.get("key") or ""
+            when = (g.get("date") or {}).get("value") if isinstance(g.get("date"), dict) else g.get("date")
+            area = g.get("service_area")
+            lines.append(f"**{head}**" + (f" · {when}" if when else "") + (f" · {area}" if area else ""))
+            for r in g.get("rows") or []:
+                name = r.get("vehicle_name") or r.get("vehicle_type_id")
+                cap = r.get("vehicle_capacity")
+                head2 = f"  {name}" + (f" ({cap} pax)" if cap else "")
+                h, x = r.get("hourly") or {}, r.get("transfer") or {}
+                parts = []
+                if h.get("availability") == "available":
+                    bit = money(h.get("amount")) + "/hr"
+                    if h.get("minimum_hours"):
+                        bit += f" · {hours(h['minimum_hours'])} min"
+                    if h.get("cancellation_hours") is not None:
+                        bit += f" · {h['cancellation_hours']}-hr cancel"
+                    parts.append(bit)
+                if x.get("availability") == "available":
+                    parts.append(money(x.get("amount")) + "/trip")
+                if not parts:
+                    # Say WHY, in Core's own words. "unavailable" alone sends a CSM hunting.
+                    why = ", ".join(r.get("reason_codes") or []) or "no rate"
+                    parts.append(f"✗ {why.replace('_', ' ')}")
+                mv = r.get("market_vehicle_count")
+                tail = f"  ({mv} in market)" if mv else ""
+                flags = []
+                if r.get("limited_availability"):
+                    flags.append("limited availability")
+                if r.get("client_can_book") is False:
+                    flags.append("not client-bookable")
+                lines.append(f"{head2}: {' · '.join(parts)}{tail}"
+                             + (f" — {', '.join(flags)}" if flags else ""))
+            if g.get("missing_vehicle_type_ids"):
+                lines.append(f"  _not evaluated: {g['missing_vehicle_type_ids']}_")
+            lines.append("")
+        if not data.get("groups"):
             lines += _generic(data)
 
     else:
@@ -271,8 +338,14 @@ def render(raw):
 
     lines += _warn_lines(pres.get("warnings"), seen)
 
-    acts = [a.get("intent") or a.get("id") for a in (pres.get("actions") or [])]
-    acts = [a for a in acts if a]
+    # One line per distinct intent. A comparison returns select_scenario once per option,
+    # which printed as "select_scenario, select_scenario" before this.
+    acts, seen_acts = [], set()
+    for a in pres.get("actions") or []:
+        name = a.get("intent") or a.get("id")
+        if name and name not in seen_acts:
+            seen_acts.add(name)
+            acts.append(name)
     if acts:
         # Read, recorded, bound to nothing. These look like the intended way to drive the
         # refine loop, but they are undocumented beyond their names and our loop is

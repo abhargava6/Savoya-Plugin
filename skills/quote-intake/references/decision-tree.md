@@ -24,7 +24,8 @@ Every node resolves to **call**, **skip**, or **ask**. **Every "ask" uses `ask_u
 - `client_can_book: false` (Mini Bus, Coach Bus) is now a field to read rather than a rule to remember.
 
 **D · Stops** — `resolve_itinerary_stops`, always **one call**, every stop from every leg, deduplicated. Decide `stop_type` first: hotel/venue/street → `address`; airport code or flight intent → `airport`; "around the city" → `as_directed` (never as pickup).
-- One candidate, or several that are the same place (**same `id` and address**) → proceed, note it.
+- One candidate, or several that are the same place (**same `id` and address**) → proceed, note it. **Both halves matter:** querying "Anaheim Convention Center" returned three candidates all under `id: 4645260` — the venue at 800 W Katella, a Residence Inn at 640, and a Hampton Inn at 100. Matching on `id` alone would have quoted a hotel instead of the venue.
+- **Airports: use the IATA code.** "John Wayne Airport, Santa Ana, California" resolved to *nothing* as an airport stop; `"SNA"` resolved first time. Colloquial airport names fail.
 - **As-directed city:** query `"<City>, <State spelled out>"` — abbreviations return nothing. Pick the candidate whose `id` matches the pickup's city id. Deterministic, not a guess; ask only if none matches.
 - Genuinely different places, or none → **ask**.
 - **Every airport stop carries a `flight` object, pickup or drop-off.** Airport as pickup → `flight_type: "arrival"`; as drop-off → `"departure"`. Always `commercial_tbd: true`. Missing flight *time* → placeholder, recorded and disclosed. **Don't ask** — it doesn't change the price. Omitting the object fails the call (`flight is required for airport stops`), and stops[0] on an arrival leg is where it's missed.
@@ -56,6 +57,12 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
   recovery wording is the flow: **ask the user for a temporary rate, or pick another
   vehicle.** Then re-quote through `calculate_temporary_quote_units`. Say plainly that the
   number came from a rate they supplied, not from Savoya's rate sheet.
+- **▲ A temporary rate is a BASE rate — the client's discount comes off it.** Verified
+  8 Oct: $250.00/hr supplied became **$192.50/hr** effective after the 30% contracted
+  discount and 10% fuel. So when asking, say so: *"this is a base rate before the client's
+  contracted discount — give me the rate you want to quote from, not the cost you were
+  quoted."* A CSM who enters the partner's cost quotes the client **23% below it**. This is
+  the one place that can be caught, because afterwards it just looks like a price.
 - **A waiting leg can only take an *hourly* temporary rate.** A `transfer` rate needs
   exactly two stops; sent against a leg with an intermediate stop Core returns
   `quote_units_unavailable` (verified 7 Oct 2026). Our ≲3h out-and-back rule produces that

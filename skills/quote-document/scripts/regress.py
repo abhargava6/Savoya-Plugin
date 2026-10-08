@@ -488,6 +488,43 @@ def lint_presentation_render():
     if code3 != 0 or "some_future_view" not in out3:
         problems.append("an unrecognised presentation view did not render generically")
 
+    # Every captured fixture must render, and each view must produce the facts a CSM needs
+    # from it. All four views below were corrected against real captures after a first
+    # draft guessed the shape — rate_preview in particular lives under data.groups[] and
+    # the guess fell through to a generic dump.
+    fxdir = os.path.join(skills, "quote-intake", "evals", "fixtures")
+    expect = {
+        "greeter-as-directed":        ["$404.20", "against 4 hrs requested"],
+        "greeter-no-rate-boise":      ["could not be priced", "provide a temporary rate",
+                                       "no matching Savoya rate"],
+        "rate-preview-orange-county": ["$173.25/hr", "5 hrs min", "72-hr cancel",
+                                       "hourly rate not found", "16 in market",
+                                       "limited availability"],
+        "comparison-two-options":     ["$346.50", "$418.88", "labelled value",
+                                       "labelled elevated", "select_scenario"],
+        "capacity-80pax-minibus":     ["2× Mini Bus", "$3,149.20", "5 hrs min"],
+        "temporary-rate-execvan":     ["$192.50/hour", "rack $250.00",
+                                       "was not saved in Savoya"],
+        "temporary-discount-sedan":   ["$297.00", "40% discount", "Event discount"],
+    }
+    for slug, wants in sorted(expect.items()):
+        fp = os.path.join(fxdir, slug, "raw_quote.json")
+        if not os.path.exists(fp):
+            problems.append(f"{slug}: fixture missing")
+            continue
+        with open(fp) as fh:
+            doc = json.load(fh)
+        o, c = rp.render(doc)
+        if c != 0 or not o:
+            problems.append(f"{slug}: did not render (exit {c})")
+            continue
+        for w in wants:
+            if w not in o:
+                problems.append(f"{slug}: render is missing {w!r}")
+        # Core says this on every unit of every fixture; none of them should show it.
+        if "No passenger was selected" in o:
+            problems.append(f"{slug}: rendered the suppressed passenger warning")
+
     if problems:
         print("  ✗ presentation render")
         for pr in problems:

@@ -52,6 +52,14 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   copy**. The client document is built from `quote.json` by this skill, as before. A
   presentation total that disagrees with the quote units is shown, both figures, never resolved
   silently.
+- **A temporary rate is a base rate**: Core applies the client's contracted discount and
+  fuel on top of whatever was supplied ($250.00/hr → $192.50/hr effective). Never present a
+  supplied rate as the client's rate, and never treat the two as interchangeable.
+- **Discounts are additive in basis points, not compounded.** 30% contracted + 10%
+  temporary = `effective_discount_basis_points: 4000`, not 37%. Core returns
+  `subtotal_amount`, `total_amount`, `temporary_discount_amount` and
+  `temporary_discount_label` — standard → discount → net is Core's end to end, with nothing
+  left to compute.
 - **Exactly one Core warning is suppressed**: "No passenger was selected", and only on a unit
   that priced — we send no `passenger_id` unless the user named one, so Core attaching an
   eligible passenger is the expected path. Everything else Core sends surfaces, including a
