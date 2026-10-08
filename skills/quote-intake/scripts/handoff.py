@@ -12,8 +12,6 @@
       [--passenger-id N --passenger-name "..."] [--rate-sheet-shown] [--final]
 
   handoff.py client "Yerdle"                 → cached profile id, else exit 1
-  handoff.py passenger <profile_id>          → cached "id<TAB>name", else exit 1
-  handoff.py remember-passenger <profile_id> <passenger_id> "<name>"
   handoff.py capture --dir handoff [--slug ...] [--worked ...] [--change ...]
 """
 import argparse
@@ -25,6 +23,22 @@ import shutil
 import sys
 
 CONFIG = os.path.expanduser("~/.savoya-quoting/config.json")
+
+# The ONE Core warning we suppress, and only when the unit actually priced.
+#
+# We send no passenger_id unless the user named one, so Core attaching an eligible
+# passenger to the unsaved calculation is the expected path, not an exception — and it
+# says so on every unit, every option and the aggregate.
+#
+# A list of one, matched by substring, with the condition attached. NOT a filter, NOT a
+# severity threshold, NOT a pattern. Suppressing Core warnings wholesale is how a real one
+# gets hidden, and an allowlist of warnings we recognise does the same thing by omission:
+# this file used to print only the two shapes it knew and drop everything else silently.
+# Unrecognised warnings are now surfaced verbatim.
+#
+# The same string lives in quote-document/scripts/normalize_quote.py. regress.py asserts
+# the two are identical, so the duplication cannot drift.
+SUPPRESSED_WARNING = "No passenger was selected"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -97,7 +111,7 @@ def basis_of(ps):
     return txt
 
 
-def unit_lines(unit, indent="  "):
+def unit_lines(unit, indent="  ", seen=None):
     ps = unit.get("pricing_summary") or {}
     vt = unit.get("vehicle_type") or {}
     qty = unit.get("quantity") or 1
@@ -109,12 +123,24 @@ def unit_lines(unit, indent="  "):
     out = [head, body]
     if ps.get("special_event"):
         out.append(f"{indent}⚠ {ps['special_event'].get('name')} event pricing in effect")
+    priced = (ps.get("status") or "priced") == "priced"
+    if seen is None:
+        seen = set()
     for w in unit.get("warnings") or []:
+        if SUPPRESSED_WARNING in w and priced:
+            continue
+        if w in seen:          # same warning on every unit and option — say it once
+            continue
+        seen.add(w)
         if "No local providers" in w:
             m = re.search(r"providers in ([^.]+)\.", w)
             out.append(f"{indent}⚠ positioned from {m.group(1).strip() if m else 'a nearby market'} — extra drive time included")
         elif "not quoteable" in w:
             out.append(f"{indent}✗ {w.split(' was not quoteable')[0]}: no rate in this market")
+        else:
+            # Not a shape we translate. Show it anyway, verbatim — an unrecognised
+            # warning is exactly the kind we must not swallow.
+            out.append(f"{indent}⚠ {w}")
     chosen_total = unit.get("line_total") or 0
     for alt in unit.get("vehicle_options") or []:
         av = alt.get("vehicle_type") or {}
@@ -135,12 +161,13 @@ def summarize(raw, select=None):
         for u in units:
             est = (u.get("pricing_summary") or {}).get("estimate_type") or est
     lines, multi = [], len(pkgs) > 1
+    seen_warnings = set()   # a distinct warning is shown once per quote, not once per unit
     for key, label, _strategy, units, total in pkgs:
         if multi:
             mark = " ← recommended" if (key == select if select else key == pkgs[0][0]) else ""
             lines.append(f"### {label}{mark} — **{money(total)}**")
         for u in units:
-            lines += unit_lines(u)
+            lines += unit_lines(u, seen=seen_warnings)
             lines.append("")
     if not multi:
         lines.append(f"**Total: {money(pkgs[0][4])}**")
@@ -199,8 +226,12 @@ def write(a):
     intake = {
         "contract": 2,
         "client": {"name": a.client, "profile_id": a.profile_id, "source": a.client_source},
+        # Set only when the USER named a passenger. Omitted from the call otherwise:
+        # Core attaches an eligible passenger to the unsaved calculation itself. The old
+        # note here read "required by the reservation builder" — true against the previous
+        # contract, not true now.
         "passenger": {"id": a.passenger_id, "name": a.passenger_name,
-                      "note": "pricing is passenger-independent; required by the reservation builder"},
+                      "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"},
         "tool": a.tool, "estimate_type": est, "quote_mode": a.mode,
         "selected_option": a.selected, "option_keys": [p[0] for p in pkgs if p[0]],
         "units": units,
@@ -217,8 +248,11 @@ def write(a):
     if a.client and a.profile_id:
         cfg = load_json(CONFIG, {}) or {}
         cfg.setdefault("known_clients", {})[a.client] = a.profile_id
-        if a.passenger_id:
-            cfg.setdefault("known_passengers", {})[str(a.profile_id)] = {"id": a.passenger_id, "name": a.passenger_name}
+        # known_passengers is no longer written. It only ever served the old "take the
+        # first passenger and send it" rule; we now send no passenger_id unless the user
+        # named one, so a cache would do nothing but keep the placeholder disclosure
+        # alive. An existing entry in someone's config is left alone rather than pruned
+        # — it is their file, and a stale key costs nothing now that nothing reads it.
         save_config(cfg)
     print(f"Handoff written to {a.dir}/ ({len(units)} units, {a.tool}, {est}, final={a.final})")
 
@@ -279,8 +313,6 @@ def main():
     w.add_argument("--final", action="store_true"); w.add_argument("--client-source", default="resolve")
     w.add_argument("--passenger-id", type=int, default=None); w.add_argument("--passenger-name", default=None)
     c = sub.add_parser("client"); c.add_argument("name")
-    pg = sub.add_parser("passenger"); pg.add_argument("profile_id")
-    rp = sub.add_parser("remember-passenger"); rp.add_argument("profile_id"); rp.add_argument("passenger_id"); rp.add_argument("name")
     cp = sub.add_parser("capture"); cp.add_argument("--dir", default="handoff"); cp.add_argument("--slug", default=None)
     cp.add_argument("--worked", default=None); cp.add_argument("--change", default=None)
     a = ap.parse_args()
@@ -297,16 +329,6 @@ def main():
             if k.lower() == a.name.lower():
                 print(v); return
         sys.exit(1)
-    elif a.cmd == "passenger":
-        cfg = load_json(CONFIG, {}) or {}
-        p = (cfg.get("known_passengers") or {}).get(str(a.profile_id))
-        if p:
-            print(f"{p['id']}\t{p.get('name') or ''}"); return
-        sys.exit(1)
-    else:
-        cfg = load_json(CONFIG, {}) or {}
-        cfg.setdefault("known_passengers", {})[str(a.profile_id)] = {"id": int(a.passenger_id), "name": a.name}
-        save_config(cfg); print("ok")
 
 
 if __name__ == "__main__":

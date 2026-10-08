@@ -47,3 +47,8 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   another vehicle, then `calculate_temporary_quote_units`. Never persisted — say so.
 - Always send `commercial_tbd: true` on airport stops, even when the client gave a flight number; the engine needs a resolved airline id and nothing resolves one. Keep the number as a client-facing note.
 - Never re-geocode a stop that already has coordinates; always qualify a geocode with the service area.
+- **Exactly one Core warning is suppressed**: "No passenger was selected", and only on a unit
+  that priced — we send no `passenger_id` unless the user named one, so Core attaching an
+  eligible passenger is the expected path. Everything else Core sends surfaces, including a
+  warning we don't recognise. Suppressing warnings wholesale, or only printing the shapes we
+  recognise, is how a real one gets hidden. `regress.py` asserts all of this.

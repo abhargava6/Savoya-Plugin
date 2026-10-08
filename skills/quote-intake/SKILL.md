@@ -18,9 +18,14 @@ Every `scripts/`, `references/` and `assets/` path below is written out in full.
 Never work around a missing reference by improvising the flow from memory — that is how the rate-sheet step, the display-mode rate table and the final `calculate_quote_units` all get skipped at once. The **Questions** section below is inline precisely so the flow still holds if a reference fails to load.
 
 ## Context budget
-- One `tool_search` at the start for all five tools: `resolve_client resolve_passengers resolve_itinerary_stops generate_quote_options calculate_quote_units`. Never search per tool.
+- One `tool_search` at the start for the five tools a quote actually uses: `resolve_client resolve_itinerary_stops resolve_vehicle_types generate_quote_options calculate_quote_units`. Never search per tool.
+- `resolve_passengers` is **not** in that set — load it only when the user named a passenger, which is the only time we call it.
 - Never open a raw engine response to read it — `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize` does that. Save it to a file and summarize.
-- Never call `resolve_vehicle_types` unless the user names a type missing from `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/vehicle-types.md`.
+- **Call `resolve_vehicle_types` once per quote.** Core owns ids, capacity, `greeter`, `bus`,
+  `limited_availability` and `client_can_book`. The old rule skipped the call to save
+  context; the static table it relied on turned out to be wrong, not just stale (Exec Van
+  14, not "~10", and seven types missing). `vehicle-types.md` now holds only physical
+  dimensions and our candidate policy.
 - `calculate_temporary_quote_units` is **not** in the opening search — load it only when the
   user actually supplies a temporary rate or an extra discount, which is rare. It is the
   only tool that accepts them, and the result is never persisted.
@@ -60,7 +65,7 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
 
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md` is the **single source** for what to call, skip and ask at every node (A–J here, K–Q in the document skill). Read it once at the start of a quote; don't re-read it mid-flow. The shape in one paragraph so you know what you're reading:
 
-resolve client + stops in one turn (passenger too, first result, cached) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → *which detailed quote?* → refine loop → handoff → *PDF or email?*
+resolve client + stops + vehicle types in one turn (no passenger unless the user named one) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → *which detailed quote?* → refine loop → handoff → *PDF or email?*
 
 **When a unit has no stored rate in the market**, that is not a dead end. Core's recovery
 is the flow: ask the user for a temporary rate or another vehicle, then re-quote through
@@ -90,7 +95,6 @@ Three things the tree assumes you already did in Step 1, and won't repeat:
 Commands, in order:
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py client "<name>"        # cached profile id, or nothing
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py passenger <profile_id> # cached passenger, or nothing
 # … resolve, ask, quote …
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize scenarios.json --select value
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py write --dir handoff … --final

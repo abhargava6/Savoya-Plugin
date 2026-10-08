@@ -1,5 +1,7 @@
 # Decision tree — the whole flow
 
+Tool names, required arguments and limits live in **`${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/mcp-contract.md`**, which is the contract the regression suite enforces. This file says *when* to call; that file says *what* the call takes.
+
 Every node resolves to **call**, **skip**, or **ask**. **Every "ask" uses `ask_user_input_v0`** (tappable options) unless the answer can't be enumerated — see `../../quote-document/references/asking-questions.md`. Anything not listed is skipped. Nodes A–J are the `quote-intake` skill; K–Q are `quote-document`. The handoff folder is the seam.
 
 ---
@@ -11,17 +13,22 @@ Every node resolves to **call**, **skip**, or **ask**. **Every "ask" uses `ask_u
 - Else **call**. One hit → proceed, cache it. Several → **ask** (batched with D). None → **ask** for a name, email, or profile id. Never guess.
 
 **B · Passenger** — `resolve_passengers`
-- Cached for this profile → **skip**.
-- Else **call** and take the **first result without asking**; cache it. The exact tools require a passenger id for the reservation builder, but pricing is passenger-independent (verified: two different passengers, byte-identical quotes) and the name never appears in the response or the widget.
-- Profile has no passengers → **omit `passenger_id` and quote normally.** Core attaches an eligible passenger to the unsaved calculation and returns a warning saying so. There is no estimate fallback any more and none is needed — this case now prices exactly like any other.
+- **Skip unless the user named a passenger.** That is the whole rule. `passenger_id` is optional on every pricing tool, and when it is omitted Core deterministically attaches an eligible passenger to the unsaved calculation.
+- User named one → **call**, match the name, send that id. Several matches → **ask** (batched with A and D).
+- A profile with no eligible passengers is **not** a case to pre-empt. We don't look, so we can't know in advance; Core raises it and the plugin surfaces it. No estimate fallback, no pre-flight check.
+- **No cache.** The old rule — take the first result, cache it per profile — was correct against the previous contract and verified at the time (two passenger ids, byte-identical quotes). Caching now would only keep alive a disclosure the CSM no longer needs to see.
 
-**C · Vehicle types** — static table in `vehicle-types.md`. **Call** `resolve_vehicle_types` only for a type the table lacks (MPV, electric, greeter, an international class).
+**C · Vehicle types** — **call** `resolve_vehicle_types` once per quote. Core owns `id`, `capacity`, `classification`, `greeter`, `bus`, `limited_availability` and `client_can_book`.
+- This reverses an earlier context-budget decision. The static table existed to avoid a per-quote call, and the trade stopped being worth it the moment the table was found **wrong**, not merely stale: it said Exec Van "~10" where Core says **14**, and omitted seven types including both greeters. One call against a wrong answer is not a saving.
+- `vehicle-types.md` stays for what Core has no concept of: **physical dimensions** and terminology. Dimensions are what rule a coach out of a venue with a 9×18 ft parking cap.
+- `client_can_book: false` (Mini Bus, Coach Bus) is now a field to read rather than a rule to remember.
 
 **D · Stops** — `resolve_itinerary_stops`, always **one call**, every stop from every leg, deduplicated. Decide `stop_type` first: hotel/venue/street → `address`; airport code or flight intent → `airport`; "around the city" → `as_directed` (never as pickup).
 - One candidate, or several that are the same place (**same `id` and address**) → proceed, note it.
 - **As-directed city:** query `"<City>, <State spelled out>"` — abbreviations return nothing. Pick the candidate whose `id` matches the pickup's city id. Deterministic, not a guess; ask only if none matches.
 - Genuinely different places, or none → **ask**.
 - **Every airport stop carries a `flight` object, pickup or drop-off.** Airport as pickup → `flight_type: "arrival"`; as drop-off → `"departure"`. Always `commercial_tbd: true`. Missing flight *time* → placeholder, recorded and disclosed. **Don't ask** — it doesn't change the price. Omitting the object fails the call (`flight is required for airport stops`), and stops[0] on an arrival leg is where it's missed.
+- **TBD is the only shape we send, deliberately.** The contract also describes known-commercial flights (needs `airline` as a resolved object with an id) and private ones (needs `fbo` likewise), and **neither resolver exists among the nine tools**. So those two forms are specified and unreachable. Even when the client gives a flight number, keep it as a client-facing note and still send `commercial_tbd: true`. The seam is written down in `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/mcp-contract.md` so that when a resolver lands the next person knows the shape was understood and consciously deferred, not missed.
 - All A + D questions go out in **one message**; none if nothing was ambiguous.
 
 **E · Questions, one per message, wait after each** — 1 and 2 are asked on **every** quote, never skipped because the request looks self-evident.
@@ -41,8 +48,8 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 
 | Condition | Tool | Shape |
 |---|---|---|
-| best or options | `generate_quote_options` | two options: **value** (candidate `vehicle_type_ids`, Core picks lowest per unit) and **elevated** (premium `vehicle_type_id`) |
-| you define | `calculate_quote_units` | one `vehicle_type_id` per unit |
+| best or options | `generate_quote_options` | an `options` array, **2–5**, each with its own `key`, `label` and a **complete** `quote_units` list. Usually two: **value** (candidate `vehicle_type_ids`, Core prices each and takes the lowest per unit) and **elevated** (a fixed premium `vehicle_type_id`) |
+| you define | `calculate_quote_units` | **one** `vehicle_type_id` per unit — candidate lists are not accepted here |
 | user supplied a temporary rate or an extra discount | `calculate_temporary_quote_units` | one `vehicle_type_id` per unit, plus `temporary_rate` (`rate_type`: `hourly` \| `transfer`, `amount` in **cents**) and/or `temporary_discount` (`basis_points`; 500 = 5%). At least one of the two is required. **Never persisted — say so.** |
 
 - **No stored rate in the market** is not a dead end and never an estimate. Core's own
@@ -53,14 +60,18 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
   exactly two stops; sent against a leg with an intermediate stop Core returns
   `quote_units_unavailable` (verified 7 Oct 2026). Our ≲3h out-and-back rule produces that
   shape routinely, so never offer a transfer rate for one.
+- **Every option must contain every trip.** Core enforces this: a duplicate option is rejected outright — *"labels alone do not create an alternative."* An option that drops a leg is a cheaper total for a different job.
+- **`strategy` is a label, not a lever.** The enum is `value` · `elevated` · `cost_saving` · `quality_focused` · `custom`, and it changes nothing in Core's maths — verified 7 Oct by running the same two options twice with only the strategy strings swapped: identical totals, vehicles, quantities and rate ids. Use it to describe honestly what an option *is*. Never pick a strategy hoping for a different answer; the vehicle argument is the only thing that selects.
+- **Send `requested_stop_count` on every unit** — the user's total stop count including pickup, dropoff and every intermediate. It exists so Core can tell it was handed fewer stops than were asked for. Silently dropping a stop is the bug class that produced 0-minute drive times in 0.20.0; this is the server offering to catch it.
 - Unit structure was decided at parse time, not here: per-date units; waves as one block; out-and-back as **one hourly unit only when the vehicle waits** (gap ≲ 3h) and as **two transfer units when it's released** (gap ≳ 3h) — price both ways when it's close.
-- Core sizes the fleet from `passenger_count` and picks the cheapest candidate **per unit**, so a value option may mix vehicles across legs. That's correct — don't override it.
+- Core sizes the fleet from `passenger_count` and picks the cheapest candidate **per unit**, so a value option may mix vehicles across legs. That's correct — don't override it. Prefer `passenger_count` and omit `quantity` unless the user fixed a vehicle count.
+- **Hours are Core's too.** `duration` is the lever, not the answer: an as-directed stop sent `duration: 2` billed **3.25** hours and `duration: 4` billed **5.25** — a constant +1.25h of positioning. Send what the user asked for, show what Core billed, and say which is which. Never back-solve the duration.
 
 **G2 · Detail card** — after the user picks an option (or accepts the recommendation in best mode), **call** `calculate_quote_units` with that option's chosen vehicle per unit. Identical numbers; it renders the full detail card that `scenario_comparison` shows condensed. **Skip** in define mode — already that shape.
 
 **H · Read the result** — `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize <file> [--select <key>]` does it. Never open the response yourself.
 - A unit came back `rate_unavailable` for every candidate → **re-quote** that unit with the next class from the table and say what you swapped; if nothing prices, report it as the rate sheet would have.
-- `special_event`, "No local providers", temporary-rate warnings → say aloud (the summarizer translates them).
+- **Warnings: the summarizer shows them all, translating the shapes it knows and printing the rest verbatim.** It used to print only the two shapes it recognised and drop the others silently, which hides a real warning as effectively as filtering would. One warning is suppressed — Core's "no passenger was selected" note, and only when the unit priced, because omitting `passenger_id` is now the normal path. A distinct warning is said once per quote, not once per unit per option.
 - Unquoteable candidates inside a priced unit → shown as `✗`, no action needed.
 
 **I · Refine** — one question: *"Customize this — different vehicles, headcount, hours, another scenario — or is this the one?"*

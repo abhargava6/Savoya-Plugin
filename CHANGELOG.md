@@ -3,6 +3,62 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.0 — unreleased
+
+Group B of the 0.23 register: the plugin's assumptions and the server's contract had
+diverged in seven places. No new capability here, correctness only. Version stays 0.22.1
+until the release is packaged.
+
+- **The contract lives in one file.** New `skills/quote-intake/references/mcp-contract.md`
+  holds the nine tools, their required arguments, the limits, the two removed tools, and
+  the behaviours Core owns. `regress.py` parses its ```tools block rather than carrying its
+  own copy — the contract previously had two homes, a reference file sessions read and a
+  constant only the suite read, and two homes is how the last drift happened. The guard
+  fails loudly if the file is missing or the list is empty, rather than passing vacuously,
+  and it tolerates the retired tool names inside that file only.
+- **A passenger is resolved only when the user names one** (B1). `passenger_id` is optional
+  on every pricing tool; omitted, Core attaches an eligible passenger to the unsaved
+  calculation. The per-profile passenger cache is gone from `handoff.py`, along with the
+  `passenger` and `remember-passenger` subcommands. Existing cache entries in a user's
+  config are left alone rather than pruned — nothing reads them now. `resolve_passengers`
+  also leaves the opening tool search.
+- **Core is the authority on vehicles** (B2). `resolve_vehicle_types` is now called once per
+  quote, reversing a context-budget decision that stopped paying when the static table was
+  found *wrong* rather than stale: Exec Van is capacity 14, not "~10", and seven types were
+  missing including both greeters. `vehicle-types.md` keeps what Core has no concept of —
+  physical dimensions, which are what rule a coach out of a 9×18 ft parking cap — plus our
+  candidate-set policy, with capacity deliberately removed.
+- **`requested_stop_count` goes on every unit** (B3), so Core can detect being handed fewer
+  stops than were asked for. Dropping a stop silently is what produced 0-minute drive times
+  in 0.20.0.
+- **Comparisons take an `options` array of 2–5** (B4), each with a complete `quote_units`
+  list. Every option must contain every trip, which Core now enforces — a duplicate option
+  is rejected outright. `strategy` is documented as a presentation label: the same two
+  options run twice with only the strategy strings swapped returned identical totals,
+  vehicles, quantities and rate ids.
+- **`calculate_quote_units` takes one vehicle, never a list** (B5), stated explicitly so it
+  isn't drifted back into. Candidate lists belong only in `generate_quote_options`.
+- **Flights stay TBD-only, with the seam written down** (B6). The contract describes
+  known-commercial and private flights, both needing resolved ids, and neither resolver
+  exists among the nine tools. Recorded as a deliberate deferral so the next person knows
+  the shape was understood rather than missed.
+- **Warnings: one suppression, and the rest finally surface** (B9). The intake summarizer
+  used to print only the two warning shapes it recognised and drop everything else in
+  silence — an allowlist hides a real warning as effectively as a filter does. It now shows
+  every warning, translating what it knows and printing the rest verbatim. Exactly one is
+  suppressed: Core's "No passenger was selected" note, and only on a unit that priced,
+  because omitting `passenger_id` is now the normal path. A distinct warning is said once
+  per quote rather than once per unit per option.
+- **New guard: warning surfacing.** Five independent assertions — the suppression string is
+  identical in both skills (it is duplicated across skills that cannot import from each
+  other), the suppressed warning doesn't render on a priced unit, an *unrecognised* warning
+  does, warnings dedupe across units, and suppression stays conditional on the unit having
+  priced. Each was broken on purpose and seen to fail alone.
+- Also recorded from the live tests: a greeter unit is pickup + an `as_directed` stop with a
+  `duration` in hours, Core adds a constant +1.25h of positioning time on top of it, and a
+  `duration` on a dropoff is ignored. Billable hours are Core's — send what the user asked
+  for, show what Core billed, never back-solve.
+
 ## 0.22.1
 **The connector dropped two tools and the plugin was still calling them.** A live probe on
 7 October found nine tools where 22 September served ten:

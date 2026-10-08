@@ -230,23 +230,39 @@ def lint_paths():
     return True
 
 
-# The Savoya MCP tool contract, read directly from the live connector's schemas on
-# 2026-10-07. Removed between 22 Sept and 7 Oct: plan_approximate_quote_units and
-# calculate_quote_options. 0.22.0 still routed to both, so a profile with no eligible
-# passenger or a market with no stored rate hit an unknown-tool error instead of a quote.
-# Nothing told us; we found out by looking. When the server changes, change THIS SET and
-# let the suite say what else has to move.
-MCP_TOOLS = frozenset({
-    "resolve_client",
-    "resolve_passengers",
-    "resolve_itinerary_stops",
-    "resolve_vehicle_types",
-    "preview_rates",
-    "preview_rate_batch",
-    "calculate_quote_units",
-    "calculate_temporary_quote_units",
-    "generate_quote_options",
-})
+# The tool contract lives in ONE place: the ```tools block in mcp-contract.md. It used to
+# be a literal set here, which meant the contract had two homes — a reference file CSMs'
+# sessions read, and a constant only the suite read. Two homes is how the last drift
+# happened. The guard now reads the reference file, so the file the flow is written
+# against is the file the suite enforces.
+CONTRACT_DOC = os.path.normpath(os.path.join(
+    HERE, "..", "..", "quote-intake", "references", "mcp-contract.md"))
+
+
+def _fenced(text, tag):
+    m = re.search(r"^```" + re.escape(tag) + r"\s*\n(.*?)^```", text, re.S | re.M)
+    if not m:
+        return None
+    return [ln.strip() for ln in m.group(1).splitlines() if ln.strip()]
+
+
+def mcp_tools():
+    """Parse mcp-contract.md: the live tools, and the ones it records as removed.
+
+    Raises rather than returning a default. A missing or empty contract must fail the
+    suite loudly — a guard that silently allows everything when its input disappears is
+    worse than no guard, because it still prints a tick.
+
+    The removed names are tolerated in the contract file ONLY. Recording what left the
+    contract is that file's job; a dead tool anywhere else is the bug this guard is for."""
+    with open(CONTRACT_DOC) as fh:
+        text = fh.read()
+    live = _fenced(text, "tools")
+    if live is None:
+        raise RuntimeError(f"no ```tools block in {CONTRACT_DOC}")
+    if not live:
+        raise RuntimeError(f"empty ```tools block in {CONTRACT_DOC}")
+    return frozenset(live), frozenset(_fenced(text, "tools-removed") or ())
 
 # Anything shaped like a Savoya tool name. Deliberately a pattern rather than a list of
 # the two tools we know were removed: a blocklist only catches the last change, a pattern
@@ -255,7 +271,7 @@ _TOOLISH = re.compile(r"\b(?:resolve|preview|calculate|generate|plan)_[a-z0-9_]+
 
 # Local identifiers that match the pattern but are not MCP tools. Empty on purpose: if a
 # future function name trips this guard, either rename it or add it here — don't add a
-# non-tool to MCP_TOOLS, which is the contract.
+# non-tool to the contract file's tools block, which is the contract.
 _NOT_TOOLS = frozenset()
 
 # Two files are exempt, each for a stated reason — not for convenience.
@@ -277,6 +293,14 @@ def lint_tool_contract():
     This guard exists because the connector dropped two tools and the plugin went on
     calling them for two weeks. Same idea as the instruction-path lint: the failure was
     silent at authoring time and loud only in front of a CSM."""
+    try:
+        contract, retired = mcp_tools()
+    except (OSError, RuntimeError) as e:
+        print("  ✗ tool contract")
+        print(f"      - cannot read the contract: {e}")
+        print("      mcp-contract.md's ```tools block IS the contract. Without it this")
+        print("      guard cannot run, and it fails rather than passing vacuously.")
+        return False
     skills = os.path.normpath(os.path.join(HERE, "..", ".."))
     repo = os.path.normpath(os.path.join(skills, ".."))
     targets = []
@@ -304,8 +328,11 @@ def lint_tool_contract():
         except (OSError, UnicodeDecodeError):
             continue
         for i, line in enumerate(lines, 1):
+            in_contract_doc = os.path.abspath(p) == os.path.abspath(CONTRACT_DOC)
             for name in _TOOLISH.findall(line):
-                if name in MCP_TOOLS or name in _NOT_TOOLS:
+                if name in contract or name in _NOT_TOOLS:
+                    continue
+                if in_contract_doc and name in retired:
                     continue
                 bad.append((os.path.relpath(p, repo), i, name))
 
@@ -313,10 +340,86 @@ def lint_tool_contract():
         print("  ✗ tool contract")
         for rel, i, name in bad:
             print(f"      - names a tool outside the contract: {rel}:{i}: {name}")
-        print("      MCP_TOOLS in regress.py is the contract. If the server really gained")
-        print("      this tool, add it there. If it was removed, this is the dead path.")
+        print("      mcp-contract.md's ```tools block is the contract. If the server")
+        print("      really gained this tool, add it there. If it was removed, this is")
+        print("      the dead path — and the contract file needs a Removed row too.")
         return False
     print("  ✓ tool contract")
+    return True
+
+
+def lint_warning_surfacing():
+    """One Core warning is suppressed. Prove it is exactly one, and that an unrecognised
+    warning still reaches the CSM.
+
+    This guard exists because the intake summarizer used to print only the two warning
+    shapes it recognised and drop the rest in silence — an allowlist hides real warnings
+    just as effectively as a filter does, only less visibly. It also pins the suppression
+    string, which is duplicated across two skills that cannot import from each other."""
+    import importlib.util
+
+    def load(path, name):
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    skills = os.path.normpath(os.path.join(HERE, "..", ".."))
+    try:
+        ho = load(os.path.join(skills, "quote-intake", "scripts", "handoff.py"), "_ho")
+        nq = load(os.path.join(skills, "quote-document", "scripts", "normalize_quote.py"), "_nq")
+    except Exception as e:
+        print(f"  ✗ warning surfacing: could not import ({e})")
+        return False
+
+    problems = []
+
+    # 1. The two copies of the suppression must be identical, or one skill quietly
+    #    diverges from the other.
+    if ho.SUPPRESSED_WARNING != nq.SUPPRESSED_WARNING:
+        problems.append(f"suppression differs: handoff.py {ho.SUPPRESSED_WARNING!r} vs "
+                        f"normalize_quote.py {nq.SUPPRESSED_WARNING!r}")
+
+    unknown = "Vendor surcharge applied for this service area"
+    unit = {
+        "key": "u1", "label": "Leg 1", "quantity": 1, "line_total": 10000,
+        "passenger_count": 2, "pickup_date": "2027-03-20T09:00:00-07:00",
+        "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
+        "stops": [{"name": "A", "travel_time": 0}, {"name": "B", "travel_time": 10}],
+        "pricing_summary": {"status": "priced", "total_amount": 10000,
+                            "pricing_method": "transfer",
+                            "rate": {"effective_rate_amount": 10000, "billing_unit": "trip"},
+                            "calculation": {"quantity": 1}},
+        "warnings": [ho.SUPPRESSED_WARNING + " for this quote", unknown],
+    }
+    rendered = "\n".join(ho.unit_lines(unit))
+
+    # 2. The suppressed one must not appear...
+    if ho.SUPPRESSED_WARNING in rendered:
+        problems.append("the suppressed passenger warning was rendered on a priced unit")
+    # 3. ...and the unrecognised one must.
+    if unknown not in rendered:
+        problems.append("an UNRECOGNISED warning was swallowed — this is the failure mode "
+                        "the guard exists for")
+
+    # 4. Deduped: the same warning across two units is said once.
+    seen = set()
+    twice = "\n".join(ho.unit_lines(unit, seen=seen) + ho.unit_lines(unit, seen=seen))
+    if twice.count(unknown) != 1:
+        problems.append(f"warning repeated {twice.count(unknown)}× across units; expected once")
+
+    # 5. Suppression is conditional on the unit having priced. A blocked unit keeps it.
+    blocked = dict(unit, pricing_summary=dict(unit["pricing_summary"], status="blocked"))
+    if ho.SUPPRESSED_WARNING not in "\n".join(ho.unit_lines(blocked)):
+        problems.append("the passenger warning was suppressed on a BLOCKED unit; "
+                        "suppression is conditional on pricing succeeding")
+
+    if problems:
+        print("  ✗ warning surfacing")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ warning surfacing")
     return True
 
 
@@ -425,6 +528,7 @@ def main():
         sys.exit(f"No fixtures found in {a.fixtures}")
     lint_ok = lint_paths()
     lint_ok = lint_tool_contract() and lint_ok
+    lint_ok = lint_warning_surfacing() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

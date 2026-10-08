@@ -16,6 +16,18 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# The ONE Core warning we suppress, and only when the unit actually priced. We send no
+# passenger_id unless the user named one, so Core attaching an eligible passenger to the
+# unsaved calculation is the expected path, not an exception — and it repeats on every
+# unit, every option and the aggregate.
+#
+# A list of one, matched by substring, with the condition attached. Every other warning
+# Core sends reaches internal.warnings, including one we don't recognise.
+#
+# The same string lives in quote-intake/scripts/handoff.py. regress.py asserts the two are
+# identical, so the duplication cannot drift.
+SUPPRESSED_WARNING = "No passenger was selected"
 TERMS_PATH = os.path.join(HERE, "..", "assets", "terms.md")
 
 
@@ -167,9 +179,11 @@ def normalize_unit(unit, presentation_unit):
     if leg["pricing"]["method"] != "hourly":
         leg["pricing"]["billable_hours"] = None
         leg["pricing"]["minimum_hours"] = None
+    unit_priced = ((unit.get("pricing_summary") or {}).get("status") or "priced") == "priced"
     internal = {
         "rate_ids": [opt.get("rate_id")] if opt.get("rate_id") else [],
-        "warnings": list(unit.get("warnings") or []),
+        "warnings": [w for w in (unit.get("warnings") or [])
+                     if not (SUPPRESSED_WARNING in w and unit_priced)],
         "placeholders": [],
     }
     for s in stops:

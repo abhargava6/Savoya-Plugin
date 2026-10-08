@@ -27,7 +27,7 @@ The client's own questions that **don't change the pricing math**. They never bl
 |---|---|
 | "Is tax included?" / "Is gratuity included?" | the standard terms block already answers it — no extra work |
 | "What's your cancellation policy?" | the terms block plus the per-leg cancellation column — no extra work |
-| "Can you provide on-site staff / a greeter?" | **the document flow asks the user for a cost.** An amount becomes an "On-site coordinator" line on the quote and is named in the email; no amount means a client-facing note that it's arranged separately and not in the vehicle pricing |
+| "Can you provide on-site staff / a greeter?" | **Price it through Core — never ask a human for a number Core has.** Greeters are vehicle types (12 Hourly Greeter/Coordinator, 13 Single Greet). Always check the rate first by attempting to price it; where it is then handled depends on who raised it — see the greeter node in `decision-tree.md`. The client asked here, so if a rate exists it belongs in **intake**, as a quote unit. Only a market with no greeter rate falls back to asking the user for a cost. A hand-entered figure on an Irvine quote was **$940** against Core's **$404.20**. |
 | Signage, PA system, luggage vehicle, waiting area | a client-facing line note on the relevant leg |
 
 ## Data-answered — the quote already contains the answer; say it out loud
