@@ -3,6 +3,34 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.22.1
+**The connector dropped two tools and the plugin was still calling them.** A live probe on
+7 October found nine tools where 22 September served ten:
+`plan_approximate_quote_units` and `calculate_quote_options` are gone and
+`calculate_temporary_quote_units` is new. 0.22.0 worked on the happy path and hit an
+unknown-tool error on two real paths — a profile with no eligible passenger, and a market
+with no stored rate. Nineteen references across eleven files, instructions *and* code.
+
+- **No passenger on the profile is no longer a special case.** `passenger_id` is optional;
+  Core attaches an eligible passenger to the unsaved calculation and returns a warning.
+  Node B omits it and quotes normally — no estimate, no fallback, no disclosure to the CSM.
+- **No stored rate in the market is no longer a dead end, and never an estimate.** Core's
+  own recovery wording is the flow: ask for a temporary rate or another vehicle, then
+  re-quote through `calculate_temporary_quote_units`. The result is never persisted and the
+  reply says so.
+- **A waiting leg can only take an *hourly* temporary rate.** A `transfer` rate needs
+  exactly two stops; a three-stop out-and-back with `rate_type: "transfer"` returns
+  `quote_units_unavailable` (Core 422, verified). The ≲3h out-and-back rule produces that
+  shape routinely, so the tree now says never to offer a transfer rate for one.
+- **New guard: the tool contract.** `regress.py` fails if any instruction file or script
+  names a tool outside the current nine — a pattern, not a blocklist of the two we know
+  about, so it catches the next change too. The nine live in `MCP_TOOLS` in `regress.py`
+  as the single place to edit when the server moves. Two files are exempt with stated
+  reasons: `feedback-archive.md` (dated history — rewriting it would falsify the record)
+  and `regress.py` itself (it holds the contract and issues no tool calls).
+- Behaviour on every path that worked in 0.22.0 is unchanged. This release only replaces
+  calls to tools that no longer exist.
+
 ## 0.22.0
 - **Questions are now gated by format.** `decide.py order_for()` drops the `cover` and
   `map` questions once the format is known not to use them. Only the PDF and the

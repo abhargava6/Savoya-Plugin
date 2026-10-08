@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Normalize a Savoya engine quote result into canonical quote.json.
 
-Accepts the JSON returned by plan_approximate_quote_units, calculate_quote_units,
-or a single option from generate_quote_options.
+Accepts the JSON returned by calculate_quote_units,
+calculate_temporary_quote_units, or a single option from generate_quote_options.
 
 Usage:
   normalize_quote.py raw_quote.json quote.json --client "Yerdle" [--prepared-by NAME]

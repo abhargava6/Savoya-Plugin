@@ -3,7 +3,7 @@
 
   handoff.py summarize <raw.json> [--select <option_key>]
       → markdown. Handles generate_quote_options (scenarios) and
-        calculate_quote_units / plan_approximate_quote_units (single package).
+        calculate_quote_units / calculate_temporary_quote_units (single package).
 
   handoff.py write --dir handoff --client "Yerdle" --profile-id 201890 \
       --request request.md --raw raw_quote.json --tool calculate_quote_units --mode best \

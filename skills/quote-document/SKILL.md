@@ -1,7 +1,7 @@
 ---
 name: quote-document
 description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, fuel surcharge, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount / take off the fuel surcharge", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. This skill does not build quotes from client requests; quote-intake does that.
-compatibility: Requires the Savoya MCP connector (resolve_itinerary_stops, preview_rate_batch, plan_approximate_quote_units / calculate_quote_units) and Python 3 for the bundled scripts. DOCX output uses the docx skill; PDF uses the pdf skill.
+compatibility: Requires the Savoya MCP connector (resolve_itinerary_stops, preview_rate_batch, calculate_quote_units / calculate_temporary_quote_units) and Python 3 for the bundled scripts. DOCX output uses the docx skill; PDF uses the pdf skill.
 ---
 
 # Savoya Quote Document

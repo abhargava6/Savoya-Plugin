@@ -21,8 +21,9 @@ Never work around a missing reference by improvising the flow from memory — th
 - One `tool_search` at the start for all five tools: `resolve_client resolve_passengers resolve_itinerary_stops generate_quote_options calculate_quote_units`. Never search per tool.
 - Never open a raw engine response to read it — `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize` does that. Save it to a file and summarize.
 - Never call `resolve_vehicle_types` unless the user names a type missing from `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/vehicle-types.md`.
-- Never call `calculate_quote_options` — it prices a single vehicle only and ignores headcount.
-- `plan_approximate_quote_units` is a **fallback only** (see Step 5); its discounts differ from the exact path.
+- `calculate_temporary_quote_units` is **not** in the opening search — load it only when the
+  user actually supplies a temporary rate or an extra discount, which is rare. It is the
+  only tool that accepts them, and the result is never persisted.
 
 ## Step 1 — Parse (no tool call)
 Extract a scratch table from the request: client · per-date legs (date, time, pickup, drop, intermediate stops with wait) · headcount per leg · asks (PA, signage, luggage, on-site staff) · anything phrased as two scenarios · anything missing (year, flight time, exact address).
@@ -60,6 +61,12 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md` is the **single source** for what to call, skip and ask at every node (A–J here, K–Q in the document skill). Read it once at the start of a quote; don't re-read it mid-flow. The shape in one paragraph so you know what you're reading:
 
 resolve client + stops in one turn (passenger too, first result, cached) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → *which detailed quote?* → refine loop → handoff → *PDF or email?*
+
+**When a unit has no stored rate in the market**, that is not a dead end. Core's recovery
+is the flow: ask the user for a temporary rate or another vehicle, then re-quote through
+`calculate_temporary_quote_units`. A leg with an intermediate stop can only take an
+**hourly** temporary rate — a transfer rate needs exactly two stops and Core rejects it
+otherwise. Say the number came from a rate they supplied.
 
 ## Questions — inline, and not negotiable
 

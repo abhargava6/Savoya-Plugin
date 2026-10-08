@@ -127,12 +127,12 @@
       "id": 3,
       "name": "irvine-discount-requote",
       "prompt": "For the Irvine Yerdle transfers (2 Mini Bus 3/20 AM, 1 Mini Bus 3/20 PM), the client wants 10% off. Update the quote and send me the email version with a short intro note from me.",
-      "expected_output": "Skill re-runs plan_approximate_quote_units with custom_discount_basis_points=1000 rather than computing 10% itself, re-normalizes, renders HTML with an intro note. Discount shown as a labeled line, not 'basis points'. Fuel surcharge question asked once.",
+      "expected_output": "Skill re-runs calculate_temporary_quote_units with temporary_discount.basis_points=1000 rather than computing 10% itself, re-normalizes, renders HTML with an intro note. Discount shown as a labeled line, not 'basis points'. Fuel surcharge question asked once.",
       "files": [],
       "assertions": [
         {
           "name": "engine-requote-used",
-          "check": "conversation includes a plan_approximate_quote_units call with custom_discount_basis_points"
+          "check": "conversation includes a calculate_temporary_quote_units call with temporary_discount.basis_points"
         },
         {
           "name": "no-manual-discount-math",

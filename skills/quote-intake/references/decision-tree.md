@@ -13,7 +13,7 @@ Every node resolves to **call**, **skip**, or **ask**. **Every "ask" uses `ask_u
 **B · Passenger** — `resolve_passengers`
 - Cached for this profile → **skip**.
 - Else **call** and take the **first result without asking**; cache it. The exact tools require a passenger id for the reservation builder, but pricing is passenger-independent (verified: two different passengers, byte-identical quotes) and the name never appears in the response or the widget.
-- Profile has no passengers → **fall back** to `plan_approximate_quote_units` at node G, labeled an estimate.
+- Profile has no passengers → **omit `passenger_id` and quote normally.** Core attaches an eligible passenger to the unsaved calculation and returns a warning saying so. There is no estimate fallback any more and none is needed — this case now prices exactly like any other.
 
 **C · Vehicle types** — static table in `vehicle-types.md`. **Call** `resolve_vehicle_types` only for a type the table lacks (MPV, electric, greeter, an international class).
 
@@ -43,9 +43,16 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 |---|---|---|
 | best or options | `generate_quote_options` | two options: **value** (candidate `vehicle_type_ids`, Core picks lowest per unit) and **elevated** (premium `vehicle_type_id`) |
 | you define | `calculate_quote_units` | one `vehicle_type_id` per unit |
-| no passenger on profile · no rates in market · user supplied a temporary rate | `plan_approximate_quote_units` | only tool accepting `custom_rates` / `custom_discount_basis_points`; **say it's an estimate** |
+| user supplied a temporary rate or an extra discount | `calculate_temporary_quote_units` | one `vehicle_type_id` per unit, plus `temporary_rate` (`rate_type`: `hourly` \| `transfer`, `amount` in **cents**) and/or `temporary_discount` (`basis_points`; 500 = 5%). At least one of the two is required. **Never persisted — say so.** |
 
-- **Never** `calculate_quote_options` — prices one vehicle, ignores headcount.
+- **No stored rate in the market** is not a dead end and never an estimate. Core's own
+  recovery wording is the flow: **ask the user for a temporary rate, or pick another
+  vehicle.** Then re-quote through `calculate_temporary_quote_units`. Say plainly that the
+  number came from a rate they supplied, not from Savoya's rate sheet.
+- **A waiting leg can only take an *hourly* temporary rate.** A `transfer` rate needs
+  exactly two stops; sent against a leg with an intermediate stop Core returns
+  `quote_units_unavailable` (verified 7 Oct 2026). Our ≲3h out-and-back rule produces that
+  shape routinely, so never offer a transfer rate for one.
 - Unit structure was decided at parse time, not here: per-date units; waves as one block; out-and-back as **one hourly unit only when the vehicle waits** (gap ≲ 3h) and as **two transfer units when it's released** (gap ≳ 3h) — price both ways when it's close.
 - Core sizes the fleet from `passenger_count` and picks the cheapest candidate **per unit**, so a value option may mix vehicles across legs. That's correct — don't override it.
 

@@ -41,7 +41,9 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - Feedback is ask → fix → log: "Anything you'd like changed?" → fix, re-render, re-verify, re-deliver → then capture with `--change` and `--fixed`.
 
 ## Engine
-- Quote on the exact path (`generate_quote_options` / `calculate_quote_units`). `plan_approximate` only for: no passenger on the profile, no rates in the market, or a user-supplied temporary rate — and say it's an estimate.
+- Quote on the exact path (`generate_quote_options` / `calculate_quote_units`). There is no
+  approximate path and no estimates: a profile with no passenger prices normally (omit
+  `passenger_id`), and no stored rate in the market means ask for a temporary rate or
+  another vehicle, then `calculate_temporary_quote_units`. Never persisted — say so.
 - Always send `commercial_tbd: true` on airport stops, even when the client gave a flight number; the engine needs a resolved airline id and nothing resolves one. Keep the number as a client-facing note.
-- Never `calculate_quote_options` — it prices one vehicle and ignores headcount.
 - Never re-geocode a stop that already has coordinates; always qualify a geocode with the service area.

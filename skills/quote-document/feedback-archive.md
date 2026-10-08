@@ -222,3 +222,30 @@ A CSM used the HTML fallback and found it "looks completely different from the P
 - Verified: printing it produces the same page count, page size and text as the real PDF, byte for byte on extracted text.
 - The skill now calls it **"the printable document"** rather than "HTML", and is told explicitly never to substitute the email HTML for a PDF — a client would notice.
 - **Printable document is now an offered format, not only a fallback.** It's the right answer when someone wants a page to open in a browser. But it is a **file**, not a hosted link — Drive dropped web hosting in 2016 and `.html` attachments are frequently quarantined by corporate mail filters, so for an external client the PDF remains the safer send. The skill says this plainly rather than implying a link exists.
+
+## 2026-10-07 (The MCP contract changed and nothing told us — v0.22.1)
+
+A live probe of the connector found **nine** tools where 22 September served ten.
+`plan_approximate_quote_units` and `calculate_quote_options` are gone;
+`calculate_temporary_quote_units` is new.
+
+- **The plugin was calling two tools that no longer exist.** Node G fell back to
+  `plan_approximate_quote_units` when a profile had no eligible passenger or a market had
+  no stored rate. On the happy path 0.22.0 worked; on those two paths a CSM would have got
+  an unknown-tool error. Nineteen references across eleven files, instructions *and* code.
+- **Entries above this line are kept as written.** The approximate path was real and these
+  notes recorded it accurately at the time — including the 23%-vs-30% discount discrepancy
+  that moved quoting onto the exact path in the first place. They are history, not
+  instructions, and the contract-drift guard exempts this file by name for that reason.
+- **No passenger on the profile is no longer a special case.** `passenger_id` is optional;
+  Core attaches an eligible passenger to the unsaved calculation and says so in a warning.
+  The case prices like any other.
+- **No stored rate in the market is not a dead end and never an estimate.** Core's own
+  recovery wording is the flow: ask for a temporary rate or another vehicle, then
+  `calculate_temporary_quote_units`. The result is never persisted and the reply says so.
+- **A waiting leg can only take an hourly temporary rate.** A `transfer` rate needs exactly
+  two stops; a three-stop out-and-back with `rate_type: "transfer"` returned
+  `quote_units_unavailable` (Core 422). Our ≲3h rule produces that shape routinely.
+- **The lesson worth keeping:** the server changed and we found out two weeks later, by
+  looking. `regress.py` now fails if any instruction file names a tool outside the current
+  nine — the same idea as the instruction-path lint, applied to tool names.

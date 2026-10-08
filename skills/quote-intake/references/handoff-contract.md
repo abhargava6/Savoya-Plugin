@@ -5,7 +5,9 @@ Intake writes a `handoff/` folder in the working directory. The document skill r
 ```
 handoff/
   request.md        the client's message, verbatim (becomes the eval prompt later)
-  raw_quote.json    the engine result from plan_approximate_quote_units (latest re-quote)
+  raw_quote.json    the engine result, verbatim (latest re-quote) — from
+                    generate_quote_options, calculate_quote_units, or
+                    calculate_temporary_quote_units
   intake.json       everything intake decided + everything the document flow decides
 ```
 

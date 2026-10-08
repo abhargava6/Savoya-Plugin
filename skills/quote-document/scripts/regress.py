@@ -230,6 +230,96 @@ def lint_paths():
     return True
 
 
+# The Savoya MCP tool contract, read directly from the live connector's schemas on
+# 2026-10-07. Removed between 22 Sept and 7 Oct: plan_approximate_quote_units and
+# calculate_quote_options. 0.22.0 still routed to both, so a profile with no eligible
+# passenger or a market with no stored rate hit an unknown-tool error instead of a quote.
+# Nothing told us; we found out by looking. When the server changes, change THIS SET and
+# let the suite say what else has to move.
+MCP_TOOLS = frozenset({
+    "resolve_client",
+    "resolve_passengers",
+    "resolve_itinerary_stops",
+    "resolve_vehicle_types",
+    "preview_rates",
+    "preview_rate_batch",
+    "calculate_quote_units",
+    "calculate_temporary_quote_units",
+    "generate_quote_options",
+})
+
+# Anything shaped like a Savoya tool name. Deliberately a pattern rather than a list of
+# the two tools we know were removed: a blocklist only catches the last change, a pattern
+# catches the next one. Verified against the whole tree — today every match is a tool.
+_TOOLISH = re.compile(r"\b(?:resolve|preview|calculate|generate|plan)_[a-z0-9_]+")
+
+# Local identifiers that match the pattern but are not MCP tools. Empty on purpose: if a
+# future function name trips this guard, either rename it or add it here — don't add a
+# non-tool to MCP_TOOLS, which is the contract.
+_NOT_TOOLS = frozenset()
+
+# Two files are exempt, each for a stated reason — not for convenience.
+#
+# feedback-archive.md is DATED HISTORY, read during the weekly pass and never at runtime.
+# Its pre-October entries describe the approximate path accurately for the dates they
+# carry; rewriting them to satisfy a guard would falsify the record.
+#
+# regress.py is this file: it *holds* the contract above and records what left it, so it
+# has to be able to write the removed names down. It issues no MCP calls, so there is no
+# dead path it could be hiding. (It flagged its own comment the first time this ran, which
+# is a fair demonstration that the pattern works.)
+_CONTRACT_EXEMPT = frozenset({"feedback-archive.md", "regress.py"})
+
+
+def lint_tool_contract():
+    """No instruction file or script may name an MCP tool outside the current contract.
+
+    This guard exists because the connector dropped two tools and the plugin went on
+    calling them for two weeks. Same idea as the instruction-path lint: the failure was
+    silent at authoring time and loud only in front of a CSM."""
+    skills = os.path.normpath(os.path.join(HERE, "..", ".."))
+    repo = os.path.normpath(os.path.join(skills, ".."))
+    targets = []
+    for owner in ("quote-intake", "quote-document"):
+        for dirpath, dirs, files in os.walk(os.path.join(skills, owner)):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for fn in files:
+                if fn in _CONTRACT_EXEMPT:
+                    continue
+                if fn.endswith((".md", ".py", ".json")):
+                    targets.append(os.path.join(dirpath, fn))
+    # Repo-root docs that describe current behaviour. CHANGELOG.md is deliberately absent:
+    # like feedback-archive.md it is dated history, and its 0.22.1 entry has to name the
+    # two tools that were removed in order to explain the release.
+    for fn in ("README.md", "CLAUDE.md", "CONTRIBUTING.md", "RULES.md"):
+        p = os.path.join(repo, fn)
+        if os.path.exists(p):
+            targets.append(p)
+
+    bad = []
+    for p in sorted(set(targets)):
+        try:
+            with open(p) as fh:
+                lines = fh.readlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for i, line in enumerate(lines, 1):
+            for name in _TOOLISH.findall(line):
+                if name in MCP_TOOLS or name in _NOT_TOOLS:
+                    continue
+                bad.append((os.path.relpath(p, repo), i, name))
+
+    if bad:
+        print("  ✗ tool contract")
+        for rel, i, name in bad:
+            print(f"      - names a tool outside the contract: {rel}:{i}: {name}")
+        print("      MCP_TOOLS in regress.py is the contract. If the server really gained")
+        print("      this tool, add it there. If it was removed, this is the dead path.")
+        return False
+    print("  ✓ tool contract")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -334,6 +424,7 @@ def main():
     if not dirs:
         sys.exit(f"No fixtures found in {a.fixtures}")
     lint_ok = lint_paths()
+    lint_ok = lint_tool_contract() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

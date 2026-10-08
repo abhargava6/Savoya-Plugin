@@ -21,7 +21,7 @@
         },
         {
           "name": "one-quote-call",
-          "check": "exactly one plan_approximate_quote_units call with 2 units"
+          "check": "exactly one calculate_quote_units call with 2 units"
         },
         {
           "name": "single-question",

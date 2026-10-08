@@ -65,12 +65,21 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs three guards beyond the fixtures: instruction paths, route guards
-(blank map, collapsed drive time, question gating across all seven formats), and
-`client_notes` shape. **A guard that cannot fail is decoration.** If you add or change
-one, break it on purpose first and confirm the suite goes red — the map stub was for
-months a flat fill in exactly the colour a failed tile fetch produces, so the suite could
-never have caught a blank map.
+`regress.py` runs four guards beyond the fixtures: instruction paths, **the tool
+contract**, route guards (blank map, collapsed drive time, question gating across all
+seven formats), and `client_notes` shape. **A guard that cannot fail is decoration.** If
+you add or change one, break it on purpose first and confirm the suite goes red — the map
+stub was for months a flat fill in exactly the colour a failed tile fetch produces, so the
+suite could never have caught a blank map.
+
+**The tool contract guard** fails if any instruction file or script names an MCP tool
+outside the current nine. `MCP_TOOLS` in `regress.py` *is* the contract — when the server
+changes, edit that set and let the suite tell you what else has to move. It matches a
+pattern rather than a list of tools known to be gone, so it catches the next removal as
+well as the last one. `feedback-archive.md`, `CHANGELOG.md` and `regress.py` itself are
+exempt, each for a reason stated in the code: the first two are dated history and
+rewriting them to satisfy a guard would falsify the record; the third holds the contract
+and issues no tool calls.
 
 ## Two kinds of finding — keep them separate
 
