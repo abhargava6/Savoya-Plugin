@@ -68,7 +68,7 @@ def stop_label(stop, presentation_stop):
         return stop["display_name"], False
     if presentation_stop and presentation_stop.get("label") and not presentation_stop["label"].startswith("Stop "):
         return presentation_stop["label"], False
-    if stop.get("airport"):
+    if is_airport(stop):
         return "Airport (label needed)", True
     if stop.get("as_directed"):
         city = (stop.get("service_area") or {}).get("name", "").split("/")[0].split(",")[0].strip()
@@ -76,12 +76,32 @@ def stop_label(stop, presentation_stop):
     return "Stop (label needed)", True
 
 
+def is_airport(stop):
+    """Is this stop an airport, in EITHER response shape?
+
+    The connector moved airport identification. It used to arrive as a top-level
+    `airport` object on the stop ({"airport": {"id": 4655910}}); current responses carry
+    no such key and identify the airport through `location.type == "airport"` instead.
+
+    Reading only the old shape made every airport stop normalize as kind "address" and
+    DROPPED the flight object with it — so the "flight time to be confirmed" disclosure
+    silently stopped appearing on client documents. Found by re-capturing a fixture
+    against the live MCP; invisible before, because the fixture carried the old shape.
+
+    Both shapes are accepted: an old capture must keep working, and the suite still holds
+    fixtures in both."""
+    if stop.get("airport"):
+        return True
+    return ((stop.get("location") or {}).get("type") == "airport"
+            or stop.get("stop_type") == "airport")
+
+
 def normalize_stop(stop, presentation_stop):
     label, needs_label = stop_label(stop, presentation_stop)
     out = {"label": label}
     if stop.get("address"):
         out["address"] = stop["address"]
-    if stop.get("airport"):
+    if is_airport(stop):
         out["kind"] = "airport"
         fl = stop.get("flight") or {}
         out["flight"] = {
@@ -170,12 +190,30 @@ def normalize_unit(unit, presentation_unit):
         leg["pricing"]["line_total_cents"] = int(per * qty)
         leg["engine_discount_pct"] = engine_discount_pct
     # "No local providers" is client-relevant: surface it as a line note automatically.
+    #
+    # Two triggers, because the signal moved. The warning text now appears only on
+    # resolve_itinerary_stops; the QUOTE response carries `excess_drive_time: true`
+    # instead. Reading only the warning meant a Whistler job — priced out of Vancouver,
+    # 4 hours of positioning folded into a 12-hour bill — produced NO note at all, so a
+    # client saw the hours without the reason. Found by re-capturing the Whistler fixture.
+    #
+    # The warning is preferred when present because it names the market. `excess_drive_time`
+    # doesn't, so the wording falls back to the service area, then to generic. Carrying the
+    # resolution warning through the handoff would restore the name in every case — that
+    # belongs with handoff contract v3 (F2).
+    note = None
     for w in unit.get("warnings") or []:
         if "No local providers" in w:
             m = re.search(r"local providers in ([^.]+)\.", w)
-            city = m.group(1).strip() if m else (service_area or "a nearby market")
-            leg["client_notes"].append(f"Vehicles for this service are positioned from our {city} partners; additional drive time is included in the reservation.")
+            note = m.group(1).strip() if m else (service_area or None)
             break
+    if note is None and unit.get("excess_drive_time"):
+        note = service_area or ""
+    if note is not None:
+        where = f"our {note} partners" if note else "a neighbouring market"
+        leg["client_notes"].append(
+            f"Vehicles for this service are positioned from {where}; additional drive time "
+            f"is included in the reservation.")
     if leg["pricing"]["method"] != "hourly":
         leg["pricing"]["billable_hours"] = None
         leg["pricing"]["minimum_hours"] = None

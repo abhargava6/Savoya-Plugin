@@ -1,45 +1,46 @@
 {
-  "normalize": {
-    "client": "Yerdle",
-    "prepared_by": "Ayush Bhargava",
-    "select": "offsite_9_16_minibus,departure_9_18_minibus",
-    "title": "Boston Offsite \u2014 Ground Transportation"
-  },
-  "edits": {
-    "legs": {
-      "departure_9_18_minibus": {
-        "stops": {
-          "1": {
-            "label": "BOS \u2013 Boston Logan International"
-          }
-        }
-      }
-    },
-    "personalization": {
-      "cover": "event-planners"
+ "normalize": {
+  "client": "Yerdle",
+  "prepared_by": "Ayush Bhargava",
+  "select": "offsite_9_15_minibus,departure_9_17_minibus",
+  "title": "Boston Offsite — Ground Transportation"
+ },
+ "edits": {
+  "legs": {
+   "departure_9_17_minibus": {
+    "stops": {
+     "1": {
+      "label": "BOS – Boston Logan International"
+     }
     }
+   }
   },
-  "adjustments": [
-    "Fuel surcharge|percent|5",
-    "Special handling \u2014 on-site coordinator|flat|150|offsite_9_16_minibus"
-  ],
-  "engine_subtotal_cents": 935520,
-  "total_cents": 997296,
-  "leg_count": 2,
-  "contains": [
-    "$9,355.20",
-    "$9,972.96",
-    "Boston Logan",
-    "to be confirmed",
-    "This is a quoting tool",
-    "fuel surcharge of 5%"
-  ],
-  "not_contains": [
-    "Sprinter",
-    "Stop 2",
-    "hourly fallback",
-    "rate_id",
-    "inventory"
-  ],
-  "pdf_pages": 3
+  "personalization": {
+   "cover": "event-planners"
+  }
+ },
+ "adjustments": [
+  "Special handling — on-site coordinator|flat|150|offsite_9_15_minibus"
+ ],
+ "engine_subtotal_cents": 1215000,
+ "total_cents": 950550,
+ "leg_count": 2,
+ "contains": [
+  "$12,150.00",
+  "Preferred client discount",
+  "$9,505.50",
+  "Boston Logan",
+  "to be confirmed",
+  "This is a quoting tool",
+  "fuel surcharge of 10%"
+ ],
+ "not_contains": [
+  "Sprinter",
+  "Stop 2",
+  "hourly fallback",
+  "rate_id",
+  "inventory",
+  "approximate"
+ ],
+ "pdf_pages": 3
 }

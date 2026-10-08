@@ -18,7 +18,8 @@ Fixture layout:
   <slug>/expected.json     see README in evals/
 
 expected.json keys (all optional):
-  normalize: {client, prepared_by, select, title, alternative: ["alt:primary", ...]}
+  normalize: {client, prepared_by, select, option, title, alternative: ["alt:primary", ...]}
+            option: pick one option from an options[] comparison response
   option_b_total_cents: int                          when alternatives are declared
   edits: {meta: {...}, personalization: {cover: "event-planners", ...}, legs: {<key>: {label, client_notes, stops: {"<index>": {label}}}}}
   adjustments: ["label|percent|5", ...]             applied in order
@@ -89,6 +90,11 @@ def check_fixture(fx, want_pdf):
             cmd = [sys.executable, os.path.join(HERE, "normalize_quote.py"), os.path.join(fx, "raw_quote.json"), qpath,
                    "--client", n.get("client", "Client")]
             if n.get("prepared_by"): cmd += ["--prepared-by", n["prepared_by"]]
+            # The new contract's comparison is options[2..5], one complete package each.
+            # normalize_quote.py has always taken --option; the harness never passed it,
+            # because every fixture predated the options shape and used alternative units
+            # inside one response instead.
+            if n.get("option"): cmd += ["--option", n["option"]]
             if n.get("select"): cmd += ["--select", n["select"]]
             if n.get("title"): cmd += ["--title", n["title"]]
             for alt in n.get("alternative", []): cmd += ["--alternative", alt]
@@ -534,6 +540,122 @@ def lint_presentation_render():
     return True
 
 
+def lint_airport_shape():
+    """An airport stop must be recognised in BOTH response shapes.
+
+    The connector moved airport identification from a top-level `airport` object on the
+    stop to `location.type == "airport"`. Reading only the old shape made every airport
+    stop normalize as an address and dropped the flight object with it, so the "flight
+    time to be confirmed" disclosure stopped appearing on client documents — silently,
+    because the fixtures all carried the old shape. This guard fails if either shape stops
+    being recognised."""
+    import importlib.util
+    mod = os.path.join(HERE, "normalize_quote.py")
+    try:
+        spec = importlib.util.spec_from_file_location("_nq_air", mod)
+        nq = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nq)
+    except Exception as e:
+        print(f"  ✗ airport shape: could not import ({e})")
+        return False
+
+    flight = {"commercial_tbd": True, "flight_type": "departure",
+              "scheduled_time": "2027-09-17T16:00:00.000Z"}
+    shapes = {
+        "legacy top-level airport key": {"airport": {"id": 4655910}, "flight": flight},
+        "current location.type":        {"display_name": "BOS - Boston Logan International",
+                                         "location": {"type": "airport"}, "flight": flight},
+        "echoed stop_type":             {"stop_type": "airport", "flight": flight},
+    }
+    problems = []
+    for name, stop in shapes.items():
+        out = nq.normalize_stop(stop, None)
+        if out.get("kind") != "airport":
+            problems.append(f"{name}: normalized as {out.get('kind')!r}, not 'airport'")
+        if not (out.get("flight") or {}).get("tbd"):
+            problems.append(f"{name}: flight object lost — the TBD disclosure cannot fire")
+    # A plain address must NOT be mistaken for an airport.
+    plain = nq.normalize_stop({"display_name": "101 Harborside Drive",
+                               "location": {"type": "city"}}, None)
+    if plain.get("kind") != "address":
+        problems.append(f"a city stop normalized as {plain.get('kind')!r}")
+
+    if problems:
+        print("  ✗ airport shape")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ airport shape")
+    return True
+
+
+def lint_positioned_from():
+    """The positioned-from disclosure must fire from EITHER signal.
+
+    A job priced out of a neighbouring market folds positioning time into the bill — a
+    Whistler tour quoted from Vancouver billed 12 hours against a requested 8. The client
+    has to be told why. The "No local providers" warning that used to trigger the note now
+    appears only on stop resolution; the quote response signals it as
+    `excess_drive_time: true`. Reading only the warning produced no note at all."""
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location("_nq_pos",
+                                                      os.path.join(HERE, "normalize_quote.py"))
+        nq = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nq)
+    except Exception as e:
+        print(f"  ✗ positioned-from: could not import ({e})")
+        return False
+
+    base = {"key": "u", "label": "L", "quantity": 1, "line_total": 1000,
+            "passenger_count": 2, "pickup_date": "2027-06-09T09:00:00-07:00",
+            "vehicle_type": {"id": 6, "name": "Coach Bus", "capacity": 50},
+            "stops": [{"display_name": "A", "travel_time": 0},
+                      {"display_name": "B", "travel_time": 6}],
+            "pricing_summary": {"status": "priced", "total_amount": 1000,
+                                "pricing_method": "hourly",
+                                "rate": {"effective_rate_amount": 1000,
+                                         "billing_unit": "hour"},
+                                "calculation": {"quantity": 1}}}
+    problems = []
+
+    def notes(u):
+        leg, _ = nq.normalize_unit(u, None)
+        return leg["client_notes"]
+
+    cases = {
+        "warning naming the market": dict(base, warnings=[
+            "No local providers are available for this reservation. Availability will be "
+            "confirmed from our local providers in Vancouver, Canada. Additional drive "
+            "time will be incurred on the reservation."]),
+        "excess_drive_time flag": dict(base, excess_drive_time=True),
+    }
+    for name, unit in cases.items():
+        try:
+            n = notes(unit)
+        except Exception as e:
+            problems.append(f"{name}: normalize raised ({e})")
+            continue
+        if not any("positioned from" in x for x in n):
+            problems.append(f"{name}: no positioned-from note — a client sees the extra "
+                            f"hours with no reason given")
+    # A local job must NOT get the note.
+    try:
+        n = notes(dict(base))
+        if n and any("positioned from" in x for x in n):
+            problems.append("a local job was told its vehicles are positioned from elsewhere")
+    except Exception:
+        pass
+
+    if problems:
+        print("  ✗ positioned-from")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ positioned-from")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -641,6 +763,8 @@ def main():
     lint_ok = lint_tool_contract() and lint_ok
     lint_ok = lint_warning_surfacing() and lint_ok
     lint_ok = lint_presentation_render() and lint_ok
+    lint_ok = lint_airport_shape() and lint_ok
+    lint_ok = lint_positioned_from() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

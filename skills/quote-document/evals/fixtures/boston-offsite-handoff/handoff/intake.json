@@ -1,101 +1,82 @@
 {
-  "contract": 1,
+  "contract": 2,
   "client": {
     "name": "Yerdle",
     "profile_id": 201890,
     "source": "resolve"
   },
+  "passenger": {
+    "id": null,
+    "name": null,
+    "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"
+  },
+  "tool": "calculate_quote_units",
+  "estimate_type": "exact",
+  "quote_mode": "define",
+  "selected_option": null,
+  "option_keys": [],
   "units": [
     {
-      "key": "offsite_9_16_minibus",
-      "label": "Wed 9/16 Offsite - Hyatt Regency > Classic Harbor Line > Hyatt Regency (5:45pm, ~120 pax) - Mini Bus 6-hr block",
-      "date": "2026-09-16T17:45:00-04:00",
+      "key": "offsite_9_15_minibus",
+      "label": "Offsite \u2014 Hyatt Regency Boston Harbor \u2194 Classic Harbor Line",
+      "date": "2027-09-15T17:45:00-04:00",
       "passenger_count": 120,
-      "structure": "out-and-back-block",
-      "rationale": "2.25h wait at Rowes Wharf \u2192 one 6-hr block per bus",
-      "alternative_of": null,
-      "vehicle_type_ids": [
-        7
-      ],
-      "quantity": 1,
-      "chosen": {
-        "vehicle_type_id": 7,
-        "quantity": 3,
-        "line_total": 561312
+      "structure": "hourly-block",
+      "rationale": "Out-and-back with a 2.25h wait \u2192 one hourly unit, not two transfers",
+      "vehicle": {
+        "id": 7,
+        "name": "Mini Bus",
+        "quantity": 3
+      },
+      "line_total": 561312,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false
       }
     },
     {
-      "key": "departure_9_18_minibus",
-      "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Mini Bus",
-      "date": "2026-09-18T12:00:00-04:00",
+      "key": "departure_9_17_minibus",
+      "label": "Departure \u2014 Hyatt Regency Boston Harbor \u2192 BOS",
+      "date": "2027-09-17T12:00:00-04:00",
       "passenger_count": 80,
-      "structure": null,
-      "rationale": null,
-      "alternative_of": null,
-      "vehicle_type_ids": [
-        7
-      ],
-      "quantity": 1,
-      "chosen": {
-        "vehicle_type_id": 7,
-        "quantity": 2,
-        "line_total": 374208
-      }
-    },
-    {
-      "key": "departure_9_18_sprinter",
-      "label": "Fri 9/18 Departure - Hyatt Regency > BOS load-and-go (12:00pm, ~80 pax) - Sprinter alternative",
-      "date": "2026-09-18T12:00:00-04:00",
-      "passenger_count": 80,
-      "structure": null,
-      "rationale": null,
-      "alternative_of": "departure_9_18_minibus",
-      "vehicle_type_ids": [
-        26
-      ],
-      "quantity": 1,
-      "chosen": {
-        "vehicle_type_id": 26,
-        "quantity": 7,
-        "line_total": 312620
+      "structure": "transfer",
+      "rationale": "Load-and-go to BOS",
+      "vehicle": {
+        "id": 7,
+        "name": "Mini Bus",
+        "quantity": 2
+      },
+      "line_total": 374208,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false
       }
     }
   ],
-  "quote_mode": "options",
-  "rate_sheet_shown": false,
+  "rate_sheet_shown": true,
   "ambiguities": [],
-  "placeholders": [
-    "departure flight 14:30 assumed"
-  ],
+  "placeholders": [],
+  "client_questions": [],
   "final": true,
   "selection": {
     "select": [
-      "offsite_9_16_minibus",
-      "departure_9_18_minibus"
+      "offsite_9_15_minibus",
+      "departure_9_17_minibus"
     ],
-    "alternatives": {
-      "departure_9_18_sprinter": "departure_9_18_minibus"
-    }
+    "alternatives": {}
   },
-  "decisions": {
-    "discount_bps": 0,
-    "fuel": "add"
-  },
+  "decisions": {},
   "log": [
     {
-      "ts": "2026-09-17T20:15:10+00:00",
-      "step": "G",
-      "note": "quote written, mode=options, final=True"
-    },
-    {
-      "ts": "2026-09-17T20:17:34+00:00",
-      "step": "doc",
-      "note": "discount_bps = 0"
-    },
-    {
-      "ts": "2026-09-17T20:17:34+00:00",
-      "step": "doc",
-      "note": "fuel = 'add'"
+      "ts": "2026-10-08T22:24:20+00:00",
+      "step": "quote",
+      "note": "calculate_quote_units, mode=define, option=None, final=True"
     }
   ]
 }

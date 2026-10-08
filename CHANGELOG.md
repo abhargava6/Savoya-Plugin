@@ -98,6 +98,39 @@ until the release is packaged.
   `id: 4645260`, which is why the tree's rule is "same id **and** address".
 - The presentation guard now renders all seven fixtures and asserts per-view facts, plus
   that none of them shows the suppressed passenger warning.
+- **All five document fixtures re-captured** against the live MCP under profile 201890
+  (Phase 2). They were never real client itineraries — all five carried
+  `normalize.client: "Yerdle"`, the test account; the triage said otherwise and was wrong.
+  So this was a shape refresh, not a pricing change.
+- **Standard → discount → net renders for the first time.** The old approximate responses
+  exposed neither the discount nor the fuel percentage, which `feedback-archive.md` recorded
+  as an engine gap blocking the rate card. The new responses carry both, and
+  `normalize_quote.py` lands on Core's aggregate exactly: $12,150.00 standard, −$3,645.00
+  discount, +$850.20 fuel = **$9,355.20**.
+- **▲ Bug fixed: airport stops had stopped being recognised.** The connector moved airport
+  identification from a top-level `airport` object on the stop to
+  `location.type == "airport"`. `normalize_stop` read only the old shape, so every airport
+  stop normalized as a plain address **and the flight object was dropped with it** — the
+  "flight time to be confirmed" disclosure silently stopped appearing on client documents.
+  Invisible until now because every fixture carried the old shape. Both shapes are accepted;
+  new `airport shape` guard, broken three ways.
+- **▲ Bug fixed: the positioned-from disclosure had stopped firing.** The "No local
+  providers" warning now appears only on `resolve_itinerary_stops`; the quote response
+  signals it as `excess_drive_time: true`. A Whistler job priced out of Vancouver billed
+  12 hours against a requested 8 and told the client nothing. Either signal now triggers the
+  note; new `positioned-from` guard, broken three ways. The market *name* still needs
+  carrying through the handoff (F2), so the fallback wording is generic.
+- The harness learned the new comparison shape: `expected.json` accepts
+  `normalize.option`, and `regress.py` passes `--option`. Every fixture predated
+  `options[]` and used alternative units inside one response instead.
+- Coverage genuinely lost, recorded rather than papered over: special-event pricing (no
+  `special_event` came back for the replacement date, so that slug is now a misnomer), and
+  a comparison where neither option has a stored rate — `generate_quote_options` accepts no
+  temporary pricing fields, so Whistler is captured as a single temporary-rate package.
+- **`ENGINEERING.md` started in the repo** with G1 (`greeter_fee` unsettable), G2
+  (`client_can_book` missing from presentation rows) and G3 (`temporary_rate_used` false at
+  aggregate level while the unit says true), each with the real response as evidence, plus a
+  B7 stub so `CLAUDE.md`'s reference resolves. It needs reconciling with the existing copy.
 - **Fixture triage** (`evals/fixtures/TRIAGE.md`). The register said seven of ten fixtures
   encoded the removed path; measured, it is eight, and the framing was wrong in a way that
   matters: `estimate_type` runs **100 × approximate against 8 × exact**, and those fixtures

@@ -35,6 +35,25 @@ Two fixtures are clean: `boston-exact-path` (7 × exact) and `six-leg-heavy-note
 | `boston-offsite-handoff` | `handoff/` | 23 | 0 | **removed-path** | The intake→document seam. Will need re-capturing with handoff contract v3 (F2). |
 | `three-city-suv-special-event` | `raw_quote.json` | 23 | 0 | **removed-path** | Special-event pricing and the 8-hour minimum. Needs a real capture. |
 
+### Correction, 8 Oct — these are not real client itineraries
+
+This file originally described the five re-capture fixtures as real client itineraries.
+**That was wrong.** `boston-offsite`, `boston-offsite-options`, `boston-offsite-handoff`,
+`whistler-iol-invitational` and `three-city-suv-special-event` all carry
+`normalize.client: "Yerdle"` — profile 201890, the internal test account. The venues in
+them are real public places; the *pricing* was never a real client's.
+
+The only real client name anywhere in the suite is **"Access TCA"**, in
+`access-tca-wedding` — and that one is post-normalize, so it needs no capture at all.
+
+So there was no re-capture trade-off to make: these fixtures were already on the test
+profile, and re-capturing them is a straight **shape refresh**, not a pricing change.
+Re-capturing `boston-offsite` on 8 Oct returned `aggregate_total: 935520` — byte-identical
+to its existing `engine_subtotal_cents`, because the Boston Mini Bus rate ($311.84/hr
+effective, 6-hour minimum) has not moved. What was stale was the response *shape*:
+`estimate_type: "approximate"`, no `presentation` block, no `requested_stop_count`, no
+`capacity_adjusted`.
+
 **Five need a live capture** (the four `raw_quote.json` ones plus the handoff). **Three are
 rendering-only** and can have their stale `estimate_type` string corrected without a new
 capture, because nothing downstream of `normalize_quote.py` reads it. **Two are clean.**
@@ -80,3 +99,63 @@ cannot be tested without. Ayush is providing the profile; 201890 (Yerdle / Orang
 covers the greeter-present half.
 
 Scenario matrix to capture against: §8 of `docs/0.23-change-register.md`.
+
+---
+
+## Phase 2 outcome, 8 Oct 2026 — all five re-captured
+
+Every fixture re-priced under profile 201890 against the live MCP. `regress.py --pdf`
+green 10/10 with six guards.
+
+| Fixture | Re-captured as | Subtotal → total |
+|---|---|---|
+| `boston-offsite` | 2 units, Mini Bus, out-and-back + BOS departure | $12,150.00 → **$9,355.20** |
+| `boston-offsite-options` | `options[2]`, Mini Bus vs Sprinters, document built for the chosen option | $12,150.00 → **$9,355.20** |
+| `boston-offsite-handoff` | regenerated with `handoff.py write`, contract **2** | $12,150.00 → **$9,355.20** |
+| `whistler-iol-invitational` | 2 units, Coach Bus on a **temporary rate**, Vancouver positioning | $15,300.00 → **$11,781.00** |
+| `three-city-suv-special-event` | 3 units, SUV hourly, Orlando / LA / NYC | $3,993.00 → **$3,074.61** |
+
+### What the re-capture bought
+
+**Standard → discount → net now renders.** The old approximate responses exposed neither
+the discount nor the fuel percentage, so the rate card could not show the breakdown —
+`feedback-archive.md` recorded that as an engine gap. The new responses carry
+`discount_basis_points` and `fuel_surcharge_basis_points`, and `normalize_quote.py` lands
+on Core's aggregate exactly: $12,150.00 standard, −$3,645.00 discount, +$850.20 fuel =
+$9,355.20.
+
+**Core sizes the fleet.** 120 passengers → 3 Mini Buses, 80 → 2, 60 → 2 Coach Buses, all
+`capacity_adjusted: true`. The old fixtures had our multiplication baked in.
+
+**Minimums and cancellation windows are market-scoped.** Boston Mini Bus is a 6-hour
+minimum and 48-hour cancellation; Orange County's is 5 and 72. A 7-minute run to Logan
+bills 6 hours. No local reconstruction would produce those.
+
+### Two bugs the re-capture found, both fixed and guarded
+
+1. **Airport stops stopped being recognised.** The connector moved airport identification
+   from a top-level `airport` object to `location.type == "airport"`. `normalize_stop` read
+   only the old shape, so every airport stop normalized as an address *and the flight
+   object was dropped with it* — the "flight time to be confirmed" disclosure silently
+   stopped appearing on client documents. Invisible before, because every fixture carried
+   the old shape. Guard: `airport shape`, three cases.
+2. **The positioned-from disclosure stopped firing.** The "No local providers" warning now
+   appears only on `resolve_itinerary_stops`; the quote response signals it as
+   `excess_drive_time: true`. A Whistler job priced out of Vancouver billed 12 hours
+   against a requested 8 and told the client nothing. Now triggered by either signal.
+   Guard: `positioned-from`, three cases. The market *name* still needs carrying through
+   the handoff (F2) — the fallback wording is generic.
+
+### Coverage genuinely lost
+
+- **Special-event pricing.** `three-city-suv-special-event` tested NYC under a US Open
+  special event with an 8-hour minimum. No `special_event` object came back for
+  2027-09-05, so that path has no fixture. The slug is now a misnomer; it is a multi-city
+  hourly fixture. Reproducing it needs a date with a known event.
+- **A comparison where neither option has a stored rate.** `generate_quote_options` accepts
+  no temporary pricing fields, so two motorcoach scenarios in a market without bus rates
+  cannot be compared in one call. Whistler is captured as a single temporary-rate package
+  instead.
+- **Alternatives inside one response.** Replaced by `options[]`. The harness now passes
+  `--option`; `option_b_total_cents` and `alternative` no longer apply to these fixtures.
+
