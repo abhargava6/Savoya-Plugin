@@ -3,6 +3,36 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.5
+
+CSMs reported route maps "not drawing the actual route" and coming out "blank with just
+straight lines". Both describe the same thing, and it is the fallback working as designed.
+
+- **"Blank with straight lines" is `render_offline`.** When fewer than 60% of map tiles
+  load, the map is redrawn from the coordinates the engine already resolved: stops in true
+  relative position, joined in order, on a near-white grid. No basemap and no road geometry
+  means straight lines. Nothing crashed — but the only disclosure is an attribution string
+  appended to a sentence about wait time, so a CSM has no way to read it as intended.
+- **The map needs three public community services** — `tile.openstreetmap.org`,
+  `router.project-osrm.org` (the demo router, which this file's own header calls "fine for
+  a few quotes a day") and `nominatim.openstreetmap.org` (rate-limited to 1 req/s).
+  Corporate networks block these routinely. No setup instruction can change that.
+- **Fixed: the map's fonts were Linux-only.** `/usr/share/fonts/truetype/dejavu/…` does not
+  exist on macOS, where every CSM is, so `truetype` always raised and every label fell back
+  to Pillow's default bitmap face at its own size, ignoring the 16pt and 13pt requested.
+  The map still rendered, so nothing ever failed and nobody reported a font bug — it simply
+  looked worse on every machine that was not Linux. Now resolves across macOS, Windows and
+  Linux, with Pillow's default only if a machine genuinely has none of them.
+- **The setup check now reports what the map can actually do here** — whether Pillow is
+  present and which of the three services this network can reach, named in plain language
+  ("Route maps will come out as a simple diagram of the stops in order, not a street map —
+  this network blocks the mapping services").
+
+**Open, and a product decision rather than a bug:** the engine already supplies drive
+times, so these three services buy only a street basemap and a road-shaped line. Whether to
+keep them, pay for a provider, or make the basemap-free overview the designed default is
+recorded as unresolved.
+
 ## 0.23.4
 
 The plugin ran with CSMs for weeks and nothing reached the Drive capture folder, with no

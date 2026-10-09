@@ -52,6 +52,56 @@ def ago(ts):
     return f"{days // 30} months ago"
 
 
+# The map needs three public community services, and a corporate network may block any
+# of them independently. When they are unreachable the document still renders -- it falls
+# back to a basemap-free overview drawn from coordinates the engine already resolved --
+# but a CSM sees straight lines on a near-white grid and reasonably reports the map as
+# "blank" or "not drawing the route". Naming which service is unreachable turns that from
+# a mystery into a fact somebody can act on.
+MAP_SERVICES = (
+    ("the map's street data", "https://tile.openstreetmap.org/0/0/0.png"),
+    ("the route finder", "https://router.project-osrm.org/route/v1/driving/13.4,52.5;13.5,52.5?overview=false"),
+    ("the address lookup", "https://nominatim.openstreetmap.org/search?q=test&format=json&limit=1"),
+)
+
+
+def reachable(url, timeout=6):
+    import urllib.request
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "savoya-quoting-setup-check"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return 200 <= r.status < 400
+    except Exception:
+        return False
+
+
+def check_map():
+    """Pillow plus the three services. Returns (lines, actions, machine_dict)."""
+    lines, actions, detail = [], [], {}
+    try:
+        import PIL  # noqa: F401
+        detail["pillow"] = True
+    except ImportError:
+        detail["pillow"] = False
+        lines.append("Route maps can't be drawn on this computer at all — a one-time setup is missing.")
+        actions.append("This one needs IT; I can write up what to tell them.")
+        return lines, actions, detail
+
+    down = [name for name, url in MAP_SERVICES if not reachable(url)]
+    detail["map_services_unreachable"] = down
+    if not down:
+        lines.append("Route maps work, with real streets and the driven route.")
+    elif len(down) == len(MAP_SERVICES):
+        lines.append("Route maps will come out as a simple diagram of the stops in order, "
+                     "not a street map — this network blocks the mapping services.")
+        actions.append("Worth asking IT whether those can be allowed, if street maps matter to you.")
+    else:
+        lines.append("Route maps will be partly degraded on this network — "
+                     + " and ".join(down) + " can't be reached from here.")
+        actions.append("Worth asking IT whether that can be allowed.")
+    return lines, actions, detail
+
+
 def main():
     cfg = load_json(CONFIG, {})
     user = cfg.get("user")
@@ -103,6 +153,10 @@ def main():
         )
         actions.append("Worth reporting — I can summarise what went wrong.")
 
+    map_lines, map_actions, map_detail = check_map()
+    lines += map_lines
+    actions += map_actions
+
     print("\n".join("  " + ln for ln in lines))
     if actions:
         print("\n  Worth doing:")
@@ -120,6 +174,7 @@ def main():
         "local_sessions": len(set(os.path.basename(p).split(".")[0]
                                   for p in (captures + feedback))),
         "failed_captures": len(failed),
+        "map": map_detail,
         "still_to_check_by_calling_them": ["savoya_mcp", "google_drive", "folder_write"],
     }, indent=1))
     print("setup-check>>>")

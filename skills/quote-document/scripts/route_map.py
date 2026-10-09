@@ -73,6 +73,39 @@ def lonlat_to_px(lat, lon, z):
     return x, y
 
 
+# Every CSM is on macOS and this path is Linux-only, so `truetype` always raised and
+# every label on every map fell back to Pillow's default bitmap face — at its own fixed
+# size, ignoring the 16pt and 13pt asked for. The map still rendered, so nothing failed
+# and nobody reported a font bug; it just looked worse on every machine but a Linux one.
+_FONT_CANDIDATES = {
+    "bold": ("/System/Library/Fonts/Supplemental/Arial Bold.ttf",            # macOS
+             "/System/Library/Fonts/Helvetica.ttc",                          # macOS, older
+             "C:/Windows/Fonts/arialbd.ttf",                                 # Windows
+             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",         # Debian/Ubuntu
+             "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"),                 # Fedora/Arch
+    "regular": ("/System/Library/Fonts/Supplemental/Arial.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",
+                "C:/Windows/Fonts/arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/dejavu/DejaVuSans.ttf"),
+}
+
+
+def load_font(weight, size):
+    """A real face at the requested size on macOS, Windows or Linux; Pillow's default
+    only if the machine genuinely has none of them."""
+    from PIL import ImageFont
+    for path in _FONT_CANDIDATES[weight]:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(size)      # Pillow >= 10.1 scales this
+    except TypeError:
+        return ImageFont.load_default()
+
+
 def render_offline(points, lines, out_png, w=1100, h=620):
     """A basemap-free route overview: stops in their true relative positions, joined in
     order. Needs no network — the engine already resolved every stop's coordinates.
@@ -99,11 +132,7 @@ def render_offline(points, lines, out_png, w=1100, h=620):
         d.line([(gx, 0), (gx, h)], fill=(237, 234, 229), width=1)
     for gy in range(0, h, 55):
         d.line([(0, gy), (w, gy)], fill=(237, 234, 229), width=1)
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
-        small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13)
-    except Exception:
-        font = small = ImageFont.load_default()
+    font, small = load_font("bold", 16), load_font("regular", 13)
     ordered = sorted(points, key=lambda p: p[2])
     pts = [place(p[0], p[1]) for p in ordered]
     if len(pts) > 1:
@@ -170,10 +199,7 @@ def render_map(points, lines, out_png, w=1100, h=620):
         if len(pts) > 1:
             d.line(pts, fill=(255, 255, 255), width=9)
             d.line(pts, fill=COPPER, width=5)
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
-    except Exception:
-        font = ImageFont.load_default()
+    font = load_font("bold", 16)
     for i, (lat, lon, label) in enumerate(points):
         x, y = lonlat_to_px(lat, lon, z); x -= left; y -= top
         d.ellipse([x - 13, y - 13, x + 13, y + 13], fill=(20, 20, 20), outline=(255, 255, 255), width=3)
