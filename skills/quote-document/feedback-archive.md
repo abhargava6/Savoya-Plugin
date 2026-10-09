@@ -4,6 +4,59 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-09 (0.23.2 — two bugs reported from a live client quote)
+
+Both reached a client-facing PDF. Reported from another session, reproduced here against
+fixtures already in the repo.
+
+**1. An additional discount printed as a negative "Fuel surcharge".** A job with a 30%
+contracted discount plus a 10% additional discount rendered:
+
+    Subtotal  $10,559.75 · Preferred client discount (30%) −$3,167.92
+    Fuel surcharge (10%) −$422.39 · Total $6,969.44
+
+The total was right. The breakdown was a lie: that −$422.39 is the missing 10% discount
+(−$1,055.98) netted against the real fuel surcharge (+$633.59), printed under a label that
+says surcharge and a percentage that says positive.
+
+Cause: `normalize_quote.py` read only `discount_basis_points`, which keeps reporting the
+*contracted* discount. Core also sends `temporary_discount_basis_points`,
+`effective_discount_basis_points`, `temporary_discount_amount` and even
+`temporary_discount_label` — all of them ignored. The additional discount was therefore
+inside Core's net but had no line, and **C5's fuel remainder swept it up**.
+
+**Why no guard fired, and this is the part worth remembering.** C4 compares the document
+total against Core's aggregate, and C5 pins fuel as the remainder *so that comparison
+always passes*. The mechanism that guarantees the total is the same mechanism that hides a
+misattribution between lines. A reconciliation check cannot catch a mislabel; only a check
+on each line's own internal consistency can. `lint_discount_attribution` now asserts that a
+line stating a positive percentage cannot carry a negative amount, and that the stated
+discount percentages add up to Core's `effective_discount_basis_points`. It is written to
+be about signs rather than about discounts, so it catches the next misattribution too.
+
+Note `temporary_discount_amount` is **not** the line amount this presentation wants: it is
+grossed up by fuel ($49.50 where the standard-rate line is $45.00 on the sedan fixture).
+The line is derived per leg at Core's granularity, exactly as the contracted one is.
+
+**2. Page 2's table clipped and ran under the footer.** Measured on a six-leg fixture with
+a 503-character intro note and European hotel names carrying street addresses: the page
+overflowed by **246px** with **five rows printed underneath the footer**, the lowest being a
+date subtotal row. `.page` is a fixed 8.5×11in box with `overflow:hidden`, so the rows were
+not pushed to the next page — they were cut.
+
+Two causes, both in the height estimate. `FIRST_BUDGET` was a flat constant, so the intro
+note — which renders *above* the table and is written by the user, so unbounded in length —
+cost the page nothing. And `leg_cost` measured the route line in **stops** (2 units per
+extra stop) rather than in characters, while `notes_cost` three lines below it already
+measured notes by length. "Four Seasons Hotel Milano, Via Gesu 6/8, 20121 Milano MI" is
+three wrapped lines on its own.
+
+`lint_page_fit` is structural rather than geometric, because the suite cannot assume a
+browser: whatever the budget is, spending more of the page above the table must leave room
+for fewer rows on it. A renderer that ignores the intro note returns the identical layout
+for both, which is the bug exactly.
+
+
 ## 2026-10-08 (0.23.1 — the instruction prose disagreed with the code for a day)
 
 Found while rebuilding the three architecture artifacts from the shipped tree, not by the

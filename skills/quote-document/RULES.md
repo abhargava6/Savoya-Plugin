@@ -7,6 +7,16 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - **Flat** document lines apply in list order on the running total. **Percentage** document lines are refused (C2): they compounded against a running subtotal, so a 25% discount followed by a 5% surcharge depended on which was entered first. Percentages are Core's to compute.
 - Engine-sourced lines (contracted discount, fuel, special handling) survive `--clear` and can only be `--waive`d, never `--remove`d. A waiver records that the booking needs the same waiver in Savoya.
 - An additional discount asked for in the document flow is **a Core re-quote**, not a document line: `calculate_temporary_quote_units` with `temporary_discount.basis_points`, then re-normalize from the response. This rule was the other way round until 0.23 and the reversal is the point — a discount applied here was our arithmetic on Core's number. Discounts are **additive** in basis points: 30% contracted + 10% here is 40%, not 37%. The result is never persisted; say so.
+- **Every discount Core applied gets its own line.** The contracted discount comes from
+  `discount_basis_points`; an additional one from `temporary_discount_basis_points`, under
+  Core's own `temporary_discount_label` when it sends one. Both are pinned per leg at
+  Core's granularity, and fuel is the remainder of *all* of them. Reading only the
+  contracted field leaves the extra discount inside Core's net with no line of its own, and
+  the fuel remainder then prints it as a **negative** "Fuel surcharge" — with the total
+  still exact, so nothing fails.
+- **A reconciling total does not mean a correct breakdown.** C4 and C5 guarantee the total
+  by construction, which is exactly why they cannot catch a line mislabelled as its
+  opposite. A line stating a positive percentage must never carry a negative amount.
 
 ## What reaches the client
 - Never: rate ids, inventory counts, "hourly fallback", basis points, profile or passenger ids, estimate_type as a word.
@@ -34,6 +44,15 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - Email is a copy-ready block in the chat plus the PDF via `present_files`. No mail connector, no attaching, no sending.
 - Never put a binary in a tool call. Never read back a rendered artifact.
 - CSMs are not technical: no install commands, file paths, scripts or Terminal instructions. Only ever "Print → Save as PDF", worded for their OS.
+
+## Page fit
+- **Anything rendered above the table spends that page's budget.** The intro note is
+  written by the user and has no length limit; a flat first-page budget cut five rows off a
+  client quote and printed them under the footer. `.page` is a fixed box with
+  `overflow:hidden`, so overflow is silently *cut*, never pushed to the next page.
+- **Measure wrapping in characters, not in items.** A route line's height depends on how
+  long the stop names are, not how many there are: one European hotel name with a street
+  address wraps to three lines.
 
 ## Capture
 - **One per conversation**, after the feedback exchange concludes — not per render. The script overwrites the same slug.

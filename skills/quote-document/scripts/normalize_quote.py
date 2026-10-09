@@ -144,6 +144,18 @@ def normalize_unit(unit, presentation_unit):
     std_rate = rate.get("base_rate_amount") or rate.get("rate_amount_before_temporary_discount")
     eff_rate = rate.get("effective_rate_amount") or opt.get("effective_rate_amount")
     bps = adj.get("discount_basis_points") or adj.get("custom_discount_basis_points") or 0
+    # An ADDITIONAL discount asked for in the document flow comes back as its own basis
+    # points; `discount_basis_points` keeps reporting only the contracted one. Reading just
+    # that field made the extra discount invisible as a line while still being inside Core's
+    # net, so C5's remainder swept it into the fuel line and printed a NEGATIVE "Fuel
+    # surcharge" at a positive percentage. The total stayed exact, which is precisely why
+    # nothing caught it: C4 compares totals, and the total was never wrong.
+    temp_bps = adj.get("temporary_discount_basis_points") or 0
+    eff_bps = adj.get("effective_discount_basis_points") or 0
+    if eff_bps and bps and temp_bps and bps + temp_bps != eff_bps:
+        print(f"WARNING: Core's discount basis points do not add up on unit "
+              f"{unit.get('key')}: contracted {bps} + temporary {temp_bps} != effective "
+              f"{eff_bps}. Presenting the parts Core stated; check the quote.", file=sys.stderr)
     engine_discount_pct = None
     if bps and std_rate and eff_rate and std_rate > eff_rate:
         engine_discount_pct = bps / 100.0
@@ -210,6 +222,12 @@ def normalize_unit(unit, presentation_unit):
         leg["pricing"]["per_vehicle_cents"] = int(per)
         leg["pricing"]["line_total_cents"] = int(per * qty)
         leg["engine_discount_pct"] = engine_discount_pct
+        if temp_bps:
+            leg["engine_temp_discount_pct"] = temp_bps / 100.0
+            # Core's own words for it reach the client document, so they are read, not
+            # invented. Absent, "Additional discount" is the neutral truth.
+            leg["engine_temp_discount_label"] = (
+                adj.get("temporary_discount_label") or "Additional discount")
     # "No local providers" is client-relevant: surface it as a line note automatically.
     #
     # Two triggers, because the signal moved. The warning text now appears only on
@@ -391,6 +409,31 @@ def main():
                             "amount_cents_fixed": int(disc)})
     elif len(pcts) > 1:
         print("WARNING: legs carry different engine discounts; leaving effective rates as-is", file=sys.stderr)
+    # The additional discount is its own line, pinned per leg at Core's granularity exactly
+    # as the contracted one is (C5). Core also sends `temporary_discount_amount`, but that
+    # figure is grossed up by the fuel surcharge ($49.50 where the standard-rate line is
+    # $45.00 on the sedan fixture), so it is not the amount this presentation wants —
+    # standard -> discounts -> fuel -> net. Deriving it the same way as the contracted line
+    # keeps the two consistent and keeps fuel as the honest remainder.
+    tpcts = {l.get("engine_temp_discount_pct") for l in legs if l.get("engine_temp_discount_pct")}
+    if len(tpcts) == 1:
+        tpct = tpcts.pop()
+        label = next((l.get("engine_temp_discount_label") for l in legs
+                      if l.get("engine_temp_discount_label")), "Additional discount")
+        tdisc = 0
+        for l in legs:
+            if l.get("alternative_of"):
+                continue
+            std = l.get("engine_standard_rate_cents") or 0
+            rate_units = l.get("engine_rate_units") or 0
+            qty = (l.get("vehicle") or {}).get("quantity") or 1
+            tdisc -= round(std * tpct / 100.0) * rate_units * qty
+        adjustments.append({"label": label, "type": "percent", "value": -tpct,
+                            "applies_to": None, "source": "engine", "amount_cents": 0,
+                            "amount_cents_fixed": int(tdisc)})
+    elif len(tpcts) > 1:
+        print("WARNING: legs carry different additional discounts; not presenting one as a "
+              "single line", file=sys.stderr)
     hnd = {l.get("engine_handling_pct") for l in legs if l.get("engine_handling_pct")}
     if len(hnd) == 1:
         adjustments.append({"label": "Special handling", "type": "percent", "value": hnd.pop(),
@@ -413,8 +456,11 @@ def main():
                    if l.get("engine_standard_line_cents") is not None
                    else (l["pricing"]["line_total_cents"] or 0))
                   for l in legs if not l.get("alternative_of"))
-        disc_line = next((a for a in adjustments if a.get("label") == "Preferred client discount"), None)
-        disc_amt = (disc_line or {}).get("amount_cents_fixed") or 0
+        # Every discount line already placed, not just the contracted one — otherwise the
+        # remainder re-absorbs the additional discount and we are back to a negative
+        # "Fuel surcharge".
+        disc_amt = sum((a.get("amount_cents_fixed") or 0) for a in adjustments
+                       if a.get("source") == "engine" and (a.get("value") or 0) < 0)
         adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fpc.pop(),
                             "applies_to": None, "source": "engine", "amount_cents": 0,
                             "amount_cents_fixed": int(net - std - disc_amt)})

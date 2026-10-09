@@ -945,6 +945,161 @@ def lint_question_set():
     return True
 
 
+# C4 compares the document total against Core's aggregate, and C5 pins fuel as the
+# remainder so that comparison passes by construction. Together they guarantee the TOTAL
+# and say nothing about whether each line is the thing its label claims. An additional
+# discount the normalizer could not see therefore vanished into the fuel line and printed
+# a NEGATIVE "Fuel surcharge" at a positive 10% -- right total, wrong story, in front of a
+# client. The invariant below is deliberately not about discounts: a line whose stated
+# percentage is positive must not carry a negative amount, and vice versa. That catches
+# the next misattribution as well as this one.
+_ATTRIBUTION_FIXTURE = os.path.join(
+    SKILL, "..", "quote-intake", "evals", "fixtures", "temporary-discount-sedan",
+    "raw_quote.json")
+
+
+def lint_discount_attribution():
+    """Every engine line's sign must agree with the percentage it states, and the stated
+    discount percentages must add up to the effective discount Core reported."""
+    import subprocess
+    import tempfile
+
+    fx = os.path.normpath(_ATTRIBUTION_FIXTURE)
+    if not os.path.exists(fx):
+        print("  \u25cb discount attribution: temporary-discount fixture missing, skipped")
+        return True
+    with open(fx) as fh:
+        raw = json.load(fh)
+
+    def dig(o, key):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == key and isinstance(v, int):
+                    return v
+                got = dig(v, key)
+                if got is not None:
+                    return got
+        elif isinstance(o, list):
+            for v in o:
+                got = dig(v, key)
+                if got is not None:
+                    return got
+        return None
+
+    eff_bps = dig(raw, "effective_discount_basis_points")
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        q = os.path.join(d, "quote.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), fx, q,
+                            "--client", "Yerdle"], capture_output=True, text=True)
+        if r.returncode or not os.path.exists(q):
+            print(f"  \u2717 discount attribution: normalize failed ({r.stderr.strip()[:120]})")
+            return False
+        with open(q) as fh:
+            quote = json.load(fh)
+
+    for a in quote.get("adjustments", []):
+        if a.get("source") != "engine":
+            continue
+        amt = a.get("amount_cents_fixed")
+        if amt is None:
+            continue
+        pct = a.get("value") or 0
+        if pct > 0 and amt < 0:
+            problems.append(f"'{a['label']}' states +{pct}% but carries {amt} cents — "
+                            "a surcharge line is absorbing a discount")
+        if pct < 0 and amt > 0:
+            problems.append(f"'{a['label']}' states {pct}% but carries +{amt} cents")
+
+    if eff_bps:
+        stated = sum(-(a.get("value") or 0) * 100 for a in quote.get("adjustments", [])
+                     if a.get("source") == "engine" and (a.get("value") or 0) < 0)
+        if round(stated) != eff_bps:
+            problems.append(f"discount lines state {round(stated)} basis points against "
+                            f"Core's effective {eff_bps} — a discount is missing a line")
+
+    if quote.get("total_cents") != quote.get("engine_total_cents"):
+        problems.append("total no longer matches Core's aggregate")
+
+    if problems:
+        print("  \u2717 discount attribution")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 discount attribution ({eff_bps} bps across "
+          f"{sum(1 for a in quote['adjustments'] if (a.get('value') or 0) < 0)} lines)")
+    return True
+
+
+# Pagination is an ESTIMATE of height, so it can only be wrong in two directions: it can
+# forget something that takes vertical space, or it can mis-measure something it knows
+# about. Both happened. The intro note sits above the table and the first-page budget was
+# a flat constant, and the route line's height was counted in stops rather than in
+# characters -- so a long note plus European hotel names with street addresses clipped a
+# real client quote by 246px, with five rows printed underneath the footer.
+#
+# A geometric check needs a browser, which this suite cannot assume. This one is
+# structural and browser-free: whatever the exact budget, spending more of the page above
+# the table MUST leave room for fewer rows on it. A renderer that ignores the intro note
+# returns the identical layout for both, which is exactly the bug.
+def lint_page_fit():
+    """A long intro note must cost the first quote page some rows."""
+    import copy
+    import re as _re
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(DEFAULT_FIXTURES, "six-leg-heavy-notes", "quote.json")
+    if not os.path.exists(fx):
+        print("  \u25cb page fit: six-leg fixture missing, skipped")
+        return True
+    with open(fx) as fh:
+        base = json.load(fh)
+
+    long_note = ("Thank you for the opportunity to support this programme. The itinerary "
+                 "below covers all ground movements for the family and their guests across "
+                 "the three cities, including the airport arrivals, the inter-city "
+                 "transfers and the evening events. Vehicles and chauffeurs are held for "
+                 "your exclusive use for the durations shown, and we have allowed "
+                 "additional time at each pickup so that nobody is waiting.")
+
+    def rows_on_first_table_page(quote, note):
+        q = copy.deepcopy(quote)
+        q.setdefault("personalization", {})["intro_note"] = note
+        with tempfile.TemporaryDirectory() as d:
+            qp = os.path.join(d, "quote.json")
+            with open(qp, "w") as fh:
+                json.dump(q, fh)
+            subprocess.run([sys.executable, os.path.join(HERE, "render_print.py"),
+                            qp, os.path.join(d, "out.pdf")],
+                           capture_output=True, text=True)
+            html_path = os.path.join(d, "out.print.html")
+            if not os.path.exists(html_path):
+                return None
+            with open(html_path, encoding="utf-8") as fh:
+                html = fh.read()
+        for page in _re.findall(r'<section class="page">.*?</section>', html, _re.S):
+            body = _re.search(r"<table class='lines'>.*?</tbody>", page, _re.S)
+            if body:
+                return len(_re.findall(r"<tr>", body.group(0)))
+        return None
+
+    short = rows_on_first_table_page(base, "")
+    long_ = rows_on_first_table_page(base, long_note)
+    if short is None or long_ is None:
+        print("  \u2717 page fit: could not render the probe document")
+        return False
+    if long_ >= short:
+        print("  \u2717 page fit")
+        print(f"      - a {len(long_note)}-character intro note left the first quote page "
+              f"holding {long_} rows, the same as with no note at all ({short}).")
+        print("      - the note renders ABOVE the table, so it must cost the page rows; "
+              "a flat first-page budget is how rows end up under the footer.")
+        return False
+    print(f"  \u2713 page fit (intro note costs the first page {short - long_} row(s))")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -1055,6 +1210,8 @@ def main():
     lint_ok = lint_airport_shape() and lint_ok
     lint_ok = lint_positioned_from() and lint_ok
     lint_ok = lint_money_ownership() and lint_ok
+    lint_ok = lint_discount_attribution() and lint_ok
+    lint_ok = lint_page_fit() and lint_ok
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok

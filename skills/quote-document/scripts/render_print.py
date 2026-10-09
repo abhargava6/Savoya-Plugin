@@ -208,11 +208,31 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     # occupies several times the space of a bare one; counting legs clipped real quotes.
     FIRST_BUDGET, CONT_BUDGET = 54, 64      # units calibrated against the fixture renders
     GROUP_COST = 4                          # a date header + its subtotal row
+    ROUTE_CHARS = 48                        # chars per wrapped line in the 9pt .svc column
+    INTRO_CHARS = 95                        # chars per wrapped line in the full-width intro
+
+    # The intro note sits ABOVE the table on the first page, so it spends part of that
+    # page's budget. FIRST_BUDGET used to be a flat constant, so an intro note longer than
+    # about two lines pushed the table down while the budget still believed it had the
+    # whole page: the last rows were cut by the page break and the text ran into the
+    # footer. The note is written by the user at question 4, so its length is not bounded.
+    intro_text = (pz.get("intro_note") or "") if option is None else ""
+    intro_cost = (2 + 2 * (len(intro_text) // INTRO_CHARS)) if intro_text else 0
+    first_budget = max(16, FIRST_BUDGET - intro_cost)
 
     def leg_cost(l):
         # client_notes render in their own block below, not in the leg row
         c = 7                               # route line, vehicle line, cancellation
-        c += 2 * max(0, len(l.get("stops") or []) - 2)          # extra stops wrap the route line
+        # Two estimates of how far the route line wraps, and we take the pessimistic one.
+        # Counting stops alone assumes every stop name is short: "Four Seasons Hotel Milano,
+        # Via Gesu 6/8" is three wrapped lines on its own, and a leg of those overflowed a
+        # page that the stop count said would fit. notes_cost already measures length this
+        # way; the route line was the one place still counting items instead of characters.
+        stops = l.get("stops") or []
+        by_stops = 2 * max(0, len(stops) - 2)
+        route_chars = sum(len(str(s.get("label") or "")) + 3 for s in stops)
+        by_chars = 2 * max(0, -(-route_chars // ROUTE_CHARS) - 1)
+        c += max(by_stops, by_chars)
         if (l.get("pricing") or {}).get("special_event"):
             c += 2
         if any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") for s in (l.get("stops") or [])):
@@ -228,7 +248,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
 
     leg_rows = [(g, l) for g in groups for l in groups[g]]
     pages_of_legs, cur, used, last_g = [], [], 0, None
-    budget = FIRST_BUDGET
+    budget = first_budget
     for g, l in leg_rows:
         cost = leg_cost(l) + (GROUP_COST if g != last_g else 0)
         if cur and used + cost > budget:
@@ -314,7 +334,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     legs_with_notes = [l for l in legs_in if notes_of(l)]
     block_cost = notes_cost(legs_with_notes) + 12          # + the breakdown table
     last_used = sum(leg_cost(l) for _, l in pages_of_legs[-1]) + GROUP_COST * len({g for g, _ in pages_of_legs[-1]})
-    room = (FIRST_BUDGET if n == 1 else CONT_BUDGET) - last_used
+    room = (first_budget if n == 1 else CONT_BUDGET) - last_used
     summary_own_page = block_cost > room
     for idx, chunk in enumerate(pages_of_legs):
         first, last = idx == 0, idx == n - 1

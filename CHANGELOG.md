@@ -3,6 +3,31 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.2
+
+Two bugs reported from a live client quote; both reached the PDF, both reproduced here
+against fixtures already in the repo.
+
+- **An additional discount printed as a negative "Fuel surcharge."** `normalize_quote.py`
+  read only `discount_basis_points`, so a 10% discount asked for in the document flow had
+  no line of its own while still sitting inside Core's net — and C5's fuel remainder
+  absorbed it, printing −$422.39 under a label that says surcharge. The total was correct
+  throughout, which is why nothing failed: **C4 compares totals, and C5 makes that
+  comparison pass by construction.** Core sends everything needed
+  (`temporary_discount_basis_points`, `effective_discount_basis_points`, and its own
+  `temporary_discount_label`); all of it is now read, and the line is pinned per leg at
+  Core's granularity like the contracted one. Fuel is the remainder of *all* discounts.
+- **New guard `lint_discount_attribution`** — a line stating a positive percentage may not
+  carry a negative amount, and the stated discounts must sum to Core's effective basis
+  points. Written about signs rather than about discounts, so it generalises.
+- **Page 2 clipped and printed rows under the footer.** Measured at **246px of overflow
+  with five rows underneath the footer** on a six-leg quote with a long intro note and
+  hotel names carrying street addresses. The first-page budget was a flat constant that
+  ignored the intro note rendered above the table, and the route line's height was counted
+  in stops rather than characters. Both now measured.
+- **New guard `lint_page_fit`** — structural, not geometric, so the suite still runs
+  without a browser: a long intro note must cost the first quote page rows.
+
 ## 0.23.1
 
 Three instruction files still carried the money rules Group C replaced on 7 Oct. The code
