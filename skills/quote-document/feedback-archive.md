@@ -4,6 +4,62 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-09 (0.23.9 — the --pdf gate found a regression I shipped, and a defect it hid)
+
+Ayush ran `regress.py --pdf` from the installed 0.23.7 on his own machine, the first time
+the real release gate had run in this whole series. It failed two fixtures, and both
+findings were correct.
+
+**1. I shipped a pagination regression in 0.23.5.** `access-tca-wedding` rendered 4 pages
+against 3, `sixteen-leg-route-map` 9 against 8, each wasting a near-empty page. The cause
+was not a wrong number: 0.23.5 added an accurate character-based wrap estimate **on top of
+budgets tuned against the old, deliberately pessimistic count-of-stops estimate**. Those
+were one calibrated system and I changed one side of it, so every leg was costed twice.
+Measured in a browser, the route column fits ~44 characters per line, so the new estimate
+was about right — the budgets were what no longer matched. Fixed by dropping the stop
+count (character length subsumes it) and recalibrating to 58/69. The safe band is 58–62 /
+69–74; at 66/78 a fixture loses a page, which means over-packing and real clipping.
+
+**I said at the time the regression risk was low**, on the grounds that the change could
+only *increase* estimated cost and therefore never under-break a page. That reasoning was
+sound and the conclusion was still wrong, because wasting a page is a defect too — and I
+verified it with a suite that structurally could not see page counts.
+
+**2. A real client-facing defect the suite could not catch.** On the 16-leg quote the line
+notes are taller than one page and the summary block did not split: A12 collided with the
+footer, A13 was cut across it, A14–A16 were clipped away entirely — 311px of overflow. The
+totals were right, `pdf_pages` matched, and every `contains` check passed, **because
+pdftotext still extracts clipped text**. A client simply never saw those notes. The block
+now paginates.
+
+Calibrating that took three attempts and two wrong numbers, which is worth recording:
+first `len//60` (the original, a 2.6× underestimate of how far a note wraps), then 23
+chars/line — which was the *median of chars÷lines on multi-line rows*, skewed by
+partially-filled last lines and a 1.5× overestimate that cost three extra pages. The right
+figure came from dividing total characters by total rendered lines: **~34**. Measure the
+aggregate, not the median of a ratio.
+
+**The expectations were encoding the bug.** `sixteen-leg` went 8 → 9 and `six-leg` 5 → 6,
+and both are corrections rather than test-fudges: 8 was the page count of a document that
+silently dropped content. Each carries its reason in the fixture's `_note`.
+
+**Why the ordinary suite never saw any of it.** The `pdf_pages` assertion was gated behind
+`--pdf`, which needs a PDF engine and therefore does not run where the work happens. But
+the renderer emits exactly one `<section class="page">` per printed page, so the same
+number is countable from the HTML with no PDF engine at all — verified against all ten
+fixtures. That check now runs in every suite run, and it catches both of today's failures.
+
+One more self-inflicted lesson: my first count of those sections used
+`'<section class="page"'`, which requires a quote straight after `page` and therefore
+missed the cover (`class="page blank"`) on every fixture. Being one short, I briefly
+concluded the bug report was wrong and the fixtures were fine. **Match the class, not the
+punctuation after it** — and when a careful report disagrees with your measurement, doubt
+the measurement first.
+
+Not fixed, deliberately: on `six-leg` a date-subtotal row overlaps the footer's top border
+by 2px. It is pre-existing, it reads fine, and chasing it risks a third over-correction.
+
+
 ## 2026-10-09 (0.23.5 / 0.23.6 — the map was machine-dependent, and said so to nobody)
 
 CSMs reported route maps "failing to draw the actual route" and coming out "blank with

@@ -206,9 +206,22 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
 
     # --- pagination by estimated height, not leg count. A leg with three long client_notes
     # occupies several times the space of a bare one; counting legs clipped real quotes.
-    FIRST_BUDGET, CONT_BUDGET = 54, 64      # units calibrated against the fixture renders
+    # Recalibrated in 0.23.9, after 0.23.5 shipped a regression that --pdf caught and the
+    # ordinary suite could not: access-tca-wedding rendered 4 pages against 3 and
+    # sixteen-leg-route-map 9 against 8, each wasting a near-empty page.
+    #
+    # The cause was not a wrong number. 0.23.5 added an accurate character-based wrap
+    # estimate ON TOP of budgets that had been tuned against the old, deliberately
+    # pessimistic count-of-stops estimate. The two were one calibrated system and only one
+    # side was changed, so every leg was costed twice over. Measured in a browser, the
+    # .svc column fits ~44 characters per line at 9pt, so the character estimate was about
+    # right -- the budgets were what no longer matched it.
+    #
+    # The safe band is 58-62 / 69-74; at 66/78 six-leg-heavy-notes loses a page, which
+    # means over-packing and real clipping. These sit at the low end, furthest from that.
+    FIRST_BUDGET, CONT_BUDGET = 58, 69
     GROUP_COST = 4                          # a date header + its subtotal row
-    ROUTE_CHARS = 48                        # chars per wrapped line in the 9pt .svc column
+    ROUTE_CHARS = 48                        # measured: ~44 chars/line in the .svc column
     INTRO_CHARS = 95                        # chars per wrapped line in the full-width intro
 
     # The intro note sits ABOVE the table on the first page, so it spends part of that
@@ -228,22 +241,47 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
         # Via Gesu 6/8" is three wrapped lines on its own, and a leg of those overflowed a
         # page that the stop count said would fit. notes_cost already measures length this
         # way; the route line was the one place still counting items instead of characters.
+        # Characters, not stop count: two stops named "Four Seasons Hotel Milano, Via Gesu
+        # 6/8, 20121 Milano MI" wrap further than five short ones. Character length
+        # subsumes the stop count, so taking the max of both just costs every leg twice.
         stops = l.get("stops") or []
-        by_stops = 2 * max(0, len(stops) - 2)
         route_chars = sum(len(str(s.get("label") or "")) + 3 for s in stops)
-        by_chars = 2 * max(0, -(-route_chars // ROUTE_CHARS) - 1)
-        c += max(by_stops, by_chars)
+        c += 2 * max(0, -(-route_chars // ROUTE_CHARS) - 1)
         if (l.get("pricing") or {}).get("special_event"):
             c += 2
         if any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") for s in (l.get("stops") or [])):
             c += 1
         return c
 
+    # Measured in a browser: the notes column is 326px wide and fits ~23 characters per
+    # line, not the 60 this assumed -- a 2.6x underestimate of how far a note wraps. That
+    # is why a 16-leg summary page overflowed by 115px with a note cut across the footer
+    # even after the block was split across pages. One constant, used by both the
+    # "does the block fit" decision and the per-page chunking, so the two cannot disagree.
+    # One cost unit is one rendered line, ~15px. Derived rather than guessed: the 16-leg
+    # fixture's notes occupy 1176px = 78 line-equivalents, of which ~62 are text across
+    # 1864 characters, so the column takes ~34 characters per line. An earlier attempt
+    # used 23, which was the median of chars/lines on multi-line rows -- skewed by
+    # partially-filled last lines, and a 1.5x overestimate that cost three extra pages.
+    NOTE_CHARS = 34
+    NOTES_ROWS_BUDGET = 53          # ~796px of free height on a notes page, at ~15px/line
+    NOTES_HEADING_COST = 4
+
+    def note_cost(l):
+        # one line of row padding, plus however far the text wraps
+        return sum(1 + -(-len(str(n)) // NOTE_CHARS) for n in notes_of(l))
+
     def notes_cost(legs_with_notes):
-        c = 4 if legs_with_notes else 0     # the "Line notes" heading
+        # Deliberately the ORIGINAL, looser estimate. This feeds one decision only --
+        # whether the summary block shares the last leg page or takes its own -- and that
+        # decision was calibrated against these budgets and works. Swapping in the
+        # accurate per-line measure made it fire more often and cost two fixtures a page
+        # each for no benefit: nothing was clipping there. Accuracy belongs where it
+        # prevents clipping (the chunking below), not where it only shifts a page break.
+        c = NOTES_HEADING_COST if legs_with_notes else 0
         for l in legs_with_notes:
             for n in notes_of(l):
-                c += 2 + len(str(n)) // 60  # notes wrap hard in a narrow column
+                c += 2 + len(str(n)) // 60
         return c
 
     leg_rows = [(g, l) for g in groups for l in groups[g]]
@@ -294,8 +332,15 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
                          f"<td class='num'>{'−' if amt<0 else ''}{money(abs(amt))}</td></tr>")
         sub_cents, tot_cents, tot_label = option["subtotal_cents"], option["total_cents"], "Option B program total"
 
-    notes = "".join(f"<tr><td class='ref'>{e(l.get('ref'))}</td><td>{'<br>'.join(e(n) for n in notes_of(l))}</td></tr>"
-                    for l in legs_in if notes_of(l))
+    # Per-leg rows kept separable, because on a 16-leg quote the notes are taller than a
+    # page and used to be emitted as one block inside a fixed-height, overflow:hidden box:
+    # A12 collided with the footer, A13 was cut across it, and A14-A16 were clipped away
+    # entirely. The totals were right and every check passed -- pdftotext still extracts
+    # clipped text -- so a client simply never saw those notes.
+    note_rows = [(l, f"<tr><td class='ref'>{e(l.get('ref'))}</td>"
+                     f"<td>{'<br>'.join(e(n) for n in notes_of(l))}</td></tr>")
+                 for l in legs_in if notes_of(l)]
+    notes = "".join(h for _, h in note_rows)
     notes_html = f"<h3>Line notes</h3><table class='notes'>{notes}</table>" if notes else ""
     intro = f"<p class='intro'>{e(pz['intro_note'])}</p>" if (option is None and pz.get("intro_note")) else ""
     primary_ref = ""
@@ -319,14 +364,19 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
 
     thead = "<thead><tr><th>Ref</th><th>Service</th><th class='num'>Basis</th><th class='num'>Min</th><th class='num'>Qty</th><th class='num'>Hrs / veh</th><th class='num'>Rate</th><th class='num'>Total</th></tr></thead>"
     footer = '<footer class="pf"><span>Savoya · Confidential · Group travel quote</span><span class="pn"></span></footer>'
-    split = f"""<div class="split">
-    <div>{notes_html}</div>
-    <table class="breakdown">
+    breakdown_html = f"""<table class="breakdown">
       <tr><td>Transportation subtotal</td><td class='num'>{money(sub_cents)}</td></tr>
       {adj_rows}
       <tr class='total'><td>{e(tot_label)}</td><td class='num'>{money(tot_cents)}</td></tr>
-    </table>
-  </div>"""
+    </table>"""
+
+    def split_block(rows_html, heading, with_breakdown):
+        nh = (f"<h3>Line notes{'' if heading else ' · continued'}</h3>"
+              f"<table class='notes'>{rows_html}</table>") if rows_html else ""
+        return (f'<div class="split"><div>{nh}</div>'
+                f'{breakdown_html if with_breakdown else ""}</div>')
+
+    split = split_block(notes, True, True)
     out = []
     n = len(pages_of_legs)
     # the notes + breakdown block needs room: if the last page is more than half full, give it its own page
@@ -349,10 +399,26 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
   {footer}
 </section>""")
     if summary_own_page:
-        out.append(f"""
+        # Paginate the notes instead of trusting them to fit. A note's cost is measured
+        # the same way notes_cost does it, so the two cannot disagree.
+        chunks, cur, used = [], [], 0
+        for l, html in note_rows:
+            c = note_cost(l)
+            if cur and used + c > NOTES_ROWS_BUDGET:
+                chunks.append(cur)
+                cur, used = [], 0
+            cur.append(html)
+            used += c
+        if cur:
+            chunks.append(cur)
+        if not chunks:
+            chunks = [[]]
+
+        for i, rows_html in enumerate(chunks):
+            out.append(f"""
 <section class="page">
-  <header class="bar"><img src="{LOGO}" style="height:26px;"><span>{e(bar_label)} · summary</span></header>
-  {split}
+  <header class="bar"><img src="{LOGO}" style="height:26px;"><span>{e(bar_label)} · summary{'' if i == 0 else ' · continued'}</span></header>
+  {split_block("".join(rows_html), i == 0, i == len(chunks) - 1)}
   {footer}
 </section>""")
     return "".join(out)

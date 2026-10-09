@@ -59,6 +59,18 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - Upload exactly what the script's `upload` list names. A big capture stays local by design. **Never split a capture across uploads.**
 - Feedback is ask → fix → log: "Anything you'd like changed?" → fix, re-render, re-verify, re-deliver → then capture with `--change` and `--fixed`.
 
+## Pagination is an estimate, and estimates are a system
+- **Never change one side of a calibrated pair.** The wrap estimate and the page budgets
+  were tuned together; making the estimate accurate without re-tuning the budgets cost two
+  fixtures a page each.
+- **Measure the aggregate, not the median of a ratio.** Total characters ÷ total rendered
+  lines gives the real wrap width; the median of chars÷lines per row is skewed by
+  partially-filled last lines and was out by 1.5×.
+- **A block that can outgrow a page must paginate.** `.page` is a fixed box with
+  `overflow:hidden`, so anything too tall is *cut*, not pushed — and `pdftotext` still
+  extracts the cut text, so every text-based check passes while the client sees nothing.
+- **Prefer a wasted page to a possible clip.** The failure modes are not equal.
+
 ## Capture is the only channel
 - **Capture hardest when the session went worst.** A session that patched something in a
   working copy or rebuilt a line by hand is the most valuable one of the week and the most

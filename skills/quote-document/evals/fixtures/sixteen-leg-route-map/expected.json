@@ -1,5 +1,5 @@
 {
-  "_note": "Route map path is rewritten by the runner; asserts every ref survives both tables.",
+  "_note": "Route map path is rewritten by the runner; asserts every ref survives both tables. | pdf_pages went 8 -> 9 in 0.23.9, and 8 was never correct. The line notes for 16 legs are taller than one page, and the summary block did not split: A12 collided with the footer, A13 was cut across it, and A14-A16 were clipped away entirely. Measured at 311px of overflow. The totals were right and every check passed, because pdftotext still extracts clipped text -- so this expectation was recording the page count of a document that silently dropped content a client had paid for.",
   "adjustments": [],
   "leg_count": 16,
   "engine_subtotal_cents": 7484160,
@@ -11,5 +11,5 @@
   "not_contains": [
     "Stop 2"
   ],
-  "pdf_pages": 8
+  "pdf_pages": 9
 }

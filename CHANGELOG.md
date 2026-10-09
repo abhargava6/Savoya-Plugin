@@ -3,6 +3,29 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.9
+
+The first real run of `regress.py --pdf`, on Ayush's machine, against the installed
+0.23.7. It found a regression I shipped and a defect that regression was hiding.
+
+- **Fixed: a pagination regression from 0.23.5.** Two fixtures rendered one page too many.
+  0.23.5 added an accurate character-based wrap estimate on top of budgets tuned against
+  the old pessimistic one — one calibrated system, one side changed, every leg costed
+  twice. Recalibrated to 58/69 with the character measure alone (it subsumes the stop
+  count). The safe band is 58–62 / 69–74; at 66/78 a fixture over-packs.
+- **Fixed: line notes clipped off the summary page.** On a 16-leg quote the notes are
+  taller than a page and the block did not split — 311px of overflow, with A12 across the
+  footer, A13 cut, and A14–A16 gone entirely. Totals were right and every check passed,
+  because `pdftotext` extracts clipped text. The block now paginates, calibrated to the
+  measured ~34 characters per line in that column.
+- **`pdf_pages` is now checked without a PDF engine.** The renderer emits one
+  `<section class="page">` per printed page, so the count is available from the HTML in
+  every suite run — not only in the `--pdf` run that needs a PDF engine and therefore does
+  not happen where the work does. This check catches both of today's failures.
+- **Two expectations corrected, not fudged:** `sixteen-leg-route-map` 8 → 9 and
+  `six-leg-heavy-notes` 5 → 6. The old numbers were the page counts of documents that
+  silently dropped content. Each fixture records why in its `_note`.
+
 ## 0.23.8
 
 Hardening around the files that exist twice. **No runtime behaviour changes** — verified by

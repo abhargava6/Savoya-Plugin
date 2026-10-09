@@ -165,6 +165,22 @@ def check_fixture(fx, want_pdf):
         for p in (html_path, print_html):
             if os.path.exists(p):
                 corpus += open(p, encoding="utf-8").read()
+        # Page count WITHOUT a PDF engine. The renderer emits exactly one
+        # <section class="page"> per printed page, so this is the same number pdfinfo
+        # reports -- verified against all ten fixtures. Gating it behind --pdf is how a
+        # pagination regression shipped in 0.23.5: the suite everyone actually runs could
+        # not see page counts at all, and the gate that could only runs where a PDF engine
+        # exists, which is not where the work happens.
+        #
+        # Match the CLASS, not a quote after it: the cover is class="page blank", so
+        # '<section class="page"' silently misses it and every count comes out one short.
+        # That cost an hour of arguing with a correct bug report.
+        if "pdf_pages" in exp and os.path.exists(print_html):
+            with open(print_html, encoding="utf-8") as fh:
+                sections = len(re.findall(r'<section class="page\b', fh.read()))
+            if sections != exp["pdf_pages"]:
+                fails.append(f"pages: expected {exp['pdf_pages']} got {sections} "
+                             f"(counted from the print HTML; no PDF engine needed)")
         if want_pdf and os.path.exists(pdf_path) and shutil.which("pdftotext"):
             corpus += subprocess.run(["pdftotext", pdf_path, "-"], capture_output=True, text=True).stdout
             if "pdf_pages" in exp and shutil.which("pdfinfo"):
