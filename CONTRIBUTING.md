@@ -1,3 +1,15 @@
+<!--
+  MIRROR. The copy that ships is skills/quote-document/assets/plugin-root/CONTRIBUTING.md
+  Editing only this file changes nothing a CSM ever sees.
+
+  Why there are two: rebuild_plugin.py rebuilds the plugin from an INSTALLED skill mount,
+  where only skills/quote-document/ exists and there is no repo. assets/plugin-root/ is
+  how the build survives having no repo around it — that is what makes the weekly pass
+  work from a chat with no terminal. The duplication is deliberate; don't "fix" it by
+  pointing the build at the repo root, which would break rebuilding from an install.
+
+  Change both copies. regress.py's `paired docs` guard fails if they drift.
+-->
 # Improving the plugin from real quotes
 
 Two loops. Don't mix them.
@@ -41,3 +53,39 @@ Marketing cover PDFs live in `covers-src/` (plugin root, not shipped). The skill
 
 ## Rules vs history
 `skills/quote-document/RULES.md` is what Claude reads before rendering — keep it short and constraint-only. `feedback-archive.md` is the dated record of what was observed and why; new findings go there, and `RULES.md` changes only when a finding creates or alters a constraint.
+
+## Why some files exist twice
+
+`SETUP.md`, `RUNBOOK.md`, `README.md`, `CONTRIBUTING.md` and `.mcp.json` each exist at the
+repo root **and** under `skills/quote-document/assets/plugin-root/`. `plugin.json` exists
+at `.claude-plugin/` and in `plugin-root/`. This looks like sloppiness and is not.
+
+`rebuild_plugin.py` rebuilds the whole plugin **from an installed skill mount**, where only
+`skills/quote-document/` exists and there is no repo at all. That is what lets the weekly
+pass run from a chat with no terminal. `assets/plugin-root/` is how the build survives
+having no repo around it, so pointing the build at the repo root would break rebuilding
+from an install — the opposite of a fix.
+
+**The rules:**
+
+- **The plugin-root copy is the one that ships.** Editing only the root copy changes
+  nothing a CSM ever sees. Each root copy carries an HTML comment saying so; it is
+  invisible wherever markdown is rendered.
+- **`README.md` is deliberately different.** The root copy is a superset — it adds a
+  "Working on this repo" section a CSM should not be handed. The shipped copy is its
+  opening section. The guard knows this and checks the prefix relationship rather than
+  equality.
+- **Never hand-edit a version.** `.claude-plugin/plugin.json` is the standard manifest
+  location and therefore the obvious place to bump — and `rebuild_plugin.py` does not read
+  it. Bump through the build (`--bump patch`, or `PLUGIN_VERSION=`), which writes every
+  copy. Hand-editing the obvious file and building without that flag ships a package
+  labelled with the new version carrying the old content.
+- **`regress.py`'s `paired docs` guard enforces all of the above**, derives the file list
+  rather than hardcoding it, and **fails on a duplicated file whose relationship is not
+  declared** — so adding a third copy of something forces a decision instead of quietly
+  creating the next drift.
+
+This has gone wrong three times: the tool contract had two homes and shipped 0.22.0 calling
+tools the server had removed; the document question set had three and kept the `fuel`
+question alive for a day after it was removed; and a `RUNBOOK.md` edit went to the root
+copy alone and would never have reached anyone.

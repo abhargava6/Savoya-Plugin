@@ -1266,6 +1266,18 @@ _PAIRED_DOCS = {
     ".mcp.json": "same",
 }
 
+# Pairs that do NOT share a filename, so the derived scan above cannot see them.
+# plugin.json is the dangerous one and was invisible to the first two versions of this
+# guard. There are two copies at different paths, and **the build reads the one nobody
+# would think to edit**: `.claude-plugin/plugin.json` is the standard, obvious manifest
+# location and `rebuild_plugin.py` never reads it. Bump the obvious file, build without
+# PLUGIN_VERSION, and you ship a package labelled with the new version carrying the old
+# content. Compared parsed rather than byte-for-byte, so a trailing newline is not a
+# failure.
+_CROSS_PATH_PAIRS = (
+    (".claude-plugin/plugin.json", "plugin.json"),
+)
+
 
 def lint_paired_docs():
     """Every doc that exists in both places must match its declared relationship."""
@@ -1305,6 +1317,27 @@ def lint_paired_docs():
                 f"{name}: the shipped copy is declared to be the opening section of the "
                 f"root copy, and is not. Either the root copy was edited above the split "
                 f"or the shipped copy drifted.")
+
+    for root_rel, shipped_rel in _CROSS_PATH_PAIRS:
+        a = os.path.join(root, root_rel)
+        b = os.path.join(shipped_dir, shipped_rel)
+        if not (os.path.isfile(a) and os.path.isfile(b)):
+            continue
+        checked += 1
+        try:
+            with open(a, encoding="utf-8") as fh:
+                va = json.load(fh)
+            with open(b, encoding="utf-8") as fh:
+                vb = json.load(fh)
+        except ValueError as ex:
+            problems.append(f"{root_rel} / plugin-root/{shipped_rel}: not valid JSON ({ex})")
+            continue
+        if va != vb:
+            diff = sorted(k for k in set(va) | set(vb) if va.get(k) != vb.get(k))
+            problems.append(
+                f"{root_rel} and plugin-root/{shipped_rel} disagree on {diff}. "
+                f"rebuild_plugin.py reads the plugin-root copy and never reads "
+                f"{root_rel}, so editing that one alone changes nothing that ships.")
 
     if problems:
         print("  \u2717 paired docs")

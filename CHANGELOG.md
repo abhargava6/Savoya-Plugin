@@ -3,6 +3,33 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.8
+
+Hardening around the files that exist twice. **No runtime behaviour changes** — verified by
+diffing the 0.23.7 and 0.23.8 packages: the only differences are four docs, the version,
+and the two tools (`regress.py`, `rebuild_plugin.py`). Nothing under `references/`, no
+`SKILL.md`, no script a quoting session runs. A 0.23.7 test result carries over.
+
+- **The `paired docs` guard now covers `plugin.json`**, which it could not see before
+  because the two copies live at *different* paths. This is the dangerous one: the build
+  reads `assets/plugin-root/plugin.json`, while `.claude-plugin/plugin.json` is the
+  standard manifest location and therefore the one a person edits — and the build never
+  read it. Bump the obvious file, build without `PLUGIN_VERSION`, and you ship a package
+  labelled with the new version carrying the old content. Compared parsed, so a trailing
+  newline is not a failure.
+- **`rebuild_plugin.py` is now the single writer of the version** and updates every copy,
+  including the repo's `.claude-plugin/plugin.json`, so bumping through the build can no
+  longer leave them disagreeing.
+- **Each mirrored file says so in an HTML comment** — invisible wherever markdown is
+  rendered, unmissable in the raw file, which is the only place someone is standing when
+  they are about to make this mistake. It names the copy that ships and says why the
+  duplication exists.
+- **`CONTRIBUTING.md` explains why the duplication is deliberate.** `rebuild_plugin.py`
+  rebuilds from an *installed skill mount* where no repo exists — that is what makes the
+  weekly pass work from a chat with no terminal. Pointing the build at the repo root would
+  break rebuilding from an install. The obvious "fix" is the wrong one, and the next person
+  to find this needs to know that before they try it.
+
 ## 0.23.7
 
 - **`RUNBOOK.md` documents how to verify a build**, which was missing: it covered the full

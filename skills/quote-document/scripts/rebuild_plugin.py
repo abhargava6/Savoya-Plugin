@@ -55,10 +55,24 @@ if ap_version:
 elif a.bump:
     manifest["version"] = bump(manifest["version"], a.bump)
 if ap_version or a.bump:
+    # Write EVERY copy of the manifest that exists, not just the one this script reads.
+    #
+    # The version lives in two places at different paths: assets/plugin-root/plugin.json,
+    # which this script reads, and <repo>/.claude-plugin/plugin.json, which is the
+    # standard manifest location and therefore the one a person edits. This script never
+    # read the second, so bumping the obvious file and building without PLUGIN_VERSION
+    # shipped a package labelled with the new version and carrying the old content. The
+    # build is now the single writer: bump through --bump or PLUGIN_VERSION and every
+    # copy moves together.
+    source_root = os.path.dirname(os.path.dirname(os.path.abspath(a.skill_dir)))
     for dest in (os.path.join(pr, "plugin.json"),
-                 os.path.join(a.skill_dir, "assets", "plugin-root", "plugin.json")):  # write back to SOURCE too
+                 os.path.join(a.skill_dir, "assets", "plugin-root", "plugin.json"),
+                 os.path.join(source_root, ".claude-plugin", "plugin.json")):
+        if not os.path.isdir(os.path.dirname(dest)):
+            continue          # installed mount: no repo around it
         try:
-            json.dump(manifest, open(dest, "w"), indent=2)
+            with open(dest, "w") as fh:
+                json.dump(manifest, fh, indent=2)
         except OSError:
             pass  # installed mounts are read-only; the packaged copy carries the version
 json.dump(manifest, open(os.path.join(root, ".claude-plugin", "plugin.json"), "w"), indent=2)

@@ -1,3 +1,15 @@
+<!--
+  MIRROR. The copy that ships is skills/quote-document/assets/plugin-root/RUNBOOK.md
+  Editing only this file changes nothing a CSM ever sees.
+
+  Why there are two: rebuild_plugin.py rebuilds the plugin from an INSTALLED skill mount,
+  where only skills/quote-document/ exists and there is no repo. assets/plugin-root/ is
+  how the build survives having no repo around it — that is what makes the weekly pass
+  work from a chat with no terminal. The duplication is deliberate; don't "fix" it by
+  pointing the build at the repo root, which would break rebuilding from an install.
+
+  Change both copies. regress.py's `paired docs` guard fails if they drift.
+-->
 # Runbook
 
 Two things you run from a Claude chat, neither needing a terminal. **Verify a build** takes
