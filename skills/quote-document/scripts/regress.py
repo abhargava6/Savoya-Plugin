@@ -1239,6 +1239,48 @@ def lint_map_honesty():
     return True
 
 
+# SETUP.md and RUNBOOK.md each exist TWICE: once at the repo root, where anyone would
+# naturally open them, and once under assets/plugin-root/, which is the copy
+# rebuild_plugin.py actually ships. Edit the root one and the change silently never
+# reaches a CSM -- the file looks right in the repo and is wrong in the package.
+#
+# This is the third time two homes have cost this project something. The tool contract had
+# two (a reference file and a constant in this script), and the drift shipped 0.22.0 calling
+# two tools that no longer existed. The document question set had three, and `fuel` survived
+# in one of them for a day. Neither was caught by anything; both were caught by a person
+# reading carefully. A byte comparison is cheap insurance against the same shape.
+_PAIRED_DOCS = ("SETUP.md", "RUNBOOK.md")
+
+
+def lint_paired_docs():
+    """The shipped copy of a duplicated doc must match the one people edit."""
+    root = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+    shipped_dir = os.path.join(SKILL, "assets", "plugin-root")
+    problems = []
+    for name in _PAIRED_DOCS:
+        a = os.path.join(root, name)
+        b = os.path.join(shipped_dir, name)
+        if not os.path.exists(a) or not os.path.exists(b):
+            continue
+        with open(a, encoding="utf-8") as fh:
+            ta = fh.read()
+        with open(b, encoding="utf-8") as fh:
+            tb = fh.read()
+        if ta != tb:
+            problems.append(
+                f"{name}: the root copy and the shipped copy differ "
+                f"({len(ta)} vs {len(tb)} chars). rebuild_plugin.py ships "
+                f"assets/plugin-root/{name}, so an edit to the root copy alone never "
+                f"reaches anyone.")
+    if problems:
+        print("  \u2717 paired docs")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 paired docs ({len(_PAIRED_DOCS)} in sync)")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -1353,6 +1395,7 @@ def main():
     lint_ok = lint_page_fit() and lint_ok
     lint_ok = lint_capture_resilience() and lint_ok
     lint_ok = lint_map_honesty() and lint_ok
+    lint_ok = lint_paired_docs() and lint_ok
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok

@@ -3,6 +3,22 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.7
+
+- **`RUNBOOK.md` documents how to verify a build**, which was missing: it covered the full
+  weekly pass but had no short "does this work here" entry, so the way to run the suite
+  from a chat was undiscoverable. The phrase is now written down, with the warnings that
+  matter — `--pdf` is the real gate, the suite runs against the *installed* copy, and a
+  session must never "fix" what it finds there because the next rebuild overwrites it.
+- **New guard `lint_paired_docs`.** `SETUP.md` and `RUNBOOK.md` each exist twice: at the
+  repo root, where anyone would naturally open them, and under `assets/plugin-root/`,
+  which is the copy `rebuild_plugin.py` actually ships. Editing the root one alone looks
+  right in the repo and silently never reaches a CSM — which is what happened to the
+  RUNBOOK edit above, caught only because the packaging path was checked by hand.
+  **This is the third time two homes have cost something here**: the tool contract had
+  two and shipped 0.22.0 calling tools that no longer existed, and the question set had
+  three and kept `fuel` alive for a day. Neither was caught by anything automatic.
+
 ## 0.23.6
 
 Ayush's call on the maps: keep the public services, make the degradation honest.
