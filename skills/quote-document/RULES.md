@@ -70,6 +70,15 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   a failure record and exits 0.
 - **Telling the user about a bug is not reporting it.** They are not the maintainer.
 
+## Setup can fail silently
+- **A Drive connector that is switched on can still fail to write.** The upload goes as the
+  CSM's own Google account; without Editor on the shared folder every upload fails and
+  everything looks connected. Only writing a test entry proves it.
+- **While Drive is unreachable, say so every session that delivers a document**, naming the
+  backlog. Saying it once is how the tool ran for weeks with nothing reaching the folder.
+- **"Is this working?" is a real question with a real answer** — run the setup check rather
+  than reassuring them.
+
 ## Engine
 - Quote on the exact path (`generate_quote_options` / `calculate_quote_units`). There is no
   approximate path and no estimates: a profile with no passenger prices normally (omit

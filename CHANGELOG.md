@@ -3,6 +3,33 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.4
+
+The plugin ran with CSMs for weeks and nothing reached the Drive capture folder, with no
+symptom on either side.
+
+- **The instructions were already right** — local fallback, a plain line for a missing
+  connector, retry-then-tell for a failed upload. **But all of it was downstream of the
+  capture script running**, and three separate failures (the pre-0.23.3 crash, a connector
+  never switched on, and an account without Editor on the folder) all produced the same
+  silence. Nothing anywhere verified setup: `preflight.py` checks local Python packages and
+  never touches a connector, the folder, or identity.
+- **New setup check, in two halves.** `setup_check.py` reports identity, the capture
+  folder, the local backlog and any failed captures in CSM language — no paths, no
+  commands, always exits 0. `references/setup-check.md` has the session call the connectors
+  instead of assuming them, including writing a small test entry to the shared folder,
+  which is the only way to tell Editor access from view-only. The entry is left behind on
+  purpose so the folder's owner can see whose setup is verified.
+- **Reachable by the words a CSM would use** — "check my quoting setup", "is this saving?",
+  "why isn't anything showing up?" are in the skill description, which is what routes them.
+- **The Drive nudge is now every session, not once**, and names the backlog ("that's 4
+  sessions now that haven't reached the team folder"). It stops when an upload succeeds.
+- **`SETUP.md` gains step 5** and lists missing Editor access and skipping the check as
+  their own rows in the skipped-steps table.
+- **Removed `log_feedback.py`** — superseded around v0.10.0 when its fields moved onto the
+  capture, orphaned ever since, and the first thing anyone found when looking for where
+  feedback goes.
+
 ## 0.23.3
 
 The capture never ran for the session that hit both 0.23.2 bugs, so those defects reached a

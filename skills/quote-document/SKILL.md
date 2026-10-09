@@ -1,6 +1,6 @@
 ---
 name: quote-document
-description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. This skill does not build quotes from client requests; quote-intake does that.
+description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. Also use it when someone asks whether their setup is working — "check my quoting setup", "is this saving?", "why isn't anything showing up?" — which runs the setup check. This skill does not build quotes from client requests; quote-intake does that.
 compatibility: Requires the Savoya MCP connector (resolve_itinerary_stops, preview_rate_batch, calculate_quote_units / calculate_temporary_quote_units) and Python 3 for the bundled scripts. DOCX output uses the docx skill; PDF uses the pdf skill.
 ---
 
@@ -153,6 +153,19 @@ The checker reconciles totals against `quote.json`, confirms every leg's referen
 - Personalization elements the user chose
 - Terms, verbatim — except the fuel-surcharge bullet, which appears only when a fuel line is on the quote
 - If the user asked for it: drive time per leg and a route-overview page with a map
+
+## Setup check
+
+Someone asking *"is this working?"*, *"why isn't my stuff saving?"*, or *"check my quoting
+setup"* gets this, and so does anyone whose name isn't recorded yet, once:
+**`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/setup-check.md`**.
+
+It matters more than it looks. A CSM could finish setup, believe they were done, and quote
+for weeks while nothing reached the shared folder — because every way the capture has of
+reporting a problem happens *after* the capture runs. The check calls the connectors
+instead of assuming them, including writing a small test entry to the folder, because a
+Drive connector that is switched on but lacks Editor on the folder looks identical to one
+that works.
 
 ## Capture — once, at the end
 

@@ -4,6 +4,55 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-09 (0.23.4 — the tool ran for weeks and nothing reached the shared folder)
+
+Ayush gave the plugin to CSMs and nothing arrived in the Drive capture folder. He also
+could not tell whether they had ever been prompted to connect Drive. Both halves of that
+turn out to be the same defect.
+
+**The instructions were fine.** `capture.md` already had a local fallback (the capture
+writes to `~/.savoya-quoting/captures/` first and Drive is a separate step), a plain
+sentence to say when the connector is missing, and a retry-then-tell-them path for a failed
+upload. None of that was the problem.
+
+**Everything user-facing was downstream of the capture script running.** Three independent
+failures produced identical symptoms — nothing in the folder, nothing said to the CSM:
+
+1. The capture crashed. Until 0.23.3 it died on any session without `handoff/request.md`,
+   before reaching the Drive step at all. No local file, no upload, **no prompt**.
+2. The Drive connector was never switched on. The fallback line was specified as "say
+   once", so at best one soft sentence in one session, weeks ago.
+3. The connector was on but the account lacked **Editor** on the folder. Their Drive
+   uploads as their own Google account, so every upload failed while everything looked
+   connected. `SETUP.md` documented the requirement; nothing verified it.
+
+And nothing anywhere checked. `preflight.py` tests local Python packages only — it never
+touches a connector, the folder, or identity. A CSM could finish setup, believe they were
+done, and quote for weeks with the loop dead at both ends.
+
+**What changed.** A setup check in two halves, because neither half can see the other's
+world: `setup_check.py` reports identity, the capture folder, the local backlog and any
+failed captures in CSM language with no paths or commands; the companion reference
+`setup-check` (under this skill's `references/`) has the session call the connectors
+rather than assume them — including **writing a small test
+entry to the shared folder**, since that is the only way to tell Editor access from
+view-only. The test entry is left in place deliberately: it is how whoever owns the folder
+can see at a glance whose setup is verified.
+
+The Drive nudge went from **once** to **every session that delivers a document**, naming
+the backlog — *"that's 4 sessions now that haven't reached the team folder"* — and stopping
+the moment an upload succeeds. A number a CSM can see growing is the part that was missing;
+"consider connecting Drive" was always going to be ignored.
+
+`SETUP.md` gains step 5, *"check my quoting setup"*, and its skipped-steps table now lists
+missing Editor access and skipping step 5 as their own rows, because both are silent.
+
+**Decided not to chase the backlog.** The captures stranded on CSM laptops stay there;
+the fix is forward-looking only. Also removed `log_feedback.py`, superseded around v0.10.0
+when its fields moved onto the capture and orphaned ever since — it was the first thing
+anyone found when looking for where feedback goes, and it went nowhere.
+
+
 ## 2026-10-09 (0.23.3 — the feedback loop's one channel was broken where it mattered)
 
 Ayush confirmed the capture never ran for the session that hit both 0.23.2 bugs. Those

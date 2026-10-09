@@ -18,6 +18,8 @@ Leave the secret blank and sign in with your Savoya account. If sign-in works bu
 
 **4. Tell Claude your name, once.** The first time it saves a session it will ask what name to record you as. Answer once; it remembers.
 
+**5. Check it worked.** Say to Claude: **"check my quoting setup"**. It will confirm the Savoya connection, confirm saving works, and write a small test entry to the shared folder to prove your account can actually write to it. Do this once now — a connector that is switched on but can't write to the folder looks exactly like one that works, and the only symptom is that nobody ever sees your sessions.
+
 That's it. You can quote, produce client documents, and draft emails.
 
 ---
@@ -51,7 +53,9 @@ Chromium is ~150 MB and takes a minute or two; the rest is seconds.
 | Skipped | Effect |
 |---|---|
 | Savoya connector | Nothing works — this one is required |
-| Google Drive | Everything still works; sessions save locally instead, and the improvement loop gets nothing until they're collected by hand (`scripts/export_captures.py` zips them) |
+| Google Drive | Everything still works; sessions save locally instead, and Claude says so at the end of each document until it's connected. The improvement loop gets nothing in the meantime |
+| **Editor** on the folder | Looks identical to working: the connector is on, uploads just fail. Step 5 is the only thing that catches it |
+| Step 5 | You won't know any of the above went wrong. This happened: the tool ran for weeks and nothing reached the shared folder |
 | Name | Sessions save anonymously; you can't tell whose workflow produced what |
 | Part 2 installs | No native PDF (the document comes as a web page — Print → Save as PDF gives an identical file), verification runs structural checks only, no route maps |
 
