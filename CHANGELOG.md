@@ -3,7 +3,7 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
-## 0.23.0 — unreleased
+## 0.23.0
 
 Group B of the 0.23 register: the plugin's assumptions and the server's contract had
 diverged in seven places. No new capability here, correctness only. Version stays 0.22.1
@@ -139,6 +139,38 @@ until the release is packaged.
   need live captures, three are post-normalize and only carry a stale string, two are
   clean — which is a smaller job than rebuilding all ten. Phase 2 is blocked on the
   connector.
+
+### Group D — greeters
+
+- **D1 — a greeter is a priced Core unit** (vehicle types 12 and 13), never a number a human
+  invents. New node **G3** in the decision tree. The rate check is an **attempted price**,
+  because greeters do not appear in `preview_rate_batch` at all and Core does not list them
+  as missing either — the rate sheet simply cannot answer the question. It isn't a wasted
+  call: in three of the four rows the priced unit is what you wanted anyway.
+- The unit shape is **pickup + an `as_directed` stop carrying the hours**. A `duration` on
+  the dropoff is ignored and collapses to the 2-hour minimum.
+- **The reply states both hour figures.** Core adds a constant +1.25 h of positioning, so
+  4 hours requested bills 5.25. Never back-solve the duration.
+- **A greeter leg carries no drive time.** Core still reports one — 5 minutes at Irvine,
+  13 on the wrong shape — and "5 min drive" against a person meeting a flight is what a
+  client notices. New `greeter leg` guard; the price survives, only the drive figure goes.
+
+### Group F — artifacts and documentation
+
+- **F2 — handoff contract v3**, and a stale handoff is now **refused rather than
+  reinterpreted**. A v1 or v2 handoff was written when `estimate_type` could be
+  `approximate`, a passenger id was always present and the sourcing market arrived on the
+  quote; reading those fields as if they still meant that produces a document that looks
+  right. New `handoff contract` guard pins the version across the three places it lives.
+- **F3 — `quote-schema.md`** rewritten around copy-and-validate, with the fields the
+  normalizer now keeps for Core's benefit and E1's forward-looking note on
+  `vehicle_options[]`.
+- **F1 — the flow diagrams are regenerated and in the repo** at `docs/diagrams/`, validated
+  by rendering. The copies circulating with sales are from the 0.22 tree and still show the
+  approximate fallback, a passenger on every quote, six questions and no greeter node.
+- **F4 — `CLAUDE.md`** gains the lesson these three releases keep teaching: *a signal moving
+  is as dangerous as a signal breaking.* Three live bugs had the same shape — the connector
+  moved something, the plugin kept reading the old place, and nothing errored.
 
 ### Group C — money ownership moves to Core
 

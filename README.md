@@ -63,12 +63,25 @@ existing plugin. **Plugin content is read into a session's container when that s
 starts**, so test in a brand-new chat — an open one keeps the old copy.
 
 ### What the regression suite checks
-Beyond the ten fixtures, `regress.py` runs three guards that exist because each of these
-reached a CSM once:
+Beyond the ten fixtures, `regress.py` runs nine guards. Each exists because the thing it
+checks either reached a CSM once, or was found shipping during the 0.23 migration:
 
 - **instruction paths** — every `scripts/` / `references/` path is anchored and resolves.
+- **tool contract** — no instruction file or script names an MCP tool outside the nine in
+  `mcp-contract.md`, which is the contract the suite enforces.
+- **warning surfacing** — one Core warning is suppressed, by name, and an *unrecognised*
+  warning still reaches the CSM.
+- **presentation render** — Core's `presentation` block renders from real captures, falls
+  back when absent, and surfaces a total that disagrees with its own units.
+- **airport shape** — an airport stop is recognised in both response shapes, so the flight
+  object and the "to be confirmed" disclosure survive.
+- **positioned-from** — a job sourced from a neighbouring market tells the client so.
+- **money ownership** — the total equals Core's exactly, by construction, and a gap refuses
+  to render.
+- **greeter leg** — a greeter carries no drive time but keeps its price.
+- **handoff contract** — a handoff from an older build is refused, not reinterpreted.
 - **route guards** — a blank route map and a collapsed drive time are both still rejected
-  by the verifier, and the question gating is correct for all seven formats.
+  by the verifier, and the question gating is correct across the formats.
 - **client_notes** — a bare string is caught rather than rendered one character per line.
 
 A guard that cannot fail is decoration. If you change one, break it on purpose first and
@@ -89,6 +102,7 @@ they are the regression suite.
 
 - `CLAUDE.md` — working conventions, read automatically by Claude Code in this folder
 
-`ENGINEERING.md` (open items for Savoya engineering) is **not** in this repo — it was
-never part of the packaged plugin. Copy the current version into the repo root; the
-conventions in `CLAUDE.md` refer to it.
+`ENGINEERING.md` (open items for Savoya engineering) **is** in this repo as of 0.23.0,
+holding items G1–G4 raised during the MCP migration plus a stub for the pre-existing B7. It
+is not part of the packaged plugin. It still needs reconciling with the copy that holds the
+original B7 entry — the item ids there are provisional.

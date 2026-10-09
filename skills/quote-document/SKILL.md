@@ -56,7 +56,8 @@ Exit 0 = everything available; exit 1 = some formats unavailable, and it prints 
 
 **Answer the client's carried questions.** `intake.json → client_questions` holds what the client asked that didn't change pricing. Three kinds (`${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/client-questions.md`):
 - **Boilerplate** (tax, gratuity, cancellation) — the terms block and per-leg cancellation column already answer it. No extra work.
-- **Operational** (on-site staff, greeter, signage, PA, luggage vehicle) — a client-facing line note: arranged separately, **not included in the vehicle pricing**.
+- **Operational** (signage, PA, luggage vehicle) — a client-facing line note: arranged separately, **not included in the vehicle pricing**.
+- **On-site staff / greeter** is no longer in that group: Core prices it as a quote unit (vehicle types 12 and 13). See node G3 in `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md`. Only a market with no greeter rate falls back to a flat line or a note.
 - **Data-answered** (pickup times, drive times, vehicle counts, how long the vehicle is held) — the quote already contains the answer but only implicitly. **Surface it as an explicit callout** near the top of the first quote page (usually `personalization.intro_note`) *and* near the top of the email, before the line-item breakdown. A client asking "can you suggest pick-up times?" should not have to read sixteen timestamps to find out.
 
 **Never put an internal question in a client document.** A missing year, an unresolved headcount or an ambiguous location was settled during intake; if one somehow reaches here, stop and ask the user — don't write "please confirm the date" into the client's PDF or email. The single exception is a TBD flight, which is a normal client-facing line.
@@ -74,7 +75,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py <key> <ans
 
 Ask what it prints using **`ask_user_input_v0` with tappable options** (labels in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`), record the answer, repeat until `all answered`. Never ask one of these in prose and never fold two into one sentence — that is what makes the flow skip questions.
 
-The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · fuel · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· cover · personalization · map · format**.
+The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· cover · personalization · map · format**. There is no `fuel` key — fuel is Core's and not adjustable here.
 
 **If the user has already said which format they want — "just draft the email", "send me the spreadsheet" — record it first: `decide.py format <value>`.** Only the PDF and the printable document use a cover page or a route map, so once the format is known the script stops asking about them. Asking a CSM to pick a cover for an email is not a neutral extra question, and answering the map question costs 10–20 seconds of routing for a field the email never reads.
 
@@ -86,7 +87,7 @@ Two kinds of change, and they're handled differently because they *are* differen
 
 **Engine-applied** — a discount or custom rate the engine already applied (the normalizer shows the standard rate on the line and a "Preferred client discount (N%)" line marked `source: engine`). Never re-quote from the document flow; the quote is final when it reaches here. Don't `--remove` engine lines — `--clear` preserves them on purpose.
 
-**Document-level** — fuel surcharge, special handling, greeter fees, parking estimates, anything the engine has no concept of. These live in `quote.json` under `adjustments` and are applied by `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/apply_adjustments.py`. The engine subtotal is never mutated; the document shows *engine subtotal → adjustments → total*.
+**Document-level** — only **flat amounts**, for things Core genuinely cannot price: a fallback on-site cost in a market with no greeter rate, a parking estimate. These live in `quote.json` under `adjustments` and are applied by `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/apply_adjustments.py`, which **refuses a document percentage line**. Percentages are Core's: an additional discount is a re-quote through `calculate_temporary_quote_units`, fuel is market-scoped and engine-applied, and a greeter is a priced Core unit. The engine subtotal is never mutated; the document shows *standard → discount → net → any flat line → total*, and refuses to render if the total doesn't match Savoya's.
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/apply_adjustments.py quote.json \

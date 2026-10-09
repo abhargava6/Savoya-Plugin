@@ -1,5 +1,5 @@
 {
-  "contract": 2,
+  "contract": 3,
   "client": {
     "name": "Yerdle",
     "profile_id": 201890,
@@ -74,7 +74,7 @@
   "decisions": {},
   "log": [
     {
-      "ts": "2026-10-08T22:24:20+00:00",
+      "ts": "2026-10-09T01:25:30+00:00",
       "step": "quote",
       "note": "calculate_quote_units, mode=define, option=None, final=True"
     }

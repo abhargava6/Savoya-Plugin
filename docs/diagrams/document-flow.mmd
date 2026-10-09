@@ -1,0 +1,45 @@
+%% savoya-quoting 0.23.0 — document flow (decision-tree.md nodes K–Q)
+%% FIVE questions, not six: the fuel question is gone (C3).
+flowchart TD
+    START([handoff/intake.json, final]) --> K0
+    K0[["K0 · preflight.py<br/>once per conversation"]] --> KV
+
+    KV{"contract == 3?"}
+    KV -->|no| REJECT[/"REFUSE: written by an older<br/>build. Re-run the quote."/]
+    KV -->|yes| K
+
+    K[["K · normalize_quote.py --from-handoff<br/>copy Core's totals; pin engine lines<br/>to Core's granularity"]] --> L
+
+    L{{"L · decide.py --next<br/>one question per message"}}
+    L --> Q1{{"1 · discount_pct"}}
+    Q1 -->|a percentage| REQ[["calculate_temporary_quote_units<br/>temporary_discount.basis_points<br/>→ re-normalize. NOT a local line"]]
+    Q1 -->|none| Q2
+    REQ --> Q2
+    Q2{{"2 · greeter_cost<br/>only if the client asked<br/>and the market has no rate"}} --> Q3
+    Q3{{"3 · cover"}} --> Q4
+    Q4{{"4 · personalization"}} --> Q5
+    Q5{{"5 · map"}} --> Q6
+    Q6{{"6 · format"}} --> M
+
+    M[["M · apply_adjustments.py<br/>FLAT document lines only —<br/>a percentage line is refused"]] --> C4
+
+    C4{"total == Core's<br/>aggregate?"}
+    C4 -->|no| FAIL[/"REFUSE TO RENDER.<br/>Names both figures and the<br/>difference. No absorption."/]
+    C4 -->|yes| N
+
+    N[["N · render_print.py / draft_email.py"]] --> N2
+    N2[["N2 · verify_document.py"]]
+    N2 -->|0 PASS| O
+    N2 -->|1 FAIL| N
+    N2 -->|2 PARTIAL| O
+    O[["O · deliver — email as a<br/>copy-ready block, files attached"]] --> Q
+    Q{{"Q · Anything you'd like changed?"}}
+    Q -->|a change| M
+    Q -->|no| P[["P · capture_session.py<br/>once, after any fix"]]
+
+    classDef toolcall fill:#1f3864,stroke:#0f1e3d,color:#fff
+    classDef question fill:#7b3f00,stroke:#4a2600,color:#fff
+    classDef halt fill:#6b1f1f,stroke:#3d0f0f,color:#fff
+    class K0,K,M,N,N2,O,P,REQ toolcall
+    class L,Q1,Q2,Q3,Q4,Q5,Q6,Q question
+    class REJECT,FAIL halt

@@ -224,7 +224,7 @@ def write(a):
     path = os.path.join(a.dir, "intake.json")
     prev = load_json(path, {}) or {}
     intake = {
-        "contract": 2,
+        "contract": 3,
         "client": {"name": a.client, "profile_id": a.profile_id, "source": a.client_source},
         # Set only when the USER named a passenger. Omitted from the call otherwise:
         # Core attaches an eligible passenger to the unsaved calculation itself. The old

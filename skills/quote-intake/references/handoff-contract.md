@@ -14,7 +14,7 @@ handoff/
 ## intake.json
 ```jsonc
 {
-  "contract": 1,
+  "contract": 3,
   "client":        {"name": "Yerdle", "profile_id": 201890, "source": "cache|resolve|user"},
   "units": [        // one per quote unit sent to the engine, in order
     {"key": "offsite_9_16", "date": "2026-09-16T17:45:00-04:00", "passenger_count": 120,
@@ -47,3 +47,45 @@ handoff/
 - A re-quote (node I refine loop, or a discount applied in document) overwrites `raw_quote.json` and appends to `log`; it never edits `units` in place — it replaces them.
 - If `handoff/` exists but `final` is false, the document skill refuses to start and says the quote isn't final.
 - If `handoff/` doesn't exist (a quote brought from elsewhere), the document skill falls back to its own Stage 1 and asks its questions from scratch.
+
+---
+
+## Contract versions
+
+| v | Written by | What changed |
+|---|---|---|
+| 1 | ≤ 0.22.0 | original |
+| 2 | 0.22.x | `tool`, `estimate_type`, `rate_sheet_shown` |
+| **3** | **0.23.0** | the fields below. **A handoff with a lower `contract` is rejected, not interpreted.** |
+
+**Why reject rather than read what you can.** A v1 or v2 handoff was written against the
+previous MCP contract, where `estimate_type` could be `approximate`, a passenger id was
+always present, and the sourcing warning arrived on the quote. Reading those fields as if
+they meant what they mean now produces a document that looks right. Refusing produces a
+sentence a CSM can act on: *re-run the quote.*
+
+### What v3 adds
+
+- **`source_tool`** — which tool produced `raw_quote.json`: `calculate_quote_units`,
+  `generate_quote_options` or `calculate_temporary_quote_units`. The document says different
+  things about each, and only this field distinguishes them.
+- **`persisted: false`** — always, and stated rather than assumed. A temporary quote is never
+  saved in Savoya, and a client document built from one must say so.
+- **`temporary_pricing`** — `{rate: {...}, discount: {...}, label}` when either was supplied,
+  else `null`. The label is what Core echoes into its own warning, so it reaches the client
+  document; it has to be written as if read.
+- **`aggregate_total`** — Core's figure, carried verbatim. The document fails closed if its
+  own total doesn't match (C4), and that check needs Core's number from the source rather
+  than re-derived.
+- **`warnings`** — the unit-level warnings, **as Core sent them**, minus the single named
+  suppression. Includes anything we don't recognise.
+- **`sourcing`** — `{market, excess_drive_time}` captured from
+  `resolve_itinerary_stops`. **This is the one field intake must carry because the document
+  cannot get it any other way:** the "No local providers" warning naming the market appears
+  only on stop resolution, while the quote response carries just
+  `excess_drive_time: true`. Without it a Whistler job billing 12 hours against a requested
+  8 can only tell the client "a neighbouring market". See `ENGINEERING.md` G4 — if Core
+  starts returning the warning on the quote, this field becomes redundant rather than wrong.
+- **`passenger`** — `{id, name}` only when the **user named one**. Omitted otherwise; Core
+  attaches an eligible passenger to the unsaved calculation itself.
+

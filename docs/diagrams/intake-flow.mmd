@@ -1,0 +1,63 @@
+%% savoya-quoting 0.23.0 — intake flow (decision-tree.md nodes A–J)
+%% Canonical source. The copies circulating with sales were drawn from the 0.22 tree and
+%% are wrong wherever Groups A–D changed it. Regenerate from here, don't redraw.
+flowchart TD
+    REQ([Client request pasted]) --> A
+
+    A[["A · resolve_client"]] --> C
+    A -.->|several matches| ASK1
+    C[["C · resolve_vehicle_types<br/>once per quote — Core owns<br/>ids, capacity, eligibility"]] --> D
+    D[["D · resolve_itinerary_stops<br/>one call, every stop, deduped"]] --> BQ
+
+    BQ{User named<br/>a passenger?}
+    BQ -->|yes| B[["B · resolve_passengers"]]
+    BQ -->|no| SKIPB[/"send no passenger_id —<br/>Core attaches one to the<br/>unsaved calculation"/]
+    B --> ASK1
+    SKIPB --> ASK1
+
+    ASK1{{"Blocking gaps + stop<br/>ambiguities — ONE message"}} --> E1
+    E1{{"1 · Rate sheet first,<br/>or straight to the quote?"}} --> FQ
+    FQ{Rate sheet?}
+    FQ -->|yes| F[["F · preview_rate_batch<br/>display: show"]] --> E2
+    FQ -->|no| E2
+    E2{{"2 · Best value, options,<br/>or you name the vehicles?"}} --> GQ
+
+    GQ{Mode}
+    GQ -->|best / options| GO[["G · generate_quote_options<br/>options[2..5], every trip in each"]]
+    GQ -->|you define| GU[["G · calculate_quote_units<br/>one vehicle_type_id per unit"]]
+    GQ -->|user supplied a rate<br/>or extra discount| GT[["G · calculate_temporary_quote_units<br/>never persisted — say so"]]
+
+    GO --> NORATE
+    GU --> NORATE
+    GT --> GREETQ
+
+    NORATE{Any unit<br/>unpriced?}
+    NORATE -->|"blocked:<br/>no stored rate"| ASKRATE{{"Ask for a temporary rate<br/>or another vehicle.<br/>A waiting leg can only take<br/>an HOURLY rate"}}
+    ASKRATE --> GT
+    NORATE -->|all priced| GREETQ
+
+    GREETQ{"Greeter or<br/>on-site staff?"}
+    GREETQ -->|yes| G3[["G3 · price vehicle type 12/13<br/>pickup + as_directed with hours.<br/>The attempted price IS the<br/>rate check"]]
+    GREETQ -->|no| G2
+    G3 --> G3R{Priced?}
+    G3R -->|yes, client asked| G2
+    G3R -->|yes, CSM added| DOCG[/"handled in the<br/>document flow at<br/>Core's rate"/]
+    G3R -->|"blocked:<br/>no greeter rate"| DOCA[/"document flow asks<br/>for a cost"/]
+    DOCG --> G2
+    DOCA --> G2
+
+    G2[["G2 · calculate_quote_units<br/>for the chosen option"]] --> H
+    H[["H · render_presentation.py<br/>Core's own view.<br/>exit 3 → handoff.py summarize"]] --> I
+    I{{"Refine — different vehicles,<br/>headcount, hours?"}}
+    I -->|a change| GQ
+    I -->|final| J[["J · handoff.py write --final<br/>contract 3"]]
+    J --> ASKDOC{{"PDF or email?"}}
+    ASKDOC -->|no| CAP[["capture, done"]]
+    ASKDOC -->|yes| DOCFLOW([document flow — nodes K–Q])
+
+    classDef toolcall fill:#1f3864,stroke:#0f1e3d,color:#fff
+    classDef question fill:#7b3f00,stroke:#4a2600,color:#fff
+    classDef aside fill:#2d4739,stroke:#1b2b22,color:#fff
+    class A,B,C,D,F,GO,GU,GT,G2,G3,H,J,CAP toolcall
+    class ASK1,E1,E2,I,ASKDOC,ASKRATE,GREETQ question
+    class SKIPB,DOCG,DOCA aside

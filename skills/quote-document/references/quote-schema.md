@@ -10,7 +10,7 @@
     "prepared_by": "Ayush Bhargava",           // ✎
     "prepared_on": "2026-09-14",
     "valid_until": "2026-09-21",               // ✎ default: prepared_on + 7 days
-    "estimate_type": "approximate",            // from engine: approximate | exact
+    "estimate_type": "exact",                  // from engine: always "exact" now — the approximate path is gone
     "currency": "USD",
     "title": "Boston Offsite — Ground Transportation",  // ✎ optional; default "Ground Transportation Quote"
     "reference": null,                         // ✎ optional external ref (Salesforce opp, etc.)
@@ -82,10 +82,53 @@
 ## Money
 All amounts are integer cents. Renderers format. Never store floats.
 
-## Adjustment order and compounding
-Adjustments apply in list order on the running total. Negative `value` = discount. So `[discount −25%, fuel +5%]` yields fuel = 5% of the discounted subtotal — matching Savoya billing ($13,842 → −$3,460.50 → +$519.08 = $10,900.58 on the reference wedding quote). Leg-scoped adjustments (`applies_to`) use that leg's `line_total_cents` as the base. `flat` values are dollars on the CLI and cents in the file.
+## Adjustments — copy and validate, never rebuild
 
-The print renderer derives the rate card's *net* rates from the **global percent** adjustments only (no `applies_to`): `net = standard × (1 + Σdiscount%) × (1 + Σsurcharge%)`.
+**Engine-sourced lines carry `amount_cents_fixed`, and that amount is Core's.** It is
+computed per leg at the granularity Core rounds at — per hour, per vehicle — not as a
+percentage of a running subtotal. Those differ: applying 30% and 10% to a subtotal instead
+of to an hourly rate made a 5-vehicle Boston job come out **30 cents above** Savoya's quote.
+The fuel line is pinned as the **remainder**, so standard + lines equals Core's aggregate
+**by construction**.
+
+**Document-sourced percentage lines are refused.** This is where local money math lived:
+percentages compounded in list order, so `[−25%, +5%]` depended on which was entered first.
+Nothing legitimate produces one now — an additional discount is a Core re-quote
+(`temporary_discount.basis_points`), fuel is market-scoped and engine-applied, and a greeter
+is a priced Core unit. **Flat** document lines still apply, on top of Core's total: a
+fallback on-site cost in a market with no greeter rate is a real amount a CSM was told.
+`flat` values are dollars on the CLI and cents in the file. Leg-scoped lines (`applies_to`)
+use that leg's `line_total_cents` as the base.
+
+**Fail closed.** If `total_cents` doesn't equal `engine_total_cents` and no document line has
+been added, rendering **stops**. The previous behaviour absorbed the gap into the last
+engine-sourced line, which made the document reconcile *and* made that line misstate its own
+percentage. `rounded_to_engine` is gone; a fixture carrying it fails the suite.
+
+The print renderer derives the rate card's *net* rates from the **global percent** adjustments only (no `applies_to`): `net = standard × (1 + Σdiscount%) × (1 + Σsurcharge%)`. That is presentation of a rate, not computation of a total — the total is Core's, pinned and checked.
 
 ## What the normalizer does with engine alternatives
 If the raw result has several units and `--select` isn't passed, it keeps all of them and prints a loud warning listing the keys. The document must never contain two priced options for the same leg unless the user explicitly wants an options comparison — and in that case the leg gets `"alternative_of": "<key>"` and the renderer shows it as an option, excluded from the subtotal.
+
+## Fields the normalizer adds for Core's benefit, not the renderer's
+
+| Field | Why |
+|---|---|
+| `engine_total_cents` | Core's aggregate, verbatim. The fail-closed check compares against this. |
+| `engine_net_line_cents` *(per leg)* | Core's net for the leg. `line_total_cents` is replaced by the **standard** presentation, so this is the only place Core's own figure survives. |
+| `engine_standard_rate_cents`, `engine_rate_units`, `engine_standard_line_cents` *(per leg)* | What the discount line is computed from, at Core's granularity. |
+| `is_greeter` *(per leg)* | Suppresses drive time. A greeter drives nowhere, and Core still reports a travel time on the as-directed stop. |
+
+## Forward-looking — GREEN-371 (E1)
+
+A leg's pricing will become an **array of sources**, each with its own service area, rate,
+quoted and billable time, cancellation policy, minimum and excess drive time. Every renderer
+currently assumes **one rate, cancellation policy and minimum per vehicle type per leg**, and
+R51 breaks exactly that.
+
+`vehicle_options[]` on each quote unit is already shaped like this — Core returns **every**
+candidate it priced, with per-candidate `unit_total`, `quantity`, `line_total`, `rate_id` and
+`pricing_summary`, not just the winner. Design against that rather than against a guess, and
+**do not add new logic that deepens the single-rate assumption** while touching
+`normalize_quote.py`, `render_print.py` or `verify_document.py`.
+

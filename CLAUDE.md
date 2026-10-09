@@ -44,8 +44,17 @@ guard to make a change pass.
   `${CLAUDE_PLUGIN_ROOT}/skills/<skill>/`.** A bare `scripts/x.py` resolves against the
   session's working directory, not the skill folder, and silently fails — after which the
   session improvises the flow from memory. `regress.py` lints for this.
-- **Money math lives in Python, never in prose or model arithmetic.** Anything that
-  computes a total is deterministic and testable.
+- **Money is Core's, not ours.** The plugin presents totals; it does not compute them.
+  Engine line amounts are pinned to Core's own granularity (per hour, per vehicle) and the
+  fuel line is the remainder, so standard + lines equals Core's aggregate by construction.
+  A mismatch **refuses to render** — the old code absorbed the gap into the last engine
+  line, which made the document reconcile *and* made that line misstate its percentage, and
+  it put a 5-vehicle Boston job 30 cents above Savoya's quote. Document **percentage** lines
+  are refused outright; flat lines are fine. Whatever arithmetic remains lives in Python, is
+  deterministic and is tested.
+- **Hours are Core's too.** `duration` is the lever, not the answer: an as-directed stop
+  sent `duration: 4` bills **5.25** hours, a constant +1.25 h of positioning. Send what the
+  user asked for, show what Core billed, name the difference. Never back-solve the duration.
 - **Drive times come from the engine.** `normalize_quote.py` reads the engine's
   `travel_times`; `route_map.py` contributes distance and the drawn line only. The public
   router was silently overwriting authoritative numbers, and dropping unresolved stops
@@ -57,6 +66,17 @@ guard to make a change pass.
   and printed one letter per line down a client's PDF.
 - **The fuel surcharge is market-scoped** — 5% in most markets, 10% in London and others.
   Never hardcode it; read it from the quote. Two separate bugs came from a literal `5%`.
+  It is also **no longer adjustable**: Core applies it, we present it. The document flow has
+  no fuel question.
+- **A signal moving is as dangerous as a signal breaking.** Three live bugs in 0.23 were the
+  same shape — the connector moved something and the plugin kept reading the old place, with
+  no error. Airport stops moved from a top-level `airport` key to `location.type` and every
+  airport stop quietly became an address, taking the flight object and the "to be confirmed"
+  disclosure with it. The sourcing warning moved off the quote response to stop resolution,
+  and a job billing 12 hours against a requested 8 stopped telling the client why. Two tools
+  vanished and 0.22.0 kept calling them. **When a response field matters, guard both shapes
+  and assert against a real capture** — a fixture written in the old shape cannot catch any
+  of this.
 - **Every enumerable question uses `ask_user_input_v0`, one per message.** Asking in prose
   or folding two into one sentence is how questions get skipped.
 - **CSMs are not technical.** Never surface install commands, file paths, scripts or
@@ -65,9 +85,11 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs four guards beyond the fixtures: instruction paths, **the tool
-contract**, route guards (blank map, collapsed drive time, question gating across all
-seven formats), and `client_notes` shape. **A guard that cannot fail is decoration.** If
+`regress.py` runs eight guards beyond the fixtures: instruction paths, **the tool
+contract**, **warning surfacing**, **presentation render**, **airport shape**,
+**positioned-from**, **money ownership**, **greeter leg**, **handoff contract**, route
+guards (blank map, collapsed drive time, question gating across the formats), and
+`client_notes` shape. **A guard that cannot fail is decoration.** If
 you add or change one, break it on purpose first and confirm the suite goes red — the map
 stub was for months a flat fill in exactly the colour a failed tile fetch produces, so the
 suite could never have caught a blank map.
@@ -119,6 +141,12 @@ promoted fixtures come in.
   `make_covers.py` needs it; ask Ayush for the originals before regenerating covers.
 - `.mcp.json` points at `mcp-acceptance.savoya.net`. Production needs a URL change and a
   version bump.
+- **Special-event pricing has no fixture.** `three-city-suv-special-event` is now a misnomer;
+  reproducing that path needs a service date with a known event.
+- **A comparison where no option has a stored rate cannot be captured.**
+  `generate_quote_options` accepts no temporary pricing fields.
 - Word and Excel output has never been exercised in a real session.
 - No airline resolver, so flights always go as `commercial_tbd: true` — see
-  `ENGINEERING.md` item B7.
+  `ENGINEERING.md` item B7, and B7b for the FBO sibling.
+- `ENGINEERING.md` **is now in this repo**, started on 8 Oct with items G1–G4. It needs
+  reconciling with the copy that holds the original B7 entry.

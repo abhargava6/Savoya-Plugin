@@ -722,6 +722,137 @@ def lint_money_ownership():
     return True
 
 
+def lint_greeter_leg():
+    """A greeter leg must carry no drive time, and must still be priced.
+
+    Core reports a travel_time on a greeter's as-directed stop — 5 minutes at Irvine, 6 at
+    Whistler, 13 on the wrong hotel-to-venue shape. "5 min drive" against a person meeting a
+    flight is the detail a client notices. The unit is still a real priced unit; only the
+    drive figure is dropped."""
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location("_nq_g",
+                                                      os.path.join(HERE, "normalize_quote.py"))
+        nq = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nq)
+    except Exception as e:
+        print(f"  ✗ greeter leg: could not import ({e})")
+        return False
+
+    def unit(vt):
+        return {"key": "g", "label": "Greeter", "quantity": 1, "line_total": 40420,
+                "passenger_count": 1, "pickup_date": "2027-03-20T09:00:00-07:00",
+                "vehicle_type": vt, "travel_times": [0, 5],
+                "stops": [{"display_name": "Hotel", "travel_time": 0},
+                          {"display_name": "As Directed", "travel_time": 5,
+                           "as_directed": True, "duration": 4}],
+                "pricing_summary": {"status": "priced", "total_amount": 40420,
+                                    "pricing_method": "hourly",
+                                    "rate": {"effective_rate_amount": 7699,
+                                             "billing_unit": "hour", "minimum_hours": 2},
+                                    "calculation": {"billable_hours": 5.25, "quantity": 1}}}
+    problems = []
+    g, _ = nq.normalize_unit(unit({"id": 12, "name": "Hourly Greeter/Coordinator",
+                                   "capacity": None, "greeter": True}), None)
+    if g.get("route"):
+        problems.append(f"greeter leg carries a route: {g['route']}")
+    if any(s.get("drive_minutes") for s in g["stops"]):
+        problems.append("greeter leg carries per-stop drive minutes")
+    if not g.get("is_greeter"):
+        problems.append("greeter leg not flagged as one")
+    if (g["pricing"] or {}).get("line_total_cents") != 40420:
+        problems.append("greeter leg lost its price — only the drive time should go")
+
+    # By name alone, when `greeter` isn't on the vehicle_type object.
+    g2, _ = nq.normalize_unit(unit({"id": 13, "name": "Single Greet", "capacity": None}), None)
+    if g2.get("route") or not g2.get("is_greeter"):
+        problems.append("a greeter identified by name alone kept its drive time")
+
+    # A normal vehicle must keep its drive time.
+    v, _ = nq.normalize_unit(unit({"id": 8, "name": "SUV", "capacity": 6}), None)
+    if not v.get("route"):
+        problems.append("an SUV lost its drive time — suppression is too broad")
+
+    if problems:
+        print("  ✗ greeter leg")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ greeter leg")
+    return True
+
+
+def lint_handoff_contract():
+    """A handoff from an older build must be refused, with a sentence a CSM can act on.
+
+    A v1 or v2 handoff was written against the previous MCP contract — estimate_type could
+    be "approximate", a passenger id was always present, the sourcing market arrived on the
+    quote. Reading those fields as if they still mean what they meant produces a document
+    that looks right, which is worse than one that refuses. Also pins the three places the
+    version number lives: handoff.py writes it, normalize_quote.py checks it, and
+    handoff-contract.md documents it."""
+    import importlib.util
+    import subprocess
+    import tempfile
+
+    skills = os.path.normpath(os.path.join(HERE, "..", ".."))
+
+    def load(path, name):
+        spec = importlib.util.spec_from_file_location(name, path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+    try:
+        nq = load(os.path.join(HERE, "normalize_quote.py"), "_nq_h")
+    except Exception as e:
+        print(f"  ✗ handoff contract: could not import ({e})")
+        return False
+
+    problems = []
+    doc = os.path.join(skills, "quote-intake", "references", "handoff-contract.md")
+    try:
+        with open(doc) as fh:
+            text = fh.read()
+        if f'"contract": {nq.HANDOFF_CONTRACT},' not in text:
+            problems.append(f"handoff-contract.md does not document contract "
+                            f"{nq.HANDOFF_CONTRACT}")
+    except OSError as e:
+        problems.append(f"cannot read handoff-contract.md ({e})")
+
+    fx = os.path.join(DEFAULT_FIXTURES, "boston-offsite-handoff", "handoff")
+    if os.path.isdir(fx):
+        with open(os.path.join(fx, "intake.json")) as fh:
+            live = json.load(fh)
+        if live.get("contract") != nq.HANDOFF_CONTRACT:
+            problems.append(f"the handoff fixture is contract {live.get('contract')}, "
+                            f"this build reads {nq.HANDOFF_CONTRACT}")
+        # A downgraded copy must be refused.
+        with tempfile.TemporaryDirectory() as d:
+            import shutil
+            hd = os.path.join(d, "handoff")
+            shutil.copytree(fx, hd)
+            stale = dict(live, contract=nq.HANDOFF_CONTRACT - 1)
+            with open(os.path.join(hd, "intake.json"), "w") as fh:
+                json.dump(stale, fh)
+            r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                                "--from-handoff", hd, os.path.join(d, "q.json")],
+                               capture_output=True, text=True)
+            out = r.stdout + r.stderr
+            if r.returncode == 0:
+                problems.append("a stale handoff was accepted — it must be refused")
+            elif "older version of the plugin" not in out:
+                problems.append("a stale handoff was refused, but not in words a CSM "
+                                "could act on")
+
+    if problems:
+        print("  ✗ handoff contract")
+        for pr in problems:
+            print(f"      - {pr}")
+        return False
+    print("  ✓ handoff contract")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -832,6 +963,8 @@ def main():
     lint_ok = lint_airport_shape() and lint_ok
     lint_ok = lint_positioned_from() and lint_ok
     lint_ok = lint_money_ownership() and lint_ok
+    lint_ok = lint_greeter_leg() and lint_ok
+    lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     for d in dirs:

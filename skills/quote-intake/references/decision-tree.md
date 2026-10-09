@@ -76,6 +76,31 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 
 **G2 · Detail card** — after the user picks an option (or accepts the recommendation in best mode), **call** `calculate_quote_units` with that option's chosen vehicle per unit. Identical numbers; it renders the full detail card that `scenario_comparison` shows condensed. **Skip** in define mode — already that shape.
 
+**G3 · Greeter / on-site staff** — a Core quote unit, never a number a human invents
+
+Greeters are vehicle types: **12 Hourly Greeter/Coordinator**, **13 Single Greet**. Both come back `greeter: true`, `capacity: null`.
+
+**Always check the rate first. Never ask a human for a number Core has.** An Irvine quote carried a hand-entered *"On-site coordinator — 4 hrs at $235/hr = $940"* against Core's **$404.20** for the same request — 2.3× over, in front of a client.
+
+**The rate check is an attempted price, not a lookup.** Greeters do not appear in `preview_rate_batch`'s `vehicle_rate_evaluations`, and Core does not list them in `missing_vehicle_type_ids` either — the rate sheet simply cannot answer the question. So price one and read the answer: a priced unit means the market has a rate; `status: "blocked"` with `error_type: "quote_units_unavailable"` means it does not. That is not a wasted call — in three of the four rows below the priced unit is the thing you wanted anyway.
+
+| Who raised it | Rate in that market? | Where it's handled |
+|---|---|---|
+| **Client asked** | Yes | **Intake** — a quote unit in the package they requested |
+| **Client asked** | No | **Document flow** — ask the user for a cost, as a flat line |
+| **User wants it**, client didn't | Yes | **Document flow**, using Core's rate |
+| **User wants it**, client didn't | No | **Document flow**, ask the user to supply one |
+
+The rate check is the constant; the *location* follows who raised it. Something the client asked for is part of the quote they requested, so it belongs in intake. Something the CSM adds is an add-on to a finished quote, so it belongs in the document flow.
+
+**The unit shape is pickup + an `as_directed` stop carrying the hours.** A `duration` on the dropoff is **ignored** and the unit collapses to the 2-hour minimum. Do not model a greeter as hotel → venue: that reports a drive time for someone standing in a lobby.
+
+**▲ Core adds positioning time, so say both numbers.** Verified: `duration: 2` billed **3.25** hours, `duration: 4` billed **5.25** — a constant **+1.25 h**. Send what the user asked for, show what Core billed, and name the difference: *"4 hours as directed; Savoya bills 5.25 including positioning — $404.20."* Never back-solve the duration to make the billed figure match the request; that is the arithmetic this release removed.
+
+- Don't pass the group headcount to a greeter unit — capacity is `null`, so there is no fleet to size.
+- `limited_availability: true` shows up on greeter types. Worth saying before a CSM promises one.
+- The renderer suppresses drive time on an as-directed greeter leg; a greeter drives nowhere.
+
 **H · Read the result** — **`${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py <file>`** renders Core's own `presentation` block, which is the CSM-facing view: same layout for every CSM looking at the same quote, and Core's figures printed rather than restated. Exit **3** means the response carried no `presentation` block — fall back to `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize <file> [--select <key>]`, which is still the right tool for the comparison summary and the handoff. Never open the response yourself, and never reword either script's output.
 - **It is internal.** The render carries rate ids, rack-versus-effective rates and `limited_availability`. None of that goes in front of a client — `quote.json` and the whole document flow stay ours.
 - **If Core's presentation total and its own quote units disagree**, the render says so and prints both. Don't pick one. Re-quote, and if it persists that is a Savoya-side report.

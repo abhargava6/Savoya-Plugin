@@ -17,6 +17,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# The handoff contract this build reads. Bumped whenever intake starts writing a
+# field the document relies on, so a handoff from an older build is refused rather
+# than silently misread. Kept in step with handoff.py and handoff-contract.md.
+HANDOFF_CONTRACT = 3
+
 # The ONE Core warning we suppress, and only when the unit actually priced. We send no
 # passenger_id unless the user named one, so Core attaching an eligible passenger to the
 # unsaved calculation is the expected path, not an exception — and it repeats on every
@@ -173,7 +178,14 @@ def normalize_unit(unit, presentation_unit):
         leg["engine_fuel_pct"] = engine_fuel_pct
     if engine_handling_pct:
         leg["engine_handling_pct"] = engine_handling_pct
-    tt = unit.get("travel_times") or []
+    # D1 — a greeter drives nowhere. Core still reports a travel_time on the as-directed
+    # stop (6 minutes at Whistler, 5 at Irvine, 13 on the wrong hotel-to-venue shape), and
+    # "5 min drive" against a person meeting a flight is the kind of detail a client notices.
+    is_greeter = bool((unit.get("vehicle_type") or {}).get("greeter")) or \
+        "greet" in ((unit.get("vehicle_type") or {}).get("name") or "").lower()
+    if is_greeter:
+        leg["is_greeter"] = True
+    tt = [] if is_greeter else (unit.get("travel_times") or [])
     if tt:
         for i, s_ in enumerate(leg["stops"]):
             if i < len(tt) and tt[i]:
@@ -259,6 +271,19 @@ def main():
     handoff = None
     if args.from_handoff:
         handoff = json.load(open(os.path.join(args.from_handoff, "intake.json"), encoding="utf-8"))
+        # F2 — a stale handoff is REJECTED, not interpreted. A v1 or v2 handoff was written
+        # against the previous MCP contract, where estimate_type could be "approximate", a
+        # passenger id was always present, and the sourcing market arrived on the quote.
+        # Reading those fields as if they still mean what they meant produces a document
+        # that looks right, which is worse than one that refuses.
+        ver = handoff.get("contract")
+        if ver != HANDOFF_CONTRACT:
+            sys.exit(
+                f"This handoff was written by an older version of the plugin "
+                f"(contract {ver}, this build needs {HANDOFF_CONTRACT}).\n"
+                "The quote behind it predates the current Savoya contract, so building a\n"
+                "document from it would produce numbers that look right and aren't.\n"
+                "\nRe-run the quote in intake and the handoff will be rewritten.")
         if not handoff.get("final"):
             sys.exit("Handoff is not final — the quote hasn't been confirmed by the user.")
         args.raw = args.raw or os.path.join(args.from_handoff, "raw_quote.json")
