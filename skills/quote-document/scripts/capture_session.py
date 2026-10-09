@@ -35,7 +35,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--slug", required=True); ap.add_argument("--client", required=True)
     ap.add_argument("--deliverable", required=True, help="pdf | email-draft | html | docx | xlsx")
-    ap.add_argument("--request", required=True); ap.add_argument("--quote", required=True)
+    # NOT required. The one path where a session most needs to report something is the
+    # path where it improvised, and node K's documented fallback (a quote brought from
+    # elsewhere) has no handoff and therefore no request.md at all. This argument being
+    # mandatory meant the capture crashed with a traceback exactly then, silently, because
+    # the capture step is specified as "say nothing to the user". A capture missing the
+    # original request is still worth everything else it carries.
+    ap.add_argument("--request", default=None)
+    ap.add_argument("--quote", required=True)
     ap.add_argument("--raw", default=None); ap.add_argument("--select", default=None)
     ap.add_argument("--user", default=None)
     ap.add_argument("--worked", default=None); ap.add_argument("--change", default=None)
@@ -113,12 +120,23 @@ def main():
     if expected["normalize"] is None:
         expected.pop("normalize")
 
+    request_text, request_missing = None, None
+    if not a.request:
+        request_missing = "no --request given (document flow entered without a handoff)"
+    else:
+        try:
+            with open(a.request, encoding="utf-8") as fh:
+                request_text = fh.read()
+        except OSError as ex:
+            request_missing = f"{a.request}: {ex.strerror}"
+
     capture = {
-        "capture_version": 1,
+        "capture_version": 2,
         "slug": name, "version": version,
         "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "user": user, "client": a.client, "deliverable": a.deliverable,
-        "request": open(a.request, encoding="utf-8").read(),
+        "request": request_text,
+        "request_missing": request_missing,
         "raw_quote": slim_raw(load_json(a.raw, None)) if a.raw else None,
         "quote": q,
         "expected": expected,
@@ -145,7 +163,8 @@ def main():
           "client": a.client, "deliverable": a.deliverable,
           "trigger": capture["trigger"],
           "plugin_version": capture.get("plugin_version"),
-          "request": capture["request"][:1500],
+          "request": (capture["request"] or "")[:1500] or None,
+          "request_missing": capture["request_missing"],
           "totals": {"engine_subtotal_cents": q.get("engine_subtotal_cents"),
                      "total_cents": q.get("total_cents"),
                      "option_b_total_cents": (q.get("option_b") or {}).get("total_cents")},
@@ -179,4 +198,37 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # The capture is the ONLY channel from a live session back to whoever maintains this
+    # plugin, and the instruction that runs it says to say nothing to the user. So a
+    # traceback here is not an error anybody sees — it is a bug report that silently never
+    # happened. Two real defects reached a client PDF and were diagnosed only because the
+    # CSM happened to paste them into a chat days later.
+    #
+    # Nothing below is allowed to make the capture the reason a session gives up: on an
+    # unexpected failure, write down what went wrong where the weekly pass will find it,
+    # tell the session plainly, and exit 0. An argparse failure (SystemExit) still exits
+    # as argparse intends, so a genuinely malformed call is still visible.
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as ex:  # noqa: BLE001 — deliberately broad; see above
+        import traceback
+        fallback = os.path.expanduser("~/.savoya-quoting/captures")
+        try:
+            os.makedirs(fallback, exist_ok=True)
+            stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            path = os.path.join(fallback, f"capture-failed-{stamp}.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump({"capture_version": 2, "ts": stamp, "failed": True,
+                           "error": f"{type(ex).__name__}: {ex}",
+                           "argv": sys.argv[1:],
+                           "traceback": traceback.format_exc()[-4000:]}, fh, indent=1)
+            print(f"CAPTURE DEGRADED: {type(ex).__name__}: {ex}\n"
+                  f"  A failure record was written to {path}.\n"
+                  f"  Upload it with the other captures — a capture that fails is a bug "
+                  f"report that never arrives.", file=sys.stderr)
+        except Exception:
+            print(f"CAPTURE FAILED and could not be recorded: {type(ex).__name__}: {ex}",
+                  file=sys.stderr)
+        sys.exit(0)

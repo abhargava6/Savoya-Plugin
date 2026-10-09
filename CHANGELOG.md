@@ -3,6 +3,27 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.3
+
+The capture never ran for the session that hit both 0.23.2 bugs, so those defects reached a
+client PDF and came back only because the CSM pasted them into a chat days later.
+
+- **It could not have run.** `--request` was required and pointed at `handoff/request.md`,
+  which node K's own fallback path (a quote brought from elsewhere) never has — so the
+  capture died with an uncaught `FileNotFoundError` there, and in argparse when called
+  without the flag. The step is specified as silent, so the traceback reached nobody. The
+  session most likely to be improvising was the one structurally least able to report it.
+- `--request` is now optional and its absence is recorded as `request_missing`.
+- **The capture cannot throw.** Any unexpected error writes a failure record, says so, and
+  exits 0. A capture that crashes is a bug report that never arrives.
+- The instructions now say to capture *hardest* when the session went worst, and that the
+  plugin being a read-only build artifact says nothing about whether feedback can be
+  recorded — the capture writes outside the plugin. That conflation appears to be what
+  happened.
+- **New guard `lint_capture_resilience`** — runs the script with both degraded inputs and
+  fails if either exits non-zero, writes no feedback file, or survives only via the
+  last-resort handler.
+
 ## 0.23.2
 
 Two bugs reported from a live client quote; both reached the PDF, both reproduced here

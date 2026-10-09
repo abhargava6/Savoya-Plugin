@@ -59,6 +59,17 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - Upload exactly what the script's `upload` list names. A big capture stays local by design. **Never split a capture across uploads.**
 - Feedback is ask → fix → log: "Anything you'd like changed?" → fix, re-render, re-verify, re-deliver → then capture with `--change` and `--fixed`.
 
+## Capture is the only channel
+- **Capture hardest when the session went worst.** A session that patched something in a
+  working copy or rebuilt a line by hand is the most valuable one of the week and the most
+  likely to skip the step. `--workaround` is for exactly that.
+- **A read-only plugin does not mean read-only feedback.** The capture writes to
+  `~/.savoya-quoting/captures/` and Drive, neither of which is the plugin.
+- **The capture cannot fail on you**, so there is no input bad enough to skip it:
+  `--request` is optional, a missing handoff is noted, and an unexpected error still writes
+  a failure record and exits 0.
+- **Telling the user about a bug is not reporting it.** They are not the maintainer.
+
 ## Engine
 - Quote on the exact path (`generate_quote_options` / `calculate_quote_units`). There is no
   approximate path and no estimates: a profile with no passenger prices normally (omit

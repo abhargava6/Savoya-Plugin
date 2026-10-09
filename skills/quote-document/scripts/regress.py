@@ -1100,6 +1100,73 @@ def lint_page_fit():
     return True
 
 
+# The capture is the only channel from a live session back to whoever maintains this
+# plugin, and the step that runs it is specified as silent -- "say nothing to the user".
+# So anything that makes it fail produces no error anybody reads: it produces a bug report
+# that never arrives. That is not hypothetical. Two defects reached a client PDF on
+# 2026-10-09 and were diagnosed only because the CSM pasted them into a chat afterwards;
+# the capture for that session never ran.
+#
+# `--request` used to be mandatory, and node K's own documented fallback -- a quote
+# brought from elsewhere, so no handoff and no request.md -- could therefore never produce
+# one. The session most likely to be improvising was the session that structurally could
+# not report it.
+def lint_capture_resilience():
+    """A capture must still be produced when the inputs are incomplete."""
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(DEFAULT_FIXTURES, "six-leg-heavy-notes", "quote.json")
+    if not os.path.exists(fx):
+        print("  \u25cb capture resilience: six-leg fixture missing, skipped")
+        return True
+
+    cases = [
+        ("no --request at all (document flow entered without a handoff)", []),
+        ("--request pointing at a file that is not there", ["--request", "/nonexistent/request.md"]),
+    ]
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        for label, extra in cases:
+            r = subprocess.run(
+                [sys.executable, os.path.join(HERE, "capture_session.py"),
+                 "--slug", "guard", "--client", "Guard", "--deliverable", "pdf",
+                 "--quote", fx, "--dir", d, "--auto"] + extra,
+                capture_output=True, text=True)
+            made = [f for f in os.listdir(d) if f.endswith(".capture.json")]
+            fb = [f for f in os.listdir(d) if f.endswith(".feedback.json")]
+            # The last-resort handler keeps a broken capture from stopping a session, but
+            # a capture that only survives because of it is still broken: the feedback
+            # file is what actually gets uploaded first, and that never gets written.
+            if "CAPTURE DEGRADED" in (r.stderr or ""):
+                problems.append(f"{label}: only survived via the last-resort handler — "
+                                "the capture itself still throws")
+            elif not fb:
+                problems.append(f"{label}: no feedback file, which is the one that uploads first")
+            elif r.returncode != 0:
+                problems.append(f"{label}: exited {r.returncode} — "
+                                f"{(r.stderr or '').strip().splitlines()[-1][:110] if r.stderr else 'no stderr'}")
+            elif not made:
+                problems.append(f"{label}: exited cleanly but wrote no capture")
+            else:
+                with open(os.path.join(d, made[0])) as fh:
+                    cap = json.load(fh)
+                if not cap.get("request_missing"):
+                    problems.append(f"{label}: capture does not record that the request was missing — "
+                                    "a silent gap is worse than a noted one")
+            for f in os.listdir(d):
+                if f.endswith((".capture.json", ".feedback.json")):
+                    os.remove(os.path.join(d, f))
+
+    if problems:
+        print("  \u2717 capture resilience")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 capture resilience ({len(cases)} degraded inputs still captured)")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -1212,6 +1279,7 @@ def main():
     lint_ok = lint_money_ownership() and lint_ok
     lint_ok = lint_discount_attribution() and lint_ok
     lint_ok = lint_page_fit() and lint_ok
+    lint_ok = lint_capture_resilience() and lint_ok
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok

@@ -156,6 +156,9 @@ The rate check is the constant; the *location* follows who raised it. Something 
 **O · Deliver** — one message: email as a copy-ready block, files via `present_files`. No mail connector, no attaching, no sending.
 
 **P · Capture** — **once per conversation**, after the final deliverable. `capture_session.py` (it reads `handoff/intake.json` automatically) → one Drive upload. Load the Drive tool once.
+- **A session that improvised is the one that must capture.** Patched a script in a working copy, rebuilt a line by hand, worked around a defect? Put it in `--workaround` and upload. That session is the only evidence the defect exists.
+- **It cannot fail on you.** `--request` is optional, a missing handoff is noted rather than fatal, and an unexpected error still writes a failure record and exits 0.
+- **Read-only plugin ≠ nowhere to report.** The capture writes outside the plugin, to `~/.savoya-quoting/captures/` and Drive.
 
 **Q · Feedback — ask, fix, then log.** The reply carrying the first document ends with: *"Anything you'd like changed?"*
 - They name something → **fix it first** (adjust → re-render → re-verify → deliver), then capture with `--change` *and* `--fixed`. Say "fixed and logged".

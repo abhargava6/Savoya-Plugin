@@ -4,6 +4,47 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-09 (0.23.3 — the feedback loop's one channel was broken where it mattered)
+
+Ayush confirmed the capture never ran for the session that hit both 0.23.2 bugs. Those
+defects reached a client PDF and came back to us only because he pasted them into a chat
+days later. So the question was not "add a feedback loop" — the loop exists — but why this
+session, of all sessions, produced nothing.
+
+**It could not have.** `--request` was a required argument pointing at `handoff/request.md`.
+Node K documents a fallback for a quote brought from elsewhere, which by definition has no
+handoff and therefore no `request.md`, so on that path the capture died with an uncaught
+`FileNotFoundError`. Called without the flag it died in argparse. And the step that runs it
+says *"Silent; say nothing to the user"* — so the traceback went nowhere a human would read
+it. **The session most likely to be improvising was the session structurally least able to
+report it**, and it failed invisibly.
+
+Three changes:
+
+- `--request` is optional. A missing or unreadable one is recorded as `request_missing`
+  rather than being fatal; the capture still carries the quote, the raw response, the
+  feedback and the workaround note, which is most of its value.
+- **The capture cannot throw.** Any unexpected error writes a failure record to
+  `~/.savoya-quoting/captures/capture-failed-*.json`, says so on stderr, and exits 0. A
+  capture that crashes is a bug report that never arrives, and it must never be the reason
+  a session gives up. An argparse failure still exits as argparse intends.
+- The instructions now say the opposite of what that session concluded: capture *hardest*
+  when the session went worst, and the plugin being a read-only build artifact says nothing
+  about whether feedback can be recorded — the capture writes outside the plugin entirely.
+  That conflation is, as far as we can tell, exactly what happened.
+
+`lint_capture_resilience` runs the script with both degraded inputs and fails if either
+exits non-zero, writes no feedback file, or survives only via the last-resort handler —
+the handler keeps a session moving, it is not an acceptable steady state. Broken both ways
+before being trusted; the first version of the guard missed the second break, which is why
+it now reads stderr.
+
+**Still unfixed and worth deciding:** `log_feedback.py` writes to
+`~/.savoya-quoting/feedback.jsonl` and nothing in the repo calls it. It is the leftover of
+the design the capture replaced, and it is the first thing anyone finds when looking for
+where feedback goes.
+
+
 ## 2026-10-09 (0.23.2 — two bugs reported from a live client quote)
 
 Both reached a client-facing PDF. Reported from another session, reproduced here against
