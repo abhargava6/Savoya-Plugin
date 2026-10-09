@@ -131,16 +131,18 @@ The rate check is the constant; the *location* follows who raised it. Something 
 - No handoff (quote from elsewhere) → fallback: save the response, ask which units are chosen, normalize with `--select` / `--alternative`.
 
 **L · Five questions, one per message, driven by the script**
-`decide.py --next` prints the next unanswered key and its exact question text; post that and nothing else; record the answer; repeat until `all answered`. Never batch, never skip, never reorder.
+`decide.py --next` prints the next unanswered key and its exact question text; post that and nothing else; record the answer; repeat until `all answered`. Never batch, never skip, never reorder. The script also *drops* questions: `cover` and `map` are not asked for an email-only job, because nothing but the PDF and printable document reads those answers.
 
-1. **discount_pct** — a document-level line. **Never re-quote through the engine.** If the client's contracted discount is already on the quote, the question says this one is additional.
-2. **fuel** — quote carries one (`fuel_surcharge_basis_points` > 0) → *keep or take off*; `waive` records that the booking needs the waiver in Savoya. Carries none → *add the 5%?*
+1. **discount_pct** — **a Core re-quote, not a document line.** `calculate_temporary_quote_units` with `temporary_discount.basis_points` (500 = 5%), then re-normalize from the response. This node used to say *never re-quote through the engine*; that was right under the old contract and is **wrong now** — a discount applied here was our arithmetic on Core's number, and Core returns the whole standard → discount → net line with nothing left to compute. Discounts are **additive in basis points**: 30% contracted + 10% here = `4000`, not 37%. Never persisted — say so. If the client's contracted discount is already on the quote, the question says this one is additional.
+2. **greeter_cost** — *inserted only when a client question mentions a greeter or on-site staff, and only a market with no greeter rate gets this far.* Check Core first; never ask a human for a number Core has (see **G3**).
 3. **cover** — catalog keys with audiences, recommendation first, or their own upload (`--cover-file`).
 4. **personalization** — event name, intro note, contact card, logo URL, per-leg notes, closing line; defaults stand for anything unmentioned.
 5. **map** — yes → `route_map.py` (drive times already come from the engine; this adds the map image).
 6. **format** — PDF · email copy + PDF · HTML · DOCX · XLSX.
 
-**M · Adjust** — `apply_adjustments.py`. Engine-sourced lines (contracted discount, fuel, special handling) are preserved by `--clear` and can't be `--remove`d — only `--waive`d. Document lines apply in order on the running total.
+**There is no fuel question** (C3, 7 Oct). Fuel is market-scoped and engine-applied; nothing in the contract subtracts it, and `temporary_discount` is additive rather than a way to remove a surcharge. A CSM who needs it waived does that in Savoya. The `[if:fuel_surcharge]` terms bullet stays, because it reflects what Core applied.
+
+**M · Adjust** — `apply_adjustments.py`. Engine-sourced lines (contracted discount, fuel, special handling) are preserved by `--clear` and can't be `--remove`d — only `--waive`d. **Flat** document lines apply in order on the running total; a document **percentage** line is refused outright (C2) — percentages are Savoya's to compute. And if the document total no longer equals Core's `aggregate_total`, the render **refuses** rather than absorbing the gap into the last engine line (C4); that absorption is what put a 5-vehicle Boston job 30 cents above Savoya's own quote.
 
 **N · Render** — everything the format needs **before replying**: PDF via `render_print.py`, email text via `draft_email.py`. Read only the one format reference you need.
 

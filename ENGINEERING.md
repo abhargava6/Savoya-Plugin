@@ -24,6 +24,7 @@ answer and the date, and only when Ayush says it is resolved.
 | **G2** | `client_can_book` is missing from `presentation` rate-preview rows | 2026-10-08 | Open |
 | **G3** | `temporary_rate_used` is `false` at aggregate level while the unit says `true` | 2026-10-08 | Open |
 | **G4** | The quote response carries `excess_drive_time` but not the no-local-provider warning — we need **both** | 2026-10-08 | Open |
+| **G5** | `greeter_fee` / `adjusted_greeter_fee` exist on every vehicle's quote object but no tool sets them | 2026-10-08 | Open |
 
 ---
 
@@ -204,3 +205,37 @@ no local provider → sourced from another market → excess drive time applies.
 ## Answered / closed
 
 *(Nothing yet. Items move here with the answer and the date, only on Ayush's say-so.)*
+
+## G5 — `greeter_fee` / `adjusted_greeter_fee` exist but no tool sets them
+
+**Observed (2026-10-08)** Every vehicle's `quote` object carries four greeter fields, and
+nothing in the nine-tool contract writes to any of them. They are present and always empty.
+
+**Evidence** From `boston-offsite/raw_quote.json`, a real `calculate_quote_units` response
+for an ordinary Mini Bus unit with no greeter involved:
+
+```json
+"quote": {
+  "greeter_fee": null,
+  "adjusted_greeter_fee": null,
+  "greeter_fee_in_vendor_currency": 0,
+  "adjusted_greeter_fee_in_vendor_currency": 0
+}
+```
+
+The same shape appears on all five document fixtures. No argument on
+`calculate_quote_units`, `generate_quote_options` or `calculate_temporary_quote_units`
+accepts a greeter fee, so from the plugin's side these fields can only ever be read.
+
+**Why it matters.** It suggests Core has a second, different model for greeters: a fee
+attached to an ordinary vehicle's quote, rather than the separate greeter unit the plugin
+builds. The plugin currently prices greeters as their own quote unit on vehicle types 12
+(Hourly Greeter/Coordinator) and 13 (Single Greet), which works and is shipped in 0.23.0 —
+an Irvine request priced at **$404.20** against a hand-entered $940. So nothing is blocked.
+
+But if the fee route is the intended one, a greeter priced as its own unit may be invisible
+to whatever downstream reads `greeter_fee`, and the two models would disagree about what a
+booking with a greeter actually costs. Worth knowing before anything is built on either.
+
+**Need:** confirm which model is intended — a separate greeter quote unit, or a fee on the
+vehicle's quote — and if it's the fee, which tool is meant to set it.

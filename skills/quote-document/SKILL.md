@@ -85,7 +85,7 @@ The keys, in order, so you can still run the loop if the script or the reference
 
 Two kinds of change, and they're handled differently because they *are* different:
 
-**Engine-applied** — a discount or custom rate the engine already applied (the normalizer shows the standard rate on the line and a "Preferred client discount (N%)" line marked `source: engine`). Never re-quote from the document flow; the quote is final when it reaches here. Don't `--remove` engine lines — `--clear` preserves them on purpose.
+**Engine-applied** — a discount or custom rate the engine already applied (the normalizer shows the standard rate on the line and a "Preferred client discount (N%)" line marked `source: engine`). Leave it alone: the *contracted* discount and the fuel surcharge are settled, and the quote is final when it reaches here. Don't `--remove` engine lines — `--clear` preserves them on purpose. (An **additional** discount is a different thing and does go back to Core — see below.)
 
 **Document-level** — only **flat amounts**, for things Core genuinely cannot price: a fallback on-site cost in a market with no greeter rate, a parking estimate. These live in `quote.json` under `adjustments` and are applied by `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/apply_adjustments.py`, which **refuses a document percentage line**. Percentages are Core's: an additional discount is a re-quote through `calculate_temporary_quote_units`, fuel is market-scoped and engine-applied, and a greeter is a priced Core unit. The engine subtotal is never mutated; the document shows *standard → discount → net → any flat line → total*, and refuses to render if the total doesn't match Savoya's.
 

@@ -4,6 +4,38 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-08 (0.23.1 — the instruction prose disagreed with the code for a day)
+
+Found while rebuilding the three architecture artifacts from the shipped tree, not by the
+suite. Group C moved three money rules on 7 Oct and updated the code and `questions.md`,
+but three instruction files kept the old rules, with nothing failing:
+
+- **`decision-tree.md` node L still listed the `fuel` question** and still said the
+  discount was *"a document-level line. Never re-quote through the engine."* That file is
+  what `CLAUDE.md` calls the authoritative end-to-end flow, so a session reading it would
+  have applied a discount as local arithmetic on Core's number — the exact thing C1
+  replaced with a Core re-quote, and the class of bug that put a Boston job 30 cents over.
+- **`RULES.md` carried the same reversed discount rule**, and also still described
+  adjustments as compounding *"in list order on the running total — discount before fuel"*.
+  C2 refuses document percentage lines precisely because that order-dependence was real.
+  `RULES.md` is read before every render.
+- **`SKILL.md` Stage 3 said "never re-quote from the document flow"** one paragraph above
+  text correctly saying an additional discount *is* a re-quote. Not wrong so much as
+  self-contradictory, which is how the other two survived review.
+
+**Why nothing caught it.** `lint_money_ownership` checks that the arithmetic reconciles,
+which it did — the code was right the whole time. No guard read the prose. A rule that
+exists only in English is a rule that can rot silently, and the question set had three
+homes (`decide.py`, `questions.md`, the tree) exactly as the tool contract once had two.
+
+**The guard.** `lint_question_set` parses `BASE_ORDER` out of `decide.py` and makes that
+the single home: any instruction file naming a document question `decide.py` doesn't ask,
+or omitting one it does, fails the suite — as does any line telling a session not to
+re-quote a discount, unless the sentence explicitly recounts it as the old rule. Broken on
+purpose four ways before being trusted (fuel re-added, C1 reversed, `map` dropped, and the
+`RULES.md` wording restored); it went red on each.
+
+
 ## 2026-09-14 (Initial build — from the Yerdle / Boston / 3-city sessions)
 
 - **Engine `aggregate_total` includes alternative units.** Always `--select` the chosen units before rendering. A Boston quote with Mini Bus and Sprinter alternatives for the same leg summed to $12,481 when the real total was $9,355.

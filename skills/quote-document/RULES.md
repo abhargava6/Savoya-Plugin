@@ -4,9 +4,9 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 
 ## Money
 - Lines show **standard** rates; the client's contracted discount is its own line built from `discount_basis_points`. Totals must reconcile to the engine's `aggregate_total` to the cent.
-- Adjustments apply **in list order on the running total** — discount before fuel, so fuel computes on the discounted amount.
+- **Flat** document lines apply in list order on the running total. **Percentage** document lines are refused (C2): they compounded against a running subtotal, so a 25% discount followed by a 5% surcharge depended on which was entered first. Percentages are Core's to compute.
 - Engine-sourced lines (contracted discount, fuel, special handling) survive `--clear` and can only be `--waive`d, never `--remove`d. A waiver records that the booking needs the same waiver in Savoya.
-- Discounts asked for in the document flow are **document-level lines**. Never re-quote through the engine from the document flow.
+- An additional discount asked for in the document flow is **a Core re-quote**, not a document line: `calculate_temporary_quote_units` with `temporary_discount.basis_points`, then re-normalize from the response. This rule was the other way round until 0.23 and the reversal is the point — a discount applied here was our arithmetic on Core's number. Discounts are **additive** in basis points: 30% contracted + 10% here is 40%, not 37%. The result is never persisted; say so.
 
 ## What reaches the client
 - Never: rate ids, inventory counts, "hourly fallback", basis points, profile or passenger ids, estimate_type as a word.

@@ -1,11 +1,16 @@
 # Flow diagrams
 
-Mermaid source for the two flows, regenerated for **0.23.0** (register item F1).
+Mermaid source for the three flows, with each one rendered beside it, regenerated for **0.23.1** (register item F1).
 
-| File | Covers |
-|---|---|
-| `intake-flow.mmd` | `decision-tree.md` nodes A–J |
-| `document-flow.mmd` | nodes K–Q |
+| Source | Rendered | Covers |
+|---|---|---|
+| `seller-flow.mmd` | `seller-flow.png` | the conversation as a seller experiences it — no tools, no scripts |
+| `intake-flow.mmd` | `intake-flow.png` | `decision-tree.md` nodes A–J |
+| `document-flow.mmd` | `document-flow.png` | nodes K–Q |
+
+**Hand sales `seller-flow.png`.** The PNGs are committed precisely so that replacing a
+stale copy needs no terminal and no install — open the file, send the file. Re-render only
+when the tree changes.
 
 **The copies circulating with sales were drawn from the 0.22 tree and are wrong** wherever
 Groups A–D changed it — they still show the approximate fallback, a passenger resolved on
@@ -16,8 +21,10 @@ here rather than redrawing.
 
 ```bash
 npm install @mermaid-js/mermaid-cli@11.4.2
-echo '{"args":["--no-sandbox"]}' > pc.json
-npx mmdc -i intake-flow.mmd -o intake-flow.png -p pc.json -b white -s 2
+echo '{"args":["--no-sandbox","--disable-dev-shm-usage"]}' > pc.json
+for f in seller-flow intake-flow document-flow; do
+  npx mmdc -i "$f.mmd" -o "$f.png" -p pc.json -b white -s 2
+done
 ```
 
 Render through a **browser** — `mmdc` does, and so does any Mermaid viewer. Mermaid draws
@@ -33,6 +40,10 @@ rather than anything readable:
   `BQ`, `FQ`, `GQ`, `GREETQ`
 - **`call`, `note`, `end`, `class`, `style` and friends are reserved** — a `classDef` named
   `call` parses as a callback. The classes here are `toolcall`, `question`, `aside`, `halt`.
+- **a semicolon ends a statement.** Inside a quoted flowchart label (`A["a; b"]`) it is
+  safe, but a `sequenceDiagram` message is unquoted, so `A->>B: one thing; another` parses
+  the second half as garbage. Two sequence diagrams in the architecture page were cut in
+  half by exactly this. Use a comma or an em dash.
 
 ## Legend
 

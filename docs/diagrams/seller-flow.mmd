@@ -1,0 +1,29 @@
+%% savoya-quoting 0.23.1 — the seller's view (no tools, no scripts)
+%% The version to show sales. FIVE document questions: the fuel question is gone (C3).
+flowchart TD
+    A["Paste the client's request"] --> BQ{"Anything unclear?"}
+    BQ -->|yes| C["Answer one question<br/>which year · headcount · which Marriott"]
+    BQ -->|no| D
+    C --> D(["Rate sheet first,<br/>or straight to the quote?"])
+    D --> E(["Best value, options,<br/>or you name the vehicles?"])
+    E --> F["<b>Priced quote</b><br/>every option, per leg"]
+    F --> GQ{"Happy with it?"}
+    GQ -->|change something| F
+    GQ -->|yes| HQ{"Want a client document?"}
+    HQ -->|no| DONE1(["Done — you have the number"])
+    HQ -->|yes| J(["Five quick questions<br/>discount · cover ·<br/>personalisation · map · format"])
+    J --> K["<b>PDF + email copy</b><br/>ready to paste and send"]
+    K --> LQ{"Anything you'd like changed?"}
+    LQ -->|yes, fix it| K
+    LQ -->|no| DONE2(["Done"])
+
+    classDef begin fill:#F7EDE4,stroke:#B87333,stroke-width:2px,color:#1A1A1A
+    classDef question fill:#FFF7E6,stroke:#F59E0B,stroke-width:2px,color:#1A1A1A
+    classDef branch fill:#FFFFFF,stroke:#8A837C,color:#1A1A1A
+    classDef output fill:#EAF3EE,stroke:#2F6F4F,stroke-width:2px,color:#1A1A1A
+    classDef finish fill:#FFFFFF,stroke:#2F6F4F,color:#2F6F4F
+    class A begin
+    class C,D,E,J question
+    class BQ,GQ,HQ,LQ branch
+    class F,K output
+    class DONE1,DONE2 finish

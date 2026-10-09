@@ -3,11 +3,37 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.1
+
+Three instruction files still carried the money rules Group C replaced on 7 Oct. The code
+was right throughout; only the prose was wrong, and no guard read prose.
+
+- **`decision-tree.md` node L** listed the removed `fuel` question and said an additional
+  discount was *"a document-level line. Never re-quote through the engine."* It is a Core
+  re-quote through `calculate_temporary_quote_units`, and that file is the one `CLAUDE.md`
+  calls authoritative — a session following it would have done local arithmetic on Core's
+  number. Node M now also states C2's refusal of document percentage lines and C4's
+  fail-closed total.
+- **`RULES.md`** carried the same reversed discount rule and still described adjustments as
+  compounding in list order, discount before fuel. Both corrected; it is read before every
+  render.
+- **`SKILL.md` Stage 3** said "never re-quote from the document flow" directly above text
+  saying an additional discount is a re-quote. Disambiguated.
+- **New guard: `lint_question_set`.** `BASE_ORDER` in `decide.py` becomes the single home
+  for the document question set, the way `mcp-contract.md` is for the tool list. The guard
+  fails if an instruction file names a question the script doesn't ask, omits one it does,
+  or tells a session not to re-quote a discount — unless the sentence explicitly recounts
+  that as the old rule, which the tree does on purpose. Broken four ways before being
+  trusted. It found the `RULES.md` and `SKILL.md` instances on its first run; only the
+  decision-tree one was known when it was written.
+- **The flow diagrams ship as PNGs** beside their Mermaid sources, so replacing the copies
+  circulating with sales no longer needs anyone to install `mermaid-cli`.
+
 ## 0.23.0
 
-Group B of the 0.23 register: the plugin's assumptions and the server's contract had
-diverged in seven places. No new capability here, correctness only. Version stays 0.22.1
-until the release is packaged.
+The 0.23 register, start to finish: the plugin's assumptions and the server's contract had
+diverged in seven places, and the fixtures could not have caught it. No new capability
+here beyond greeters — correctness, and three live bugs found on the way.
 
 - **The contract lives in one file.** New `skills/quote-intake/references/mcp-contract.md`
   holds the nine tools, their required arguments, the limits, the two removed tools, and

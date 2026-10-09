@@ -853,6 +853,98 @@ def lint_handoff_contract():
     return True
 
 
+# The document question set lives in ONE place: BASE_ORDER in decide.py. It used to live
+# in three — decide.py, questions.md and the decision tree — and on 7 Oct Group C removed
+# the `fuel` question from the first two and missed the third, so the file CLAUDE.md calls
+# the authoritative flow went on listing a question the script no longer asks AND went on
+# saying a discount is "a document-level line. Never re-quote through the engine" — the
+# exact local-arithmetic-on-Core's-number that C1 replaced with a Core re-quote. Nothing
+# failed; the prose just disagreed with the code for a day.
+_MONEY_PROSE_EXEMPT = frozenset({
+    # Dated history. Rewriting these to satisfy a guard would falsify the record.
+    "feedback-archive.md",
+})
+
+
+def document_question_keys():
+    """The question keys decide.py will actually ask, parsed from decide.py itself."""
+    src = os.path.join(HERE, "decide.py")
+    with open(src) as fh:
+        text = fh.read()
+    m = re.search(r"^BASE_ORDER\s*=\s*\[(.*?)\]", text, re.M | re.S)
+    if not m:
+        raise RuntimeError(f"no BASE_ORDER in {src}")
+    base = re.findall(r"[\"\']([a-z_]+)[\"\']", m.group(1))
+    if not base:
+        raise RuntimeError(f"empty BASE_ORDER in {src}")
+    # Keys decide.py inserts conditionally rather than listing in BASE_ORDER.
+    # The inserted key is insert()'s LAST argument; a lazier pattern picks up the
+    # index key ("discount_pct") from o.insert(o.index("discount_pct") + 1, "greeter_cost").
+    extra = set(re.findall(r"o\.insert\(.*?,\s*[\"\']([a-z_]+)[\"\']\s*\)", text))
+    return frozenset(base), frozenset(extra) - frozenset(base)
+
+
+def lint_question_set():
+    """Instruction prose must name the questions decide.py asks — no more, no fewer —
+    and must never tell a session to apply a discount without going back to Core."""
+    skills = os.path.normpath(os.path.join(HERE, "..", ".."))
+    try:
+        base, extra = document_question_keys()
+    except RuntimeError as e:
+        print(f"  ✗ question set: {e}")
+        return False
+    allowed = base | extra
+    problems = []
+
+    numbered = re.compile(r"^\s*\d+\.\s*\*\*`?([a-z_]{3,})`?\*\*")
+    # "never/don't re-quote" said anywhere near a discount is the reversed C1 rule --
+    # unless the sentence is explicitly recounting it as the OLD rule, which the
+    # decision tree does on purpose so the next reader knows it changed under them.
+    reversed_c1 = re.compile(r"(never|don'?t|do not)\s+re-?quote", re.I)
+    recounted = re.compile(r"used to (say|be|read)|no longer|wrong now|was right under|previously said", re.I)
+
+    for owner in ("quote-intake", "quote-document"):
+        for root, dirs, files in os.walk(os.path.join(skills, owner)):
+            dirs[:] = [d for d in dirs if d not in ("evals", "assets", "__pycache__")]
+            for fn in sorted(files):
+                if not fn.endswith(".md") or fn in _MONEY_PROSE_EXEMPT:
+                    continue
+                p = os.path.join(root, fn)
+                rel = os.path.relpath(p, skills)
+                with open(p) as fh:
+                    lines = fh.readlines()
+                keys = []
+                for i, line in enumerate(lines, 1):
+                    m = numbered.match(line)
+                    if m:
+                        keys.append((m.group(1), i))
+                    if (reversed_c1.search(line) and re.search(r"discount", line, re.I)
+                            and not recounted.search(line)):
+                        problems.append(
+                            f"{rel}:{i}: tells a session NOT to re-quote a discount. "
+                            "A discount is a Core re-quote (temporary_discount), not a local line.")
+                # Only judge a list that is plainly the document question list.
+                named = {k for k, _ in keys}
+                if len(named & allowed) < 3:
+                    continue
+                for k, i in keys:
+                    if k not in allowed:
+                        problems.append(
+                            f"{rel}:{i}: names '{k}' as a document question, "
+                            f"but decide.py does not ask it.")
+                for k in sorted(base - named):
+                    problems.append(
+                        f"{rel}: omits '{k}', which decide.py does ask.")
+
+    if problems:
+        print("  ✗ question set")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  ✓ question set ({len(base)} asked, {len(extra)} conditional)")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -963,6 +1055,7 @@ def main():
     lint_ok = lint_airport_shape() and lint_ok
     lint_ok = lint_positioned_from() and lint_ok
     lint_ok = lint_money_ownership() and lint_ok
+    lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
