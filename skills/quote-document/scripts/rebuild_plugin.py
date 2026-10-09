@@ -10,11 +10,10 @@ Usage: rebuild_plugin.py <skill_dir> <out_dir> [--bump patch|minor|major]
        [--mcp-url https://public-tunnel/mcp] [--package out.plugin]
 
 The checked-in MCP config always remains acceptance. --mcp-url changes the
-assembled copy's MCP endpoint and OAuth client ID to the same public host.
+assembled copy's MCP endpoint. Claude discovers its own OAuth client identity.
 """
 
 import argparse, json, os, shutil, zipfile
-from urllib.parse import urlsplit, urlunsplit
 
 
 def bump(v, part):
@@ -24,14 +23,6 @@ def bump(v, part):
     for j in range(i + 1, 3):
         a[j] = 0
     return ".".join(map(str, a))
-
-
-def oauth_client_id_for(mcp_url):
-    """Return the public OAuth client-metadata URL for an MCP environment."""
-    parsed = urlsplit(mcp_url)
-    return urlunsplit(
-        (parsed.scheme, parsed.netloc, "/oauth/clients/claude.json", "", "")
-    )
 
 
 ap = argparse.ArgumentParser()
@@ -90,9 +81,6 @@ if a.mcp_url:
             "--mcp-url must be a public HTTPS URL; Claude cannot reach localhost."
         )
     mcp["mcpServers"]["savoya"]["url"] = a.mcp_url
-    mcp["mcpServers"]["savoya"].setdefault("oauth", {})["clientId"] = (
-        oauth_client_id_for(a.mcp_url)
-    )
 with open(os.path.join(root, ".mcp.json"), "w") as handle:
     json.dump(mcp, handle, indent=2)
     handle.write("\n")

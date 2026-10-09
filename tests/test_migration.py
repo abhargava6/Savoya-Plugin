@@ -217,6 +217,33 @@ class MigrationTests(unittest.TestCase):
             self.assertNotEqual(0, result.returncode)
             self.assertIn("Mixed temporary pricing", result.stderr)
 
+    def test_discount_on_sourced_package_keeps_market_split(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = pathlib.Path(tmp)
+            source = {
+                "quote_units": [
+                    {"key": "local", "vehicle_type_id": 8, "quantity": 3},
+                    {"key": "nearby", "vehicle_type_id": 8, "quantity": 5, "source_market_ref": "selected"},
+                ]
+            }
+            (p / "source_request.json").write_text(json.dumps(source))
+            out = p / "request.json"
+            result = run(
+                HANDOFF, "prepare-discount", "--dir", p, "--percent", "5", "--out", out
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("calculate_temporary_quote_units", result.stdout)
+            built = json.loads(out.read_text())["quote_units"]
+            self.assertEqual([None, "selected"], [u.get("source_market_ref") for u in built])
+            self.assertEqual([3, 5], [u["quantity"] for u in built])
+            self.assertTrue(all(u["temporary_discount"]["basis_points"] == 500 for u in built))
+
+            result = run(
+                HANDOFF, "prepare-discount", "--dir", p, "--percent", "0", "--out", out
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("calculate_sourced_quote_units", result.stdout)
+
     def test_cache_clear_preserves_unrelated_configuration(self):
         with tempfile.TemporaryDirectory() as home:
             config = pathlib.Path(home) / ".savoya-quoting/config.json"
@@ -282,13 +309,10 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(
                 "https://public.example/mcp", packaged["mcpServers"]["savoya"]["url"]
             )
-            self.assertEqual(
-                "https://public.example/oauth/clients/claude.json",
-                packaged["mcpServers"]["savoya"]["oauth"]["clientId"],
-            )
+            self.assertNotIn("oauth", packaged["mcpServers"]["savoya"])
             self.assertEqual(source_config, (ROOT / ".mcp.json").read_text())
 
-    def test_acceptance_package_includes_matching_oauth_client_id(self):
+    def test_acceptance_package_uses_oauth_discovery(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = pathlib.Path(tmp) / "build"
             result = run(BUILD, ROOT / "skills/quote-document", out)
@@ -296,10 +320,7 @@ class MigrationTests(unittest.TestCase):
             packaged = json.loads((out / ".mcp.json").read_text())
             config = packaged["mcpServers"]["savoya"]
             self.assertEqual("https://mcp-acceptance.savoya.net/mcp", config["url"])
-            self.assertEqual(
-                "https://mcp-acceptance.savoya.net/oauth/clients/claude.json",
-                config["oauth"]["clientId"],
-            )
+            self.assertNotIn("oauth", config)
 
 
 if __name__ == "__main__":

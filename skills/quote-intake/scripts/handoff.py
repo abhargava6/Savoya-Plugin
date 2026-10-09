@@ -7,6 +7,7 @@ CONFIG = os.path.expanduser("~/.savoya-quoting/config.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXACT_TOOLS = {
     "calculate_quote_units",
+    "calculate_sourced_quote_units",
     "calculate_temporary_quote_units",
     "generate_quote_options",
 }
@@ -153,9 +154,14 @@ def summarize(raw, select=None):
             quantity = unit.get("quantity") if unit.get("quantity") is not None else 1
             lines += [
                 f"  **{day(unit.get('pickup_date'))}** · {unit.get('passenger_count')} pax · {route_of(unit)}",
-                f"  {quantity} × {vehicle.get('name')} ({vehicle.get('capacity')} pax) — {basis_of(summary)} → **{money(unit.get('line_total'))}**",
+                f"  {quantity} × {vehicle.get('name')} ({vehicle.get('capacity')} pax) · sourced from {(unit.get('source_service_area') or {}).get('name') or 'primary market'} — {basis_of(summary)} → **{money(unit.get('line_total'))}**",
                 "",
             ]
+            drive = unit.get("sourcing_drive_time") or {}
+            if drive:
+                lines.append(
+                    f"  Additional quoted time: {drive.get('additional_quoted_time_hours', 0):g} hr · time-related client price change: {money(drive.get('incremental_client_amount'))}"
+                )
         if len(groups) == 1:
             lines.append(f"**Total: {money(package.get('aggregate_total'))}**")
     lines += ["", "_Exact, non-persisted Savoya Core pricing._"]
@@ -332,7 +338,11 @@ def prepare_discount(args):
     tool = (
         "calculate_temporary_quote_units"
         if args.percent or any(rate_flags)
-        else "calculate_quote_units"
+        else (
+            "calculate_sourced_quote_units"
+            if any(unit.get("source_market_ref") for unit in units)
+            else "calculate_quote_units"
+        )
     )
     output["quote_units"] = units
     dump_json(args.out, output)
@@ -501,7 +511,7 @@ def main():
     replace.add_argument(
         "--tool",
         required=True,
-        choices=("calculate_quote_units", "calculate_temporary_quote_units"),
+        choices=("calculate_quote_units", "calculate_sourced_quote_units", "calculate_temporary_quote_units"),
     )
     replace.add_argument("--selected")
     cap = commands.add_parser("capture")

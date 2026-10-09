@@ -8,7 +8,7 @@ Two audiences, two lists. The CSM's part takes five minutes in the app and needs
 
 **1. Install the plugin.** Download the `.plugin` file and import it in Claude. If an older version is installed, remove it first.
 
-**2. Connect Savoya.** The first time Claude prices something it will ask you to sign in. The plugin supplies the OAuth client ID; leave the secret blank if Claude still displays that field. Sign in with your Savoya account. If sign-in works but quoting fails, your account needs the `access:savoya_mcp` permission — ask engineering.
+**2. Connect Savoya.** The first time Claude prices something it will ask you to sign in. Claude discovers its own OAuth client identity; no custom client ID or secret is bundled. Sign in with your Savoya account. If sign-in works but quoting fails, your account needs the `access:savoya_mcp` permission — ask engineering.
 
 **3. Connect Google Drive.** In Claude's settings, turn on the Google Drive connector and sign in with your Savoya Google account. This is how your quote sessions get saved to the shared folder so the tool keeps improving. Nothing else uses it.
 
@@ -18,7 +18,7 @@ That's it. You can quote, produce client documents, and draft emails.
 
 ## Developer environment switching
 
-Acceptance remains the checked-in default. For local testing, build with `rebuild_plugin.py --mcp-url https://<active-public-tunnel>/mcp`; the packaged MCP endpoint and OAuth client ID both switch to that host. The override affects only the packaged copy. Claude cannot reach `localhost`. The public tunnel must match the MCP's `SAVOYA_MCP_PUBLIC_URL` and Auth0 audience.
+Acceptance remains the checked-in default. For local testing, build with `rebuild_plugin.py --mcp-url https://<active-public-tunnel>/mcp`; the packaged MCP endpoint switches to that host; Claude discovers its own OAuth client identity. The override affects only the packaged copy. Claude cannot reach `localhost`. The public tunnel must match the MCP's `SAVOYA_MCP_PUBLIC_URL` and Auth0 audience.
 
 Before switching environments, run `handoff.py clear-cache`, import the new package, reconnect OAuth on that same tunnel host, and test in a brand-new conversation. Passenger cache data from older versions is cleared with the client cache; unrelated user configuration is preserved.
 

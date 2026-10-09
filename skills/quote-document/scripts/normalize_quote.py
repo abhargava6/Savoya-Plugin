@@ -130,7 +130,7 @@ def normalize_unit(unit, presentation):
             else None
         ),
     }
-    service_area = next(
+    pickup_service_area = next(
         (
             (s.get("service_area") or {}).get("name")
             for s in source_stops
@@ -138,9 +138,11 @@ def normalize_unit(unit, presentation):
         ),
         None,
     )
+    service_area = (unit.get("source_service_area") or {}).get("name") or pickup_service_area
     leg = {
         "key": unit.get("key"),
         "service_area": service_area,
+        "primary_service_area": (unit.get("primary_service_area") or {}).get("name") or pickup_service_area,
         "label": unit.get("label") or unit.get("key"),
         "date": present(unit, "pickup_date", (presentation or {}).get("date")),
         "passenger_count": present(
@@ -159,6 +161,13 @@ def normalize_unit(unit, presentation):
         "warnings": unit.get("warnings") or [],
         "client_notes": [],
     }
+    drive = unit.get("sourcing_drive_time") or {}
+    if drive:
+        leg["pricing"]["additional_quoted_time_hours"] = drive.get("additional_quoted_time_hours")
+        leg["pricing"]["drive_time_price_change_cents"] = drive.get("incremental_client_amount")
+        leg["client_notes"].append(
+            f"Sourced from {service_area}; additional quoted time {drive.get('additional_quoted_time_hours', 0):g} hours; time-related client price change {drive.get('incremental_client_amount', 0) / 100:,.2f} USD."
+        )
     travel_times = unit.get("travel_times") or []
     if travel_times:
         for i, stop in enumerate(stops):

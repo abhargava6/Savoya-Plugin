@@ -4,7 +4,7 @@ Claude plugin for exact, non-persisted Savoya quotes and client-ready exports.
 
 | Component | Purpose |
 |---|---|
-| `.mcp.json` | Matching acceptance MCP endpoint and OAuth client ID |
+| `.mcp.json` | Acceptance MCP endpoint with automatic OAuth client discovery |
 | `quote-intake` | Resolve the request, preserve the rate-sheet choice, call exact Core-backed quote tools, select one complete option, and write handoff contract v3 |
 | `quote-document` | Re-quote temporary document discounts through MCP, then render Core-returned values as PDF, email, HTML, DOCX, or XLSX |
 
@@ -43,6 +43,6 @@ PLUGIN_VERSION=0.23.0-local.1 python3 skills/quote-document/scripts/rebuild_plug
   --package /tmp/savoya-quoting-0.23.0-local.plugin
 ```
 
-`--mcp-url` changes only the packaged build. It updates both the MCP endpoint and the OAuth client ID to use that public host, and never rewrites the checked-in acceptance config. Claude cannot reach localhost; the tunnel host must match the MCP's `SAVOYA_MCP_PUBLIC_URL` and Auth0 audience. Clear the developer cache, reconnect OAuth, and test in a brand-new conversation after switching environments.
+`--mcp-url` changes only the packaged build. It updates the MCP endpoint and never rewrites the checked-in acceptance config. Claude discovers its own OAuth client identity. Claude cannot reach localhost; the tunnel host must match the MCP's `SAVOYA_MCP_PUBLIC_URL` and Auth0 audience. Clear the developer cache, reconnect OAuth, and test in a brand-new conversation after switching environments.
 
 See `SETUP.md`, `RUNBOOK.md`, `CONTRIBUTING.md`, and `docs/0.23-mcp-migration.md`.
