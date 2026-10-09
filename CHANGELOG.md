@@ -3,6 +3,20 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.23.6
+
+Ayush's call on the maps: keep the public services, make the degradation honest.
+
+- **The document distinguishes the two pictures.** A street map is *Itinerary map*; the
+  basemap-free fallback is *Itinerary overview · stops in order — not a driving route*, and
+  states in bold that its connecting lines are not driving routes. They previously shared
+  a heading, so a client had no way to tell a schematic from a street map.
+- **The CSM is told which one went out** — they decide whether a schematic suits that
+  client, and they can't see the PDF as the client will until it's sent.
+- **New guard `lint_map_honesty`** — renders one fixture as both styles and fails if they
+  come out identical, if the schematic omits its disclaimer, or if a street map disclaims
+  itself as a schematic.
+
 ## 0.23.5
 
 CSMs reported route maps "not drawing the actual route" and coming out "blank with just

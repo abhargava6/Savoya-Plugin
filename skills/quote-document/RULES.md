@@ -70,6 +70,14 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   a failure record and exits 0.
 - **Telling the user about a bug is not reporting it.** They are not the maintainer.
 
+## Maps
+- **A schematic and a street map are different claims.** When the mapping services are
+  unreachable the map becomes an overview of stops in order with straight connecting
+  lines. The document must title it differently and say the lines are not driving routes;
+  a client reading them as roads is being misled by us, not by the network.
+- **Tell the CSM which one went out.** They decide whether a schematic suits that client,
+  and they can't see the PDF as the client will until it's sent.
+
 ## Setup can fail silently
 - **A Drive connector that is switched on can still fail to write.** The upload goes as the
   CSM's own Google account; without Editor on the shared folder every upload fails and

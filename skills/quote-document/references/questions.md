@@ -33,6 +33,16 @@ What each answer does:
 3. **cover** — a catalog key, or a path to their upload → `render_print.py --cover-file`.
 4. **personalization** — set `personalization.*` from the answer; defaults stand for anything not mentioned.
 5. **map** — `true` → run `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py quote.json` before rendering.
+   - **Say which map they got, in one line at delivery.** The script sets
+     `route_map.style`: `tiled` is a street map, `offline` is a schematic of the stops in
+     order with straight connecting lines, drawn when the network blocks the mapping
+     services. The document labels them differently, but the CSM decides whether a
+     schematic is acceptable for that client and cannot see the PDF as the client will
+     until it has gone. For `offline`: *"The map came out as a stops-in-order overview
+     rather than a street map — this network blocks the mapping service. Still accurate,
+     just schematic."* Say nothing extra for `tiled`.
+   - If they want a street map and can't have one, that is the setup check's territory
+     (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/setup-check.md`), not a retry.
 
 **The `fuel` question is gone.** Fuel is market-scoped and engine-applied, and nothing in
 the contract subtracts it — `temporary_discount` is additive, and a surcharge is not a

@@ -381,8 +381,19 @@ def route_page(q):
     if not chunks:
         chunks = [[]]
     thead = "<thead><tr><th>Ref</th><th>Route</th><th class='num'>Distance</th><th class='num'>Drive time</th></tr></thead>"
-    legend = (f"<p class='legend'>Drive times are typical-traffic estimates for planning; garage-to-garage billing "
-              f"and wait time follow the terms. {e(rm.get('attribution',''))}.</p>")
+    # A schematic and a street map are different claims and must not look alike. The
+    # offline overview shows stops in true relative position joined in order -- it is not
+    # a driving route, and a client reading straight lines as roads is being misled by us,
+    # not by the network that caused it. The only disclosure used to be the attribution
+    # string tacked onto the end of this sentence, which nobody reads as a caveat.
+    offline = rm.get("style") == "offline"
+    map_title = "Itinerary overview" if offline else "Itinerary map"
+    map_sub = ("stops in order — not a driving route" if offline
+               else "numbered stops match the table")
+    schematic = ("<b>This overview shows the stops in order and their positions relative to "
+                 "one another; the connecting lines are not driving routes.</b> " if offline else "")
+    legend = (f"<p class='legend'>{schematic}Drive times are typical-traffic estimates for planning; "
+              f"garage-to-garage billing and wait time follow the terms. {e(rm.get('attribution',''))}.</p>")
     out = []
     for idx, chunk in enumerate(chunks):
         first, last = idx == 0, idx == len(chunks) - 1
@@ -391,7 +402,7 @@ def route_page(q):
         out.append(f"""
 <section class="page">
   <header class="bar"><img src="{LOGO}" style="height:26px;"><span>Route overview{'' if first else ' · continued'}</span></header>
-  {'<h2 class="rc">Itinerary map <span class="cap">· numbered stops match the table</span></h2>' if first else ''}
+  {('<h2 class="rc">' + map_title + ' <span class="cap">· ' + map_sub + '</span></h2>') if first else ''}
   {img}
   <table class="lines small">{thead}<tbody>{''.join(chunk)}</tbody></table>
   {legend if last else ''}

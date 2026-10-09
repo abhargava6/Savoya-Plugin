@@ -4,6 +4,51 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-09 (0.23.5 / 0.23.6 — the map was machine-dependent, and said so to nobody)
+
+CSMs reported route maps "failing to draw the actual route" and coming out "blank with
+just straight lines". Both describe one picture: `render_offline`, the designed fallback.
+Below 60% tile coverage the map is redrawn from coordinates the engine already resolved —
+stops in true relative position, joined in order, on a near-white grid. No basemap and no
+road geometry gives straight lines on an almost-empty page. Nothing crashed. The CSMs were
+describing the fallback and reasonably reading it as a failure, because the only thing
+distinguishing it from a street map was an attribution string appended to a sentence about
+wait times.
+
+**Three public community services** sit behind the map: OSM tiles, the OSRM *demo* router
+(the script's own header: "fine for a few quotes a day") and Nominatim at 1 req/s.
+Corporate networks block these routinely, and no setup instruction changes a firewall.
+Worth knowing that the engine already supplies drive times — the router's minutes are
+explicitly discarded in favour of Core's — so those three services buy a street basemap
+and a road-shaped line and nothing that affects the quote.
+
+**A real portability bug, found on the way.** The map's fonts were hardcoded to
+`/usr/share/fonts/truetype/dejavu/…`, which does not exist on macOS, where every CSM is.
+`truetype` therefore always raised and every label fell back to Pillow's default bitmap
+face at its own size, ignoring the 16pt and 13pt requested. The map still rendered, so
+nothing failed and nobody reported a font bug — it simply looked worse on every machine
+that was not Linux. This is the shape worth remembering: a fallback that works makes a
+defect invisible for as long as nobody compares two machines.
+
+**Decision (Ayush, 9 Oct): keep the services, make the degradation honest.** Not paid
+tiles, not dropping maps.
+
+- The document now titles the two pictures differently — *Itinerary map* versus *Itinerary
+  overview · stops in order — not a driving route* — and the schematic states in bold that
+  its connecting lines are not driving routes. A client reading straight lines as roads is
+  being misled by us, not by the network that caused it.
+- The CSM is told which map went out, because they decide whether a schematic suits that
+  client and cannot see the PDF as the client will until it has gone.
+- The setup check reports whether Pillow is present and which of the three services this
+  network can reach, in plain language rather than hostnames.
+
+`lint_map_honesty` renders the same fixture as both styles and fails if they come out
+identical, if the schematic omits its disclaimer, or if a real street map disclaims itself.
+Broken both ways first. Its own first version passed for the wrong reason — the fixture
+carries a `ROUTE_MAP_PNG` placeholder, so neither style rendered a map page at all and the
+two were trivially equal; the guard now creates a real file before comparing.
+
+
 ## 2026-10-09 (0.23.4 — the tool ran for weeks and nothing reached the shared folder)
 
 Ayush gave the plugin to CSMs and nothing arrived in the Drive capture folder. He also

@@ -1167,6 +1167,78 @@ def lint_capture_resilience():
     return True
 
 
+# The route guards already catch a BLANK map. They do not catch an honest-looking one:
+# the offline overview draws stops in true relative position joined by straight lines,
+# which is a schematic, not a driving route. Rendered under the same heading as a street
+# map it is a false claim about geography that a client has no way to question -- and the
+# CSMs who reported "blank with just straight lines" were describing exactly this picture
+# with nothing on the page to explain it.
+def lint_map_honesty():
+    """A schematic map must not be presented as a street map."""
+    import copy
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(DEFAULT_FIXTURES, "sixteen-leg-route-map", "quote.json")
+    if not os.path.exists(fx):
+        print("  \u25cb map honesty: route-map fixture missing, skipped")
+        return True
+    with open(fx) as fh:
+        base = json.load(fh)
+    if not base.get("route_map"):
+        print("  \u25cb map honesty: fixture carries no route_map, skipped")
+        return True
+
+    def render(style):
+        q = copy.deepcopy(base)
+        with tempfile.TemporaryDirectory() as d:
+            # The fixture carries the ROUTE_MAP_PNG placeholder the suite substitutes at
+            # runtime; without a real file route_page() renders nothing and both styles
+            # come back identical for the wrong reason.
+            png = os.path.join(d, "map.png")
+            try:
+                from PIL import Image
+                Image.new("RGB", (1100, 620), (235, 232, 228)).save(png)
+            except ImportError:
+                return "SKIP"
+            q["route_map"] = dict(q["route_map"], style=style, png=png)
+            qp = os.path.join(d, "quote.json")
+            with open(qp, "w") as fh:
+                json.dump(q, fh)
+            subprocess.run([sys.executable, os.path.join(HERE, "render_print.py"),
+                            qp, os.path.join(d, "out.pdf")], capture_output=True, text=True)
+            hp = os.path.join(d, "out.print.html")
+            if not os.path.exists(hp):
+                return None
+            with open(hp, encoding="utf-8") as fh:
+                return fh.read()
+
+    tiled, offline = render("tiled"), render("offline")
+    if tiled == "SKIP":
+        print("  \u25cb map honesty: Pillow not installed, skipped")
+        return True
+    if tiled is None or offline is None:
+        print("  \u2717 map honesty: could not render the probe document")
+        return False
+
+    problems = []
+    if tiled == offline:
+        problems.append("a schematic and a street map render identically — "
+                        "the document makes the same claim about both")
+    if "not a driving route" not in offline and "not driving routes" not in offline:
+        problems.append("the schematic does not say its connecting lines are not driving routes")
+    if "not a driving route" in tiled or "not driving routes" in tiled:
+        problems.append("a real street map is disclaiming itself as a schematic")
+
+    if problems:
+        print("  \u2717 map honesty")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 map honesty (schematic and street map are distinguishable)")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -1280,6 +1352,7 @@ def main():
     lint_ok = lint_discount_attribution() and lint_ok
     lint_ok = lint_page_fit() and lint_ok
     lint_ok = lint_capture_resilience() and lint_ok
+    lint_ok = lint_map_honesty() and lint_ok
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
