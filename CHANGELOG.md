@@ -10,11 +10,20 @@ Reconstructed from the working sessions of 22–24 September 2026. Versions befo
   from a chat was undiscoverable. The phrase is now written down, with the warnings that
   matter — `--pdf` is the real gate, the suite runs against the *installed* copy, and a
   session must never "fix" what it finds there because the next rebuild overwrites it.
-- **New guard `lint_paired_docs`.** `SETUP.md` and `RUNBOOK.md` each exist twice: at the
-  repo root, where anyone would naturally open them, and under `assets/plugin-root/`,
-  which is the copy `rebuild_plugin.py` actually ships. Editing the root one alone looks
-  right in the repo and silently never reaches a CSM — which is what happened to the
-  RUNBOOK edit above, caught only because the packaging path was checked by hand.
+- **New guard `lint_paired_docs`.** Several files exist twice: at the repo root, where
+  anyone would naturally open them, and under `assets/plugin-root/`, which is the copy
+  `rebuild_plugin.py` actually ships. Editing the root one alone looks right in the repo
+  and silently never reaches a CSM — which is what happened to the RUNBOOK edit above,
+  caught only because the packaging path was checked by hand.
+  **The first version of this guard hardcoded the two filenames from that incident, and
+  `README.md` was already diverged at the time, uncovered.** A hardcoded list only ever
+  covers the incident you just had. The list is now derived from what is actually
+  duplicated, which immediately surfaced a fifth file nobody had noticed — `.mcp.json`,
+  which carries the MCP server URL and is the one where a drift would be worst. Each pair
+  declares its relationship (`same`, or `prefix` for README, whose root copy is a superset
+  carrying a maintainer section a CSM should not get), and **a duplicated file with no
+  declared relationship fails** rather than passing silently, so adding a third copy of
+  something forces a decision instead of creating the next drift.
   **This is the third time two homes have cost something here**: the tool contract had
   two and shipped 0.22.0 calling tools that no longer existed, and the question set had
   three and kept `fuel` alive for a day. Neither was caught by anything automatic.

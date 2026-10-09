@@ -1239,45 +1239,79 @@ def lint_map_honesty():
     return True
 
 
-# SETUP.md and RUNBOOK.md each exist TWICE: once at the repo root, where anyone would
-# naturally open them, and once under assets/plugin-root/, which is the copy
-# rebuild_plugin.py actually ships. Edit the root one and the change silently never
-# reaches a CSM -- the file looks right in the repo and is wrong in the package.
+# Several docs exist TWICE: once at the repo root, where anyone would naturally open
+# them, and once under assets/plugin-root/, which is the copy rebuild_plugin.py ships.
+# Edit the root one and the change silently never reaches a CSM.
 #
-# This is the third time two homes have cost this project something. The tool contract had
-# two (a reference file and a constant in this script), and the drift shipped 0.22.0 calling
-# two tools that no longer existed. The document question set had three, and `fuel` survived
-# in one of them for a day. Neither was caught by anything; both were caught by a person
-# reading carefully. A byte comparison is cheap insurance against the same shape.
-_PAIRED_DOCS = ("SETUP.md", "RUNBOOK.md")
+# The first version of this guard hardcoded ("SETUP.md", "RUNBOOK.md") -- the two files
+# the incident happened to involve -- and README.md was ALREADY diverged at the time,
+# uncovered. A hardcoded list only ever covers the incident you just had, which is the
+# same mistake in a new place. So the list is DERIVED: every file present in both
+# locations is checked, and a duplicated file with no declared relationship FAILS rather
+# than passing silently. Adding a third copy of something now forces a decision.
+#
+# Two relationships are legitimate:
+#   same   - the two copies must be byte-identical.
+#   prefix - the root copy is a superset; the shipped copy must be exactly its opening
+#            section. README.md is this: the root version adds a "Working on this repo"
+#            section that a CSM should never be handed.
+_PAIRED_DOCS = {
+    "SETUP.md": "same",
+    "RUNBOOK.md": "same",
+    "CONTRIBUTING.md": "same",
+    "README.md": "prefix",
+    # Not a doc, and the one where a drift would be worst: it carries the MCP server URL.
+    # A shipped copy pointing at a different host than the repo believes is a whole class
+    # of bug nobody would think to look for.
+    ".mcp.json": "same",
+}
 
 
 def lint_paired_docs():
-    """The shipped copy of a duplicated doc must match the one people edit."""
+    """Every doc that exists in both places must match its declared relationship."""
     root = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
     shipped_dir = os.path.join(SKILL, "assets", "plugin-root")
-    problems = []
-    for name in _PAIRED_DOCS:
+    if not os.path.isdir(shipped_dir):
+        print("  \u25cb paired docs: no plugin-root, skipped")
+        return True
+
+    problems, checked = [], 0
+    for name in sorted(os.listdir(shipped_dir)):
         a = os.path.join(root, name)
         b = os.path.join(shipped_dir, name)
-        if not os.path.exists(a) or not os.path.exists(b):
+        if not (os.path.isfile(a) and os.path.isfile(b)):
+            continue        # only lives in one place; nothing to drift
+        rel = _PAIRED_DOCS.get(name)
+        if rel is None:
+            problems.append(
+                f"{name}: exists in both the repo root and assets/plugin-root/ but no "
+                f"relationship is declared. Say whether the two must be identical or the "
+                f"shipped copy is an opening section of the root one — an undeclared "
+                f"duplicate is how the last three drifts happened.")
             continue
+        checked += 1
         with open(a, encoding="utf-8") as fh:
             ta = fh.read()
         with open(b, encoding="utf-8") as fh:
             tb = fh.read()
-        if ta != tb:
+        if rel == "same" and ta != tb:
             problems.append(
-                f"{name}: the root copy and the shipped copy differ "
-                f"({len(ta)} vs {len(tb)} chars). rebuild_plugin.py ships "
-                f"assets/plugin-root/{name}, so an edit to the root copy alone never "
-                f"reaches anyone.")
+                f"{name}: the root copy and the shipped copy differ ({len(ta)} vs "
+                f"{len(tb)} chars) but are declared identical. rebuild_plugin.py ships "
+                f"assets/plugin-root/{name}, so an edit to the root copy alone reaches "
+                f"nobody.")
+        elif rel == "prefix" and not ta.startswith(tb.rstrip() [:max(0, len(tb) - 2)] or tb):
+            problems.append(
+                f"{name}: the shipped copy is declared to be the opening section of the "
+                f"root copy, and is not. Either the root copy was edited above the split "
+                f"or the shipped copy drifted.")
+
     if problems:
         print("  \u2717 paired docs")
         for b in problems:
             print(f"      - {b}")
         return False
-    print(f"  \u2713 paired docs ({len(_PAIRED_DOCS)} in sync)")
+    print(f"  \u2713 paired docs ({checked} checked, list derived not hardcoded)")
     return True
 
 
