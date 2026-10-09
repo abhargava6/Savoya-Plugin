@@ -1,6 +1,6 @@
 # Flow diagrams
 
-Mermaid source for the three flows, with each one rendered beside it, regenerated for **0.23.1** (register item F1).
+Mermaid source for the three flows, with each one rendered beside it, regenerated for **0.23.6** (register item F1).
 
 | Source | Rendered | Covers |
 |---|---|---|

@@ -1,5 +1,8 @@
-%% savoya-quoting 0.23.0 — document flow (decision-tree.md nodes K–Q)
+%% savoya-quoting 0.23.6 — document flow (decision-tree.md nodes K–Q)
 %% FIVE questions, not six: the fuel question is gone (C3).
+%% Two refusals, for opposite reasons: a wrong total (C4), and a RIGHT total
+%% telling the wrong story — a discount with no line of its own, swallowed by
+%% the fuel remainder and printed as a negative surcharge (0.23.2).
 flowchart TD
     START([handoff/intake.json, final]) --> K0
     K0[["K0 · preflight.py<br/>once per conversation"]] --> KV
@@ -21,13 +24,22 @@ flowchart TD
     Q5{{"5 · map"}} --> Q6
     Q6{{"6 · format"}} --> M
 
-    M[["M · apply_adjustments.py<br/>FLAT document lines only —<br/>a percentage line is refused"]] --> C4
+    M[["M · apply_adjustments.py<br/>FLAT document lines only —<br/>a percentage line is refused"]] --> LINES
+
+    LINES{"every discount Core applied<br/>has its own line?"}
+    LINES -->|no| MISATTR[/"the fuel remainder swallows it<br/>and prints a NEGATIVE surcharge.<br/>Total still correct — which is<br/>why nothing used to fail"/]
+    MISATTR --> C4
+    LINES -->|yes| C4
 
     C4{"total == Core's<br/>aggregate?"}
     C4 -->|no| FAIL[/"REFUSE TO RENDER.<br/>Names both figures and the<br/>difference. No absorption."/]
     C4 -->|yes| N
 
-    N[["N · render_print.py / draft_email.py"]] --> N2
+    N[["N · render_print.py / draft_email.py"]] --> MAPQ
+    MAPQ{"map style?"}
+    MAPQ -->|tiled| N2
+    MAPQ -->|"offline — the network<br/>blocked the map services"| SCHEM[/"titled 'stops in order —<br/>not a driving route',<br/>and the CSM is told"/]
+    SCHEM --> N2
     N2[["N2 · verify_document.py"]]
     N2 -->|0 PASS| O
     N2 -->|1 FAIL| N
@@ -35,11 +47,16 @@ flowchart TD
     O[["O · deliver — email as a<br/>copy-ready block, files attached"]] --> Q
     Q{{"Q · Anything you'd like changed?"}}
     Q -->|a change| M
-    Q -->|no| P[["P · capture_session.py<br/>once, after any fix"]]
+    Q -->|no| P[["P · capture_session.py<br/>once, after any fix.<br/>Writes LOCALLY — cannot throw"]]
+    P --> UP{"Drive reachable<br/>AND Editor on the folder?"}
+    UP -->|yes| DRIVE[["upload"]]
+    UP -->|no| NUDGE[/"told EVERY session,<br/>with the backlog named —<br/>not once"/]
 
     classDef toolcall fill:#1f3864,stroke:#0f1e3d,color:#fff
     classDef question fill:#7b3f00,stroke:#4a2600,color:#fff
     classDef halt fill:#6b1f1f,stroke:#3d0f0f,color:#fff
-    class K0,K,M,N,N2,O,P,REQ toolcall
+    classDef aside fill:#2d4739,stroke:#1b2b22,color:#fff
+    class K0,K,M,N,N2,O,P,REQ,DRIVE toolcall
     class L,Q1,Q2,Q3,Q4,Q5,Q6,Q question
-    class REJECT,FAIL halt
+    class REJECT,FAIL,MISATTR halt
+    class SCHEM,NUDGE aside
