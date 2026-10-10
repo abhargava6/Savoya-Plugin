@@ -14,6 +14,16 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   contracted field leaves the extra discount inside Core's net with no line of its own, and
   the fuel remainder then prints it as a **negative** "Fuel surcharge" — with the total
   still exact, so nothing fails.
+- **Shuttles converging on one place on one day are one movement** (2026-10-10). The
+  header counts the people a quote moves, and what counts as one movement decides the
+  number. An exact stop sequence was too strict: the World Cup quote ran four shuttles on
+  one date from four stations to MetLife and back, ten guests each, and the header read
+  **10** for a date on which forty travelled. The destination alone is too loose, and the
+  wedding fixture shows why — two Sprinters one-way and three Mini Buses round-trip to the
+  same place on the same day sum to **132** for a 120-guest wedding. The key is therefore
+  (calendar date, one-way or round trip, where it goes), with the origin dropped and the
+  turnaround standing in as the destination of a round trip. `regress.py` pins all three
+  rejected rules — `max()`, `sum()` and the exact sequence — as failures.
 - **The email states Core's line amounts, not its own** (2026-10-10). `draft_email.py`
   built one multiplicative factor over every percent adjustment — 0.70 × 0.95 × 1.10 —
   where Core adds discounts in basis points and applies 3500 once. With a single discount

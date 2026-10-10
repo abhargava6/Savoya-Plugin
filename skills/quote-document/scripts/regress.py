@@ -1839,6 +1839,10 @@ def lint_passenger_count():
 
     D1, D2 = "2027-05-30T14:30:00-04:00", "2027-05-31T09:00:00-04:00"
     AB, ABA = ["Hilton", "Stonehurst"], ["Hilton", "Stonehurst", "Hilton"]
+    # the World Cup shape: four origins, one venue, out and back, same date but
+    # four different pickup times
+    def wc(origin, hhmm):
+        return leg(f"2027-06-13T{hhmm}:00-04:00", [origin, "MetLife", origin], 10)
     cases = [
         ("one party split across two vehicle groups on one trip",
          [leg(D1, AB, 656), leg(D1, AB, 344)], 1000),
@@ -1849,6 +1853,21 @@ def lint_passenger_count():
         ("Option B units are the same people priced twice",
          [leg(D1, AB, 50), leg(D1, AB, 50, alt="a1")], 50),
         ("a single leg is itself", [leg(D1, AB, 3)], 3),
+        # 2026-10-10: four shuttles converging on one venue on one date are one
+        # movement. Keyed on the exact stop sequence this reported 10 for 40 guests.
+        ("four shuttles from four origins to one venue, same date",
+         [wc("White Plains", "14:55"), wc("Grand Central", "15:30"),
+          wc("Newark Penn", "15:35"), wc("Mineola", "14:35")], 40),
+        ("the same four shuttles on a second date do not add",
+         [wc("White Plains", "14:55"), wc("Grand Central", "15:30"),
+          wc("Newark Penn", "15:35"), wc("Mineola", "14:35"),
+          leg("2027-06-16T12:00:00-04:00", ["White Plains", "MetLife", "White Plains"], 10),
+          leg("2027-06-16T12:30:00-04:00", ["Grand Central", "MetLife", "Grand Central"], 10)],
+         40),
+        # the opposite direction on one day is a different movement, not more people
+        ("an out-and-back pair on one date, run as two one-way legs",
+         [leg("2027-03-20T07:40:00-07:00", ["Von Karman", "Oak Canyon"], 80),
+          leg("2027-03-20T14:15:00-07:00", ["Oak Canyon", "Von Karman"], 25)], 80),
     ]
     problems = []
     for label, legs, want in cases:
@@ -1863,6 +1882,17 @@ def lint_passenger_count():
         problems.append("max() now passes the split-party case — this guard can no longer fail")
     if sum(l["passenger_count"] for l in wedding) == 120:
         problems.append("sum() now passes the wedding case — this guard can no longer fail")
+    # and the rule this replaced: an exact stop sequence, which split the converging
+    # shuttles into four movements and under-reported a World Cup date by 4x
+    conv = [wc("White Plains", "14:55"), wc("Grand Central", "15:30"),
+            wc("Newark Penn", "15:35"), wc("Mineola", "14:35")]
+    by_exact = {}
+    for l in conv:
+        k = (l["date"], tuple(s2["label"] for s2 in l["stops"]))
+        by_exact[k] = by_exact.get(k, 0) + l["passenger_count"]
+    if max(by_exact.values()) == 40:
+        problems.append("the exact-sequence rule now passes the converging case — "
+                        "this guard can no longer fail")
 
     if problems:
         print("  \u2717 passenger count")

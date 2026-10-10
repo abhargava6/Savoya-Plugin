@@ -172,18 +172,42 @@ def passenger_total(legs):
     movement — same pickup datetime, same stop sequence — are one party and sum;
     separate movements do not add, and the largest wins.
 
-    The stop sequence has to be exact. On the wedding fixture the Mini Buses run
-    Hilton -> Stonehurst -> Hilton while the Sprinters run Hilton -> Stonehurst;
-    those are genuinely different movements and summing them would overstate.
-    Cross-market sourcing makes this matter more, not less: one movement now
-    routinely splits across allocations from different markets.
+    What counts as "the same movement" is the whole question, and an exact stop
+    sequence was too strict. The World Cup quote ran four shuttles on one date from
+    White Plains, Grand Central, Newark Penn and Mineola, each carrying ten people to
+    MetLife Stadium and back. Four different sequences, so four movements, so the
+    header read **10** for a date on which forty guests travelled. Shuttles converging
+    on one place on one day are one movement (decided 2026-10-10).
+
+    But the destination alone is too loose, and the wedding fixture proves it: its two
+    Sprinters run Hilton -> Stonehurst while its Mini Buses run Hilton -> Stonehurst ->
+    Hilton, same day and same destination, and summing those reports **132** people for
+    a 120-guest wedding. The structural difference between them is real -- one way
+    versus a round trip -- so the key keeps the trip's SHAPE and drops only the origin:
+
+        (calendar date, one-way or round trip, where it goes)
+
+    For a round trip "where it goes" is the turnaround, not the last stop, which is the
+    origin again. That one change makes the four World Cup shuttles one movement of 40
+    while leaving the wedding at 120, the Irvine day at 80 (its two legs run opposite
+    ways, so they are different movements), and the London itinerary at 5.
+
+    Cross-market sourcing makes this matter more, not less: one movement now routinely
+    splits across allocations from different markets.
     """
+    def shape(l):
+        names = [str(s.get("label") or s.get("address") or "") for s in l.get("stops") or []]
+        if len(names) >= 3 and names[0] == names[-1]:
+            # a round trip: the turnaround is the destination, and the stops between
+            # origin and return identify it
+            return ("round", tuple(names[1:-1]))
+        return ("oneway", tuple(names[1:]))
+
     movements = {}
     for l in legs or []:
         if l.get("alternative_of"):
             continue              # Option B units are the same people, priced twice
-        sig = (l.get("date"),
-               tuple(str(s.get("label") or s.get("address") or "") for s in l.get("stops") or []))
+        sig = (str(l.get("date"))[:10], shape(l))
         movements[sig] = movements.get(sig, 0) + (l.get("passenger_count") or 0)
     return max(movements.values(), default=0)
 
