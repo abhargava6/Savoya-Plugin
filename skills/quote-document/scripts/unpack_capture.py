@@ -6,14 +6,23 @@ Usage: unpack_capture.py <capture.json|dir> [...] --fixtures evals/fixtures
 Each becomes <fixtures>/<slug>/{request.md, raw_quote.json|quote.json, expected.json, capture-meta.json}.
 Review expected.json (tighten contains/not_contains) before running regress.py.
 """
-import argparse, glob, json, os
+import argparse, base64, glob, gzip, json, os, re
 ap = argparse.ArgumentParser(); ap.add_argument("paths", nargs="+"); ap.add_argument("--fixtures", required=True)
 a = ap.parse_args()
 files, fb_only = [], []
 for p in a.paths:
     if os.path.isdir(p):
         files += sorted(glob.glob(os.path.join(p, "*.capture.json")))
-        caps = {os.path.basename(f).replace(".capture.json", "") for f in files}
+        # Since 0.25 the full capture is uploaded compressed, so the Drive folder holds
+        # `<slug>.capture.json.gz.b64` and usually no plain `.capture.json` at all. A
+        # glob that misses it would silently fall back to the small feedback file and
+        # drop the raw engine response -- the whole reason a capture exists.
+        plain = {os.path.basename(f)[:-len(".capture.json")] for f in files}
+        for f in sorted(glob.glob(os.path.join(p, "*.capture.json.gz.b64"))):
+            if os.path.basename(f)[:-len(".capture.json.gz.b64")] not in plain:
+                files.append(f)
+        caps = {re.sub(r"\.capture\.json(\.gz\.b64)?$", "", os.path.basename(f))
+                for f in files}
         # Three kinds of record can be in the folder for one quote, in decreasing
         # richness: the full capture, the post-feedback `<slug>.feedback.json`, and the
         # delivery-time `<slug>.feedback.snapshot.json`. Take the best one per slug and
@@ -37,10 +46,33 @@ for p in a.paths:
         fb_only += [f for _, f in sorted(best.values(), key=lambda t: t[1])]
     else:
         files.append(p)
+def read_capture(path):
+    """A capture file, plain or compressed.
+
+    The envelope is JSON so the weekly pass can read the header without decompressing;
+    `data` is the gzipped capture, base64'd because Drive's create_file takes text.
+    """
+    c = json.load(open(path, encoding="utf-8"))
+    if c.get("encoding") == "gzip+base64":
+        inner = json.loads(gzip.decompress(base64.b64decode(c["data"])).decode("utf-8"))
+        raw = c.get("raw_bytes")
+        if raw and len(json.dumps(inner, separators=(",", ":"), ensure_ascii=False).encode()) < raw * 0.5:
+            print(f"  WARNING: {os.path.basename(path)} decompressed to much less than "
+                  f"the {raw} bytes it claims; it may be truncated")
+        return inner
+    return c
+
+
 for f in files:
-    c = json.load(open(f, encoding="utf-8"))
+    c = read_capture(f)
     d = os.path.join(a.fixtures, c["slug"]); os.makedirs(d, exist_ok=True)
-    open(os.path.join(d, "request.md"), "w", encoding="utf-8").write(c["request"])
+    # `--request` is deliberately optional on the capture: node K's documented fallback
+    # (a quote brought in from elsewhere) has no handoff and therefore no request at all,
+    # and making it mandatory used to crash the capture exactly when a session had most
+    # to report. The unpacker has to tolerate the same absence, or it crashes on the
+    # captures that matter most instead.
+    open(os.path.join(d, "request.md"), "w", encoding="utf-8").write(
+        c.get("request") or f"<!-- no request recorded: {c.get('request_missing') or 'unknown'} -->\n")
     if c.get("raw_quote"):
         json.dump(c["raw_quote"], open(os.path.join(d, "raw_quote.json"), "w"), indent=1)
     else:

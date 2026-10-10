@@ -119,6 +119,37 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   extracts the cut text, so every text-based check passes while the client sees nothing.
 - **Prefer a wasted page to a possible clip.** The failure modes are not equal.
 
+- **`~` is not the user's computer** (2026-10-10). On claude.ai the home directory is a
+  cloud container reclaimed with the session; on a linked desktop the shell's home is an
+  isolated VM and only a *connected folder* is really the user's disk. Two real captures —
+  192 KB and 36 KB — were written to `~/.savoya-quoting/captures/`, reported as saved, and
+  lost. The capture report now states `local_copy.durable` and says why not, and the
+  instruction is to pass `--dir` inside a connected folder when the session has one. When
+  it does not, Drive is the only durable destination and the upload is not optional.
+- **The capture is always compressed, so there is no size at which it stays behind**
+  (2026-10-10). The old rule kept the full capture local above 25 KB — so the richest
+  sessions were exactly the ones that never arrived, and both big captures of that day
+  failed the test. Measured on those files gzip gives 15x and base64 for Drive's
+  textContent still leaves 17 KB. The envelope declares `encoding: gzip+base64` and
+  `unpack_capture.py` reverses it.
+- **Clearing the pending-upload marker is a flag, not `rm`** (2026-10-10). The delete was
+  denied by the auto-mode classifier, so an upload that *had* succeeded still read as
+  outstanding and the backlog line shown to the user stated a false number.
+  `--mark-uploaded <slug> --file-id <id>` records it, and refuses without an id so the
+  backlog cannot be tidied without an upload behind it.
+- **`expected.pdf_pages` is measured or absent, never guessed** (2026-10-10). It was the
+  literal `3` on every capture ever taken, while the real deliverables were 4, 5 and 8
+  pages and the fixtures here run 3 to 9. A captured session promoted to a fixture
+  therefore started red on a number nobody had measured, which invites correcting the
+  expectation to match the output — the exact habit the sixteen-leg note warns against.
+  Pass `--pdf`.
+- **A malformed capture call leaves a record** (2026-10-10). The step is specified as
+  silent, so argparse printing usage to stderr is a bug report that never happened: one
+  session's first capture call passed `--dir` with no `--slug`, failed silently, and
+  nothing was recorded until the user asked. A refused call now writes
+  `capture-refused-*.json` alongside the failure records, and those filenames carry
+  microseconds because two in one second used to collide and one replaced the other.
+
 ## Capture is the only channel
 - **Capture hardest when the session went worst.** A session that patched something in a
   working copy or rebuilt a line by hand is the most valuable one of the week and the most

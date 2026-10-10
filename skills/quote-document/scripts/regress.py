@@ -1185,12 +1185,129 @@ def lint_capture_resilience():
                                ".feedback.snapshot.json", ".pending-upload")):
                     os.remove(os.path.join(d, f))
 
+    # --- the capture must leave the session, not just the function -----------------
+    # Everything below is a 10 Oct 2026 finding. Three real sessions produced captures
+    # and the team got none of them without asking: one call was malformed and silent,
+    # one upload was never made, one was still outstanding when the session ended -- and
+    # the two biggest captures were over the old 25 KB ceiling, so they stayed in a
+    # container that no longer exists.
+    import base64 as _b64
+    import gzip as _gzip
+    import json as _json
+
+    with tempfile.TemporaryDirectory() as d:
+        # A capture the size of the real one that was lost. No fixture here is big
+        # enough to trip a 25 KB ceiling -- the largest makes a 19 KB capture -- so
+        # asserting against the small ones proved nothing, and the first version of this
+        # check passed happily with the ceiling put back. The quote is padded with inert
+        # internal notes until the capture is comparable to the 192 KB World Cup record.
+        big = _json.load(open(fx, encoding="utf-8"))
+        big.setdefault("internal", {})["_guard_padding"] = [
+            f"line {i}: padding so this capture is as large as the ones that were lost "
+            f"to the size ceiling on 10 Oct 2026" for i in range(1800)]
+        big_fx = os.path.join(d, "big-quote.json")
+        with open(big_fx, "w", encoding="utf-8") as fh:
+            _json.dump(big, fh)
+        if os.path.getsize(big_fx) < 150 * 1024:
+            problems.append("the padded guard quote is too small to test the size rule")
+        r = subprocess.run(
+            [sys.executable, os.path.join(HERE, "capture_session.py"),
+             "--slug", "guard-big", "--client", "Guard", "--deliverable", "pdf",
+             "--quote", big_fx, "--dir", d],
+            capture_output=True, text=True)
+        try:
+            out = _json.loads(r.stdout)
+        except ValueError:
+            problems.append(f"capture printed no JSON report ({(r.stderr or '')[:160]})")
+            out = {}
+
+        titles = [u.get("title", "") for u in out.get("upload", [])]
+        if not any(t.endswith(".capture.json.gz.b64") for t in titles):
+            problems.append("the full capture is not offered for upload compressed — "
+                            "the 25 KB rule stranded the two richest captures of the day")
+        if "full_capture_kept_local" in out:
+            problems.append("the report still has a size-gated 'kept local' path")
+
+        # the compressed envelope must round-trip, or the weekly pass gets nothing
+        packed = next((u["path"] for u in out.get("upload", [])
+                       if u.get("title", "").endswith(".gz.b64")), None)
+        if packed and os.path.exists(packed):
+            try:
+                env = _json.load(open(packed, encoding="utf-8"))
+                inner = _json.loads(_gzip.decompress(
+                    _b64.b64decode(env["data"])).decode("utf-8"))
+                if not inner.get("quote"):
+                    problems.append("the compressed capture decodes without a quote")
+                if env.get("encoding") != "gzip+base64":
+                    problems.append("the compressed capture does not declare its encoding")
+            except Exception as ex:  # noqa: BLE001
+                problems.append(f"the compressed capture does not decode: {ex}")
+
+        # an ephemeral directory must be reported as such, not silently accepted
+        local = out.get("local_copy") or {}
+        if local.get("durable") is not False:
+            problems.append(f"a capture written to {d} is not reported as "
+                            f"non-durable — '~' is a container on claude.ai and an "
+                            f"isolated VM on a linked desktop, and two captures were "
+                            f"reported saved and then lost")
+
+        # pdf_pages must be measured or absent, never the literal 3 it used to be
+        cap = next((f for f in os.listdir(d) if f.endswith(".capture.json")), None)
+        if cap:
+            exp = (_json.load(open(os.path.join(d, cap), encoding="utf-8"))
+                   .get("expected") or {})
+            if "pdf_pages" in exp:
+                problems.append(f"pdf_pages was recorded as {exp['pdf_pages']} with no "
+                                f"--pdf to measure; real deliverables were 4, 5 and 8 "
+                                f"pages and fixtures run 3 to 9, so a guess invites "
+                                f"correcting the expectation to match the output")
+
+        # the marker must be clearable without `rm`, and not without a Drive id
+        no_id = subprocess.run(
+            [sys.executable, os.path.join(HERE, "capture_session.py"),
+             "--mark-uploaded", "guard-big", "--dir", d], capture_output=True, text=True)
+        if no_id.returncode == 0:
+            problems.append("--mark-uploaded cleared the marker with no --file-id, so a "
+                            "session can make the backlog look clean without uploading")
+        if not glob.glob(os.path.join(d, "*.pending-upload")):
+            problems.append("the pending-upload marker was removed by a refused "
+                            "--mark-uploaded")
+        with_id = subprocess.run(
+            [sys.executable, os.path.join(HERE, "capture_session.py"),
+             "--mark-uploaded", "guard-big", "--dir", d, "--file-id", "test123"],
+            capture_output=True, text=True)
+        if with_id.returncode != 0:
+            problems.append(f"--mark-uploaded failed with an id: "
+                            f"{(with_id.stderr or '')[:160]}")
+        elif glob.glob(os.path.join(d, "*.pending-upload")):
+            problems.append("--mark-uploaded left the marker in place, so an upload that "
+                            "DID happen still reads as outstanding and the backlog "
+                            "count shown to the user is wrong")
+
+        # a malformed call must leave a trace; it used to print usage and vanish
+        before = set(glob.glob(os.path.expanduser(
+            "~/.savoya-quoting/captures/capture-refused-*.json")))
+        subprocess.run([sys.executable, os.path.join(HERE, "capture_session.py"),
+                        "--dir", d], capture_output=True, text=True)
+        after = set(glob.glob(os.path.expanduser(
+            "~/.savoya-quoting/captures/capture-refused-*.json")))
+        if not after - before:
+            problems.append("a call with missing arguments left no record — the step is "
+                            "specified as silent, so a usage error is a bug report that "
+                            "never happened")
+        for f in after - before:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
     if problems:
         print("  \u2717 capture resilience")
         for b in problems:
             print(f"      - {b}")
         return False
-    print(f"  \u2713 capture resilience ({len(cases)} degraded inputs still captured)")
+    print(f"  \u2713 capture resilience ({len(cases)} degraded inputs captured; "
+          f"compressed, durability-reported, markable, and loud when misused)")
     return True
 
 

@@ -9,7 +9,9 @@ Loaded at the capture step, after the final deliverable.
 
 A revision does not earn a new slug; the script overwrites by design. Only pass `--new-version` if the user explicitly wants a second record kept.
 
-The script prints an `upload` list. **Upload exactly what it lists, nothing else.** For a big quote it lists only the small `.feedback.json` and says the full capture stays local — that is correct and intended. **Never split a capture across multiple uploads**; a 12-part upload is worse than no upload. If the full capture matters for a regression later, it is on disk at the path in the feedback file.
+The script prints an `upload` list. **Upload exactly what it lists, nothing else.** The full capture is compressed, so it is always in that list and always fits one call — a 192 KB capture goes up as 17 KB. **Never split a capture across multiple uploads**; a 12-part upload is worse than no upload.
+
+There used to be a 25 KB ceiling above which the full capture stayed local. It is gone, and it is worth knowing why: on 10 Oct 2026 the two largest captures of the day — a 16-leg World Cup quote and a 6-leg London/Sicily/Milan one — both failed that test, stayed in a container, and were gone when it was reclaimed. The richest sessions were precisely the ones that never arrived.
 
 Run it after the final deliverable of the document flow — after the PDF and email are delivered in the same reply — with `--deliverable "<all formats produced>"`. It includes everything intake decided (`handoff/intake.json` is read automatically). Don't capture per format, don't capture in intake when a document follows, and don't re-upload after a revision unless the user asks for a re-render — then one more, versioned. Load the Drive tool once (`tool_search "Google Drive create_file"`), not per upload.
 
@@ -24,15 +26,38 @@ Run it after the final deliverable of the document flow — after the PDF and em
      --deliverable pdf --request request.md --raw raw_quote.json --quote quote.json \
      --select <keys> [--auto] [--worked "…" --change "…" --fixed "…"] [--workaround "…"]
    ```
+   Pass `--pdf <the delivered PDF>` whenever there is one, so `expected.pdf_pages` is
+   measured. Without it the key is left out, which is correct — it used to be the literal
+   `3` on every capture, while real deliverables were 4, 5 and 8 pages.
+
    **The script writes files. It has no Drive access and uploads nothing.** Its output
    opens with `status: NOTHING IS UPLOADED YET` for a reason: a session ran the capture,
    read the output as a completion summary and stopped there — *"I treated the local save
    as the end of the step"* — and the only channel back from a live quote went quiet
    again. **The capture step is not done until Drive has returned an `id` for every file
-   in `upload`.** Then delete the file named in `clear_when_uploaded`; it is the marker
-   that makes a skipped upload visible to the next session instead of letting it vanish
-   with this one. If `earlier_captures_never_uploaded` is above zero, upload those too —
-   the paths are inside each `*.pending-upload` file.
+   in `upload`.**
+
+   Then record it, with the ids Drive gave you:
+
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py \
+     --mark-uploaded "<slug>" --file-id <id> [--file-id <id>]
+   ```
+
+   Do **not** try to delete the marker with `rm` — the auto-mode classifier denies it, and
+   on 10 Oct 2026 that left a capture that *had* been uploaded still counted as
+   outstanding, so the line shown to the user ("that's 4 sessions now…") stated a number
+   that was not true. `--mark-uploaded` refuses to run without a Drive id, so it cannot be
+   used to tidy the backlog without an upload behind it. If
+   `earlier_captures_never_uploaded` is above zero, upload those too — the paths are
+   inside each `*.pending-upload` file.
+
+   **`local_copy.durable: false` means the local copy is not a fallback.** `~` is this
+   session's own storage: a cloud container on claude.ai, and an isolated VM on a linked
+   desktop — only a connected folder is really the user's disk. When the session has a
+   folder connected to the user's computer, pass `--dir` inside it and the capture
+   survives the session. When it does not, Drive is the only durable destination, so the
+   upload is not optional and the line in step 3 is not a formality.
 
 3. **If the Google Drive connector isn't available**, don't treat it as an error: the capture is already saved locally. Say so in plain terms — *"I've saved this session locally. Turning on the Google Drive connector in settings would let it save to the team folder, which is how the tool gets better — worth doing when you have a minute."* — and carry on. Never mention file paths, scripts or commands.
 
@@ -48,10 +73,12 @@ Run it after the final deliverable of the document flow — after the PDF and em
 4. Versioning: the two runs above already carry different titles — the render snapshot
    goes up as `<slug>.feedback.snapshot.json` and the post-feedback run as
    `<slug>.feedback.json` — so the normal flow no longer leaves two files with one name
-   in the folder, which it used to do on *every* quote. The script overwrites the same
-   slug locally; pass `--new-version` only when the user explicitly wants a second,
-   separate record of the same quote. (There is no `--version N` flag — an earlier
-   version of this file named one, and passing it stops the capture dead.)
+   in the folder, which it used to do on *every* quote. The full capture goes up as
+   `<slug>.capture.json.gz.b64`; it is a JSON envelope whose header reads plainly and
+   whose `data` is the gzipped capture, and `unpack_capture.py` reverses it. The script
+   overwrites the same slug locally; pass `--new-version` only when the user explicitly
+   wants a second, separate record of the same quote. (There is no `--version N` flag —
+   an earlier version of this file named one, and passing it stops the capture dead.)
 5. Say nothing else about the capture. The user asked for a quote, not a report on telemetry.
 
 **Record your own workarounds — in `--workaround`, never `--change`.** If you did anything outside the documented path — hand-edited legs, restructured units, patched a renderer, drew a map another way, guessed a value — put it in `--workaround`, on the render snapshot, at the moment you do it. Claude's own notes have been the most useful signal so far, and they must stay in their own field: `--change` is reserved for the user's words. Mixing them makes it impossible to tell a CSM's request from a defect Claude quietly patched, and that distinction is the whole point of the weekly pass.
