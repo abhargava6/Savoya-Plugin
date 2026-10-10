@@ -14,8 +14,27 @@ for p in a.paths:
     if os.path.isdir(p):
         files += sorted(glob.glob(os.path.join(p, "*.capture.json")))
         caps = {os.path.basename(f).replace(".capture.json", "") for f in files}
-        fb_only += [f for f in sorted(glob.glob(os.path.join(p, "*.feedback.json")))
-                    if os.path.basename(f).replace(".feedback.json", "") not in caps]
+        # Three kinds of record can be in the folder for one quote, in decreasing
+        # richness: the full capture, the post-feedback `<slug>.feedback.json`, and the
+        # delivery-time `<slug>.feedback.snapshot.json`. Take the best one per slug and
+        # ignore the rest. The snapshot must be considered rather than skipped — it is
+        # uploaded for every delivered document, so a quote whose session never came
+        # back for feedback exists in the folder *only* as a snapshot, and a glob for
+        # `*.feedback.json` does not match it.
+        best = {}
+        for f in sorted(glob.glob(os.path.join(p, "*.feedback*.json"))):
+            b = os.path.basename(f)
+            if b.endswith(".feedback.snapshot.json"):
+                slug, rank = b[:-len(".feedback.snapshot.json")], 1
+            elif b.endswith(".feedback.json"):
+                slug, rank = b[:-len(".feedback.json")], 2
+            else:
+                continue
+            if slug in caps:
+                continue
+            if rank >= best.get(slug, (0, None))[0]:
+                best[slug] = (rank, f)
+        fb_only += [f for _, f in sorted(best.values(), key=lambda t: t[1])]
     else:
         files.append(p)
 for f in files:

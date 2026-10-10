@@ -116,6 +116,24 @@ def main():
             fail(f"{l.get('ref')}: route covers {segs} segment(s) but the leg has {len(stops)} stops — "
                  f"the drive time understates the itinerary")
 
+    # Every check above is per leg, and a leg with no distance is individually fine —
+    # so a document where half the rows carry miles and half carry an em dash passed
+    # all of them. It reached a client that way on a 16-leg job: the public router
+    # refused 8 calls, and the defect existed only in the comparison between legs,
+    # which nothing was looking at. route_map.py now drops the column rather than
+    # half-fill it; this is the backstop for a quote that got here another way.
+    checks += 1
+    routable = [l for l in q["legs"]
+                if not l.get("alternative_of")
+                and len([s for s in l.get("stops", []) if not s.get("as_directed")]) >= 2]
+    with_dist = [l for l in routable if (l.get("route") or {}).get("distance_mi") is not None]
+    if with_dist and len(with_dist) < len(routable):
+        missing = [l.get("ref") for l in routable if l not in with_dist]
+        fail(f"distance is printed for {len(with_dist)} of {len(routable)} routable legs but "
+             f"missing on {', '.join(str(m) for m in missing[:6])}"
+             f"{' …' if len(missing) > 6 else ''} — a half-filled distance column reads as a "
+             f"broken document. Re-run the route map, or drop distance from every leg.")
+
     rm = (q.get("route_map") or {}).get("png")
     if rm and rm != "ROUTE_MAP_PNG":
         checks += 1

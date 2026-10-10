@@ -401,10 +401,19 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     if summary_own_page:
         # Paginate the notes instead of trusting them to fit. A note's cost is measured
         # the same way notes_cost does it, so the two cannot disagree.
+        # Filling each page to the brim before starting the next leaves the last one
+        # with whatever is left over: six legs of notes came out as a 71%-full page
+        # followed by a 16%-full one, which reads as a mistake in a document a client
+        # is looking at. The number of pages is fixed by the total either way, so
+        # spread the notes evenly across the pages they need.
+        costs = [note_cost(l) for l, _ in note_rows]
+        total_cost = sum(costs)
+        npages = max(1, -(-total_cost // NOTES_ROWS_BUDGET)) if NOTES_ROWS_BUDGET else 1
+        target = total_cost / npages if npages else total_cost
         chunks, cur, used = [], [], 0
-        for l, html in note_rows:
-            c = note_cost(l)
-            if cur and used + c > NOTES_ROWS_BUDGET:
+        for (l, html), c in zip(note_rows, costs):
+            if cur and (used + c > NOTES_ROWS_BUDGET
+                        or (len(chunks) < npages - 1 and used + c / 2 > target)):
                 chunks.append(cur)
                 cur, used = [], 0
             cur.append(html)

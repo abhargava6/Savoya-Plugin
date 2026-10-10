@@ -56,13 +56,29 @@ def geocode(q, cache):
 
 
 def osrm(coords):
-    """coords: [(lat, lon), ...] → (distance_m, duration_s, [(lat, lon) polyline])"""
+    """coords: [(lat, lon), ...] → (distance_m, duration_s, [(lat, lon) polyline])
+
+    The OSRM demo router is free and rate-limited exactly like Nominatim, but only
+    the geocoder was ever hardened for it. A 16-leg World Cup quote fired 16 routing
+    calls back to back with no retry and no delay; 8 came back refused, and those legs
+    reached the client's PDF showing a drive time with an em dash where the distance
+    should have been. Same retry-once-and-throttle treatment as geocode(), for the
+    same reason."""
     path = ";".join(f"{lon},{lat}" for lat, lon in coords)
     url = f"https://router.project-osrm.org/route/v1/driving/{path}?overview=simplified&geometries=geojson"
-    r = json.loads(get(url, 20))
-    rt = r["routes"][0]
-    line = [(lat, lon) for lon, lat in rt["geometry"]["coordinates"]]
-    return rt["distance"], rt["duration"], line
+    last = None
+    for attempt in (1, 2):
+        try:
+            r = json.loads(get(url, 20))
+            rt = r["routes"][0]
+            line = [(lat, lon) for lon, lat in rt["geometry"]["coordinates"]]
+            time.sleep(1.1)   # same courtesy rate as Nominatim; the demo router asks for it
+            return rt["distance"], rt["duration"], line
+        except Exception as ex:
+            last = ex
+            if attempt == 1:
+                time.sleep(2.0)
+    raise last
 
 
 # ---------------------------------------------------------------- static map
@@ -281,6 +297,29 @@ def main():
                 print(f"WARNING: routing failed for {leg['key']}: {ex}", file=sys.stderr)
         else:
             print(f"WARNING: {leg['key']}: fewer than 2 geocodable stops; no route", file=sys.stderr)
+
+    # A mixed distance column is the failure this file already forbids per leg, one
+    # level up. Routing is per-leg and best-effort, so a partial outage leaves some
+    # rows reading "~12.4 mi · ~25 min" and others "— · ~25 min": to a client that is
+    # not a degraded estimate, it is a broken document, and nothing downstream could
+    # see it because every check was per-leg and a leg without a distance is
+    # individually valid. Distances are an approximate planning courtesy; the drive
+    # times are the engine's and stay. So publish the column for every routable leg
+    # or for none.
+    routable = [l for l in q["legs"]
+                if not l.get("alternative_of")
+                and len([s for s in l.get("stops", []) if not s.get("as_directed")]) >= 2]
+    with_dist = [l for l in routable if (l.get("route") or {}).get("distance_mi") is not None]
+    if with_dist and len(with_dist) < len(routable):
+        for l in with_dist:
+            l["route"].pop("distance_mi", None)
+            l["route"].pop("segments", None)
+        print(f"WARNING: ROUTE DEGRADED — distance came back for only {len(with_dist)} of "
+              f"{len(routable)} routable legs, so the distance column is dropped from all of "
+              f"them rather than printed half-filled. Drive times are unaffected (they are "
+              f"the engine's). Re-run the route map to try the public router again.",
+              file=sys.stderr)
+
     if not a.no_map and points:
         out = a.map or os.path.splitext(a.quote)[0] + ".route-map.png"
         made = None

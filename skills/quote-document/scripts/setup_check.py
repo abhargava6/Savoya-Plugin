@@ -109,6 +109,11 @@ def main():
     captures = sorted(glob.glob(os.path.join(CAPTURES, "*.capture.json")))
     feedback = sorted(glob.glob(os.path.join(CAPTURES, "*.feedback.json")))
     failed = sorted(glob.glob(os.path.join(CAPTURES, "capture-failed-*.json")))
+    # A capture leaves a marker that the session deletes once Drive has returned an id,
+    # so this is the real number of sessions that never reached the folder. The backlog
+    # used to be "every capture on this machine", which was only right while Drive had
+    # never worked at all — and it is the number the Drive nudge quotes out loud.
+    pending = sorted(glob.glob(os.path.join(CAPTURES, "*.pending-upload")))
 
     writable = True
     try:
@@ -146,6 +151,14 @@ def main():
     else:
         lines.append("No saved sessions on this computer yet.")
 
+    if pending:
+        lines.append(
+            f"{len(pending)} of them never reached the team folder, the oldest "
+            f"{ago(min(os.path.getmtime(p) for p in pending))}. Nothing is lost — "
+            f"they're still here."
+        )
+        actions.append("I can send those to the team folder now, if Drive is connected.")
+
     if failed:
         lines.append(
             f"{len(failed)} session{'s' if len(failed) != 1 else ''} failed to save "
@@ -174,6 +187,9 @@ def main():
         "local_sessions": len(set(os.path.basename(p).split(".")[0]
                                   for p in (captures + feedback))),
         "failed_captures": len(failed),
+        "never_uploaded": len(pending),
+        "never_uploaded_oldest": (ago(min(os.path.getmtime(p) for p in pending))
+                                  if pending else None),
         "map": map_detail,
         "still_to_check_by_calling_them": ["savoya_mcp", "google_drive", "folder_write"],
     }, indent=1))

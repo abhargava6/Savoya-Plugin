@@ -22,10 +22,25 @@ Owner: Ayush Bhargava. Users: Savoya ops, sales and CSMs.
 
 ```bash
 # edit under skills/ …
-python3 skills/quote-document/scripts/regress.py --pdf    # must be green
-PLUGIN_VERSION=0.22.1 python3 skills/quote-document/scripts/rebuild_plugin.py \
-    skills/quote-document /tmp/build
+python3 skills/quote-document/scripts/sync_plugin_root.py  # if you touched a root doc
+python3 skills/quote-document/scripts/regress.py --pdf     # must be green
+python3 skills/quote-document/scripts/rebuild_plugin.py \
+    skills/quote-document /tmp/build --bump patch \
+    --package /tmp/savoya-quoting.plugin
 ```
+
+**Never hand-edit a version number.** The build reads
+`assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the obvious file to
+bump and the one the build never reads. Bump the obvious file, build without `--bump` or
+`PLUGIN_VERSION=`, and the package is labelled with the new version carrying the old
+content. `--bump major|minor|patch` and `PLUGIN_VERSION=x.y.z` write every copy. The
+paired-docs guard catches the mismatch now, but the habit is the real control.
+
+`--pdf` renders every fixture and **measures** each printed page as well as counting
+them. Counting alone cannot see the worst failures here: `.page` is a fixed box with
+`overflow:hidden`, so content that does not fit is cut rather than flowed, and
+`pdftotext` still extracts the cut text. Run `measure_pages.py` against a real
+`quote.json` to see per-page fill before changing anything about pagination.
 
 Zip the contents of `/tmp/build` as `savoya-quoting.plugin` and upload it over the
 existing plugin. **Never edit the installed copy** — it is a build artifact and the next
@@ -61,7 +76,12 @@ guard to make a change pass.
   produced confident 0-minute drives.
 - **A degraded output is never shipped as if fine.** No basemap → draw the offline
   overview or no map, never a blank panel. A leg that lost a stop gets no drive time
-  rather than an understated one.
+  rather than an understated one. **Partial is a kind of degraded**: when the public
+  router answered for 8 of 16 legs, half the distance column printed miles and half an
+  em dash, and every check passed because each looked at one leg and a leg with no
+  distance is individually valid. The column is published for every routable leg or for
+  none. Before adding a per-item check, ask what the comparison *between* items would
+  have to look like to be wrong.
 - **`client_notes` is a list of strings.** A bare string iterates character by character
   and printed one letter per line down a client's PDF.
 - **The fuel surcharge is market-scoped** — 5% in most markets, 10% in London and others.
@@ -85,11 +105,13 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs eight guards beyond the fixtures: instruction paths, **the tool
+`regress.py` runs sixteen guards beyond the fixtures: instruction paths, **the tool
 contract**, **warning surfacing**, **presentation render**, **airport shape**,
-**positioned-from**, **money ownership**, **greeter leg**, **handoff contract**, route
-guards (blank map, collapsed drive time, question gating across the formats), and
-`client_notes` shape. **A guard that cannot fail is decoration.** If
+**positioned-from**, **money ownership**, **discount attribution**, **page fit**,
+**capture resilience**, **map honesty**, **paired docs**, **the question set**,
+**greeter leg**, **handoff contract**, route guards (blank map, collapsed drive time,
+question gating across the formats), and `client_notes` shape. With `--pdf` it also
+**measures every printed page** and fails on content crossing the footer. **A guard that cannot fail is decoration.** If
 you add or change one, break it on purpose first and confirm the suite goes red — the map
 stub was for months a flat fill in exactly the colour a failed tile fetch produces, so the
 suite could never have caught a blank map.

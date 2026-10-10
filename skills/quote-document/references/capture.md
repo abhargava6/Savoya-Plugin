@@ -24,7 +24,16 @@ Run it after the final deliverable of the document flow — after the PDF and em
      --deliverable pdf --request request.md --raw raw_quote.json --quote quote.json \
      --select <keys> [--auto] [--worked "…" --change "…" --fixed "…"] [--workaround "…"]
    ```
-   It prints `path`, `title`, `bytes`, and `drive_folder_id`.
+   **The script writes files. It has no Drive access and uploads nothing.** Its output
+   opens with `status: NOTHING IS UPLOADED YET` for a reason: a session ran the capture,
+   read the output as a completion summary and stopped there — *"I treated the local save
+   as the end of the step"* — and the only channel back from a live quote went quiet
+   again. **The capture step is not done until Drive has returned an `id` for every file
+   in `upload`.** Then delete the file named in `clear_when_uploaded`; it is the marker
+   that makes a skipped upload visible to the next session instead of letting it vanish
+   with this one. If `earlier_captures_never_uploaded` is above zero, upload those too —
+   the paths are inside each `*.pending-upload` file.
+
 3. **If the Google Drive connector isn't available**, don't treat it as an error: the capture is already saved locally. Say so in plain terms — *"I've saved this session locally. Turning on the Google Drive connector in settings would let it save to the team folder, which is how the tool gets better — worth doing when you have a minute."* — and carry on. Never mention file paths, scripts or commands.
 
    **Say it every session that delivers a document, not once.** Once was the old rule, and it is how this went unnoticed for weeks: a single soft line in a single session, with nobody downstream any the wiser and an empty folder at the other end. Keep it to one line at the end, after the deliverable, and make it concrete by naming the backlog — run `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/setup_check.py` for the count:
@@ -36,7 +45,13 @@ Run it after the final deliverable of the document flow — after the PDF and em
    **A connector that is switched on can still fail to write.** Their Drive uploads as their own Google account, so without Editor on the shared folder every upload fails while everything looks connected. That is the setup check's job to prove, not yours to assume.
 
    Otherwise, upload the file with the Google Drive connector — `create_file` with `title` from the output, `textContent` = the file's contents, `contentMimeType: application/json`, `disableConversionToGoogleType: true`, `parentId` = `drive_folder_id`. Do this silently; it's part of producing the deliverable, not a separate action the user needs to approve. **Check the result has an `id`.** If it doesn't, retry once; if it still fails, say so in one line and leave the local copy — `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/export_captures.py` zips it for hand-off later.
-4. Versioning: the script numbers versions from local files, which don't persist in claude.ai. If you've already uploaded a capture for this slug in *this conversation*, pass `--version N` explicitly so the second upload doesn't collide or skip a number.
+4. Versioning: the two runs above already carry different titles — the render snapshot
+   goes up as `<slug>.feedback.snapshot.json` and the post-feedback run as
+   `<slug>.feedback.json` — so the normal flow no longer leaves two files with one name
+   in the folder, which it used to do on *every* quote. The script overwrites the same
+   slug locally; pass `--new-version` only when the user explicitly wants a second,
+   separate record of the same quote. (There is no `--version N` flag — an earlier
+   version of this file named one, and passing it stops the capture dead.)
 5. Say nothing else about the capture. The user asked for a quote, not a report on telemetry.
 
 **Record your own workarounds — in `--workaround`, never `--change`.** If you did anything outside the documented path — hand-edited legs, restructured units, patched a renderer, drew a map another way, guessed a value — put it in `--workaround`, on the render snapshot, at the moment you do it. Claude's own notes have been the most useful signal so far, and they must stay in their own field: `--change` is reserved for the user's words. Mixing them makes it impossible to tell a CSM's request from a defect Claude quietly patched, and that distinction is the whole point of the weekly pass.

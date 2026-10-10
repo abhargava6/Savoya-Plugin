@@ -68,7 +68,7 @@ def apply_edits(q, edits):
     return q
 
 
-def check_fixture(fx, want_pdf):
+def check_fixture(fx, want_pdf, html_out=None):
     name = os.path.basename(fx.rstrip("/"))
     exp_path = os.path.join(fx, "expected.json")
     if not os.path.exists(exp_path):
@@ -160,6 +160,12 @@ def check_fixture(fx, want_pdf):
             sys.path.insert(0, HERE)
             import render_print  # noqa
             open(print_html, "w", encoding="utf-8").write(render_print.render_html(q))
+
+        # Hand the rendered print HTML to the caller so the page measurement runs over
+        # exactly this document, in one browser session for the whole suite, rather than
+        # preparing the fixtures a second time with its own assumptions.
+        if html_out and os.path.exists(print_html):
+            shutil.copy(print_html, os.path.join(html_out, f"{name}.print.html"))
 
         corpus = ""
         for p in (html_path, print_html):
@@ -1150,7 +1156,11 @@ def lint_capture_resilience():
                  "--quote", fx, "--dir", d, "--auto"] + extra,
                 capture_output=True, text=True)
             made = [f for f in os.listdir(d) if f.endswith(".capture.json")]
-            fb = [f for f in os.listdir(d) if f.endswith(".feedback.json")]
+            # A render snapshot (--auto) writes `<slug>.feedback.snapshot.json`; the
+            # post-feedback run writes `<slug>.feedback.json`. Either is "the feedback
+            # file" here — what matters is that one exists, since it uploads first.
+            fb = [f for f in os.listdir(d)
+                  if f.endswith((".feedback.json", ".feedback.snapshot.json"))]
             # The last-resort handler keeps a broken capture from stopping a session, but
             # a capture that only survives because of it is still broken: the feedback
             # file is what actually gets uploaded first, and that never gets written.
@@ -1171,7 +1181,8 @@ def lint_capture_resilience():
                     problems.append(f"{label}: capture does not record that the request was missing — "
                                     "a silent gap is worse than a noted one")
             for f in os.listdir(d):
-                if f.endswith((".capture.json", ".feedback.json")):
+                if f.endswith((".capture.json", ".feedback.json",
+                               ".feedback.snapshot.json", ".pending-upload")):
                     os.remove(os.path.join(d, f))
 
     if problems:
@@ -1484,8 +1495,14 @@ def main():
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
+    # Counting pages never caught the worst failures here: `.page` is a fixed box with
+    # overflow:hidden, so content that does not fit is *cut*, and pdftotext still
+    # extracts the cut text. A clipped line note and a clipped group total both looked
+    # identical to a clean render from in here. With --pdf we keep each fixture's print
+    # HTML and measure them all in one browser session afterwards.
+    html_out = tempfile.mkdtemp(prefix="regress-measure-") if a.pdf else None
     for d in dirs:
-        name, ok, msgs = check_fixture(d, a.pdf)
+        name, ok, msgs = check_fixture(d, a.pdf, html_out)
         if ok is None:
             print(f"  ○ {name}: {msgs[0]}")
         elif ok:
@@ -1495,10 +1512,43 @@ def main():
             print(f"  ✗ {name}")
             for m in msgs:
                 print("      - " + m.replace("\n", "\n        "))
+    clipped = []
+    if html_out:
+        try:
+            sys.path.insert(0, HERE)
+            import measure_pages
+            jobs = [(f[:-len(".print.html")], os.path.join(html_out, f))
+                    for f in sorted(os.listdir(html_out)) if f.endswith(".print.html")]
+            if jobs:
+                measured = measure_pages.measure_html(jobs)
+                for label, pages in measured.items():
+                    over = measure_pages.overflows(pages)
+                    if over > 0:
+                        worst = max((p for p in pages if not p["blank"]),
+                                    key=lambda p: p["overflow_px"])
+                        clipped.append((label, over, worst))
+                fullest = max((100.0 * p["used_px"] / p["available_px"]
+                               for pages in measured.values()
+                               for p in pages if not p["blank"] and p["available_px"]),
+                              default=0)
+                if clipped:
+                    print("  \u2717 page overflow — content is cut off the printed page")
+                    for label, over, p in clipped:
+                        print(f"      - {label} p{p['page']}: {over}px past the footer "
+                              f"({100.0 * p['used_px'] / p['available_px']:.0f}% of the box)")
+                        if p.get("text_tail"):
+                            print(f"        last thing on the page: …{p['text_tail']}")
+                else:
+                    print(f"  \u2713 page overflow (fullest page {fullest:.0f}% of the usable box)")
+        except Exception as ex:  # noqa: BLE001 — never let the instrument fail the suite
+            print(f"  \u25cb page overflow: could not measure ({type(ex).__name__}: {ex})")
+        finally:
+            shutil.rmtree(html_out, ignore_errors=True)
+
     total = sum(1 for d in dirs if os.path.exists(os.path.join(d, "expected.json")))
     print(f"\n{total - bad}/{total} fixtures passed" + (" (with PDF)" if a.pdf else "")
-          + ("" if lint_ok else "  — guard checks FAILED"))
-    sys.exit(1 if (bad or not lint_ok) else 0)
+          + ("" if lint_ok and not clipped else "  — guard checks FAILED"))
+    sys.exit(1 if (bad or not lint_ok or clipped) else 0)
 
 
 if __name__ == "__main__":

@@ -158,7 +158,16 @@ def main():
     size = os.path.getsize(out)
 
     # P1 + P6: a small feedback file is always written and is always what gets uploaded first.
-    fb_path = os.path.join(root, f"{name}.feedback.json")
+    #
+    # The render snapshot and the post-feedback run are two different records, and they
+    # must not share a filename. Drive's create_file always creates, so uploading the
+    # same title twice does not replace anything — it leaves two files with one name,
+    # and the documented flow runs both steps on *every* quote, so this was not an
+    # occasional collision but the normal outcome. Separate titles also turn the
+    # duplicate into signal: a folder holding only a snapshot for some slug is a
+    # session that delivered a document and never came back for the feedback.
+    fb_path = os.path.join(root, f"{name}.feedback.snapshot.json" if a.auto
+                           else f"{name}.feedback.json")
     fb = {"feedback_version": 2, "slug": name, "ts": capture["ts"], "user": user,
           "client": a.client, "deliverable": a.deliverable,
           "trigger": capture["trigger"],
@@ -172,9 +181,26 @@ def main():
           "decisions": (load_json(os.path.join("handoff", "intake.json"), {}) or {}).get("decisions"),
           "placeholders": q.get("internal", {}).get("placeholders", []),
           "feedback": capture["feedback"],
+          # Deliberately NOT called "uploaded": this file is written before any upload
+          # happens, so that name recorded an intention as a fact. The weekly pass read
+          # `uploaded: true` in the Drive copy and took the full capture to be in the
+          # folder; nothing here can know whether the session ever made the call.
           "full_capture": {"path": out, "bytes": size,
-                           "uploaded": size <= a.max_upload_kb * 1024}}
+                           "should_be_uploaded": size <= a.max_upload_kb * 1024}}
     json.dump(fb, open(fb_path, "w", encoding="utf-8"), indent=1)
+
+    # The richer record supersedes the snapshot, so the local snapshot and any upload
+    # still outstanding for it go away. The Drive copy stays — nothing here can delete
+    # it — but the weekly pass prefers `<slug>.feedback.json` over
+    # `<slug>.feedback.snapshot.json`, so it is read as superseded rather than as a
+    # second opinion.
+    if not a.auto:
+        for stale in (os.path.join(root, f"{name}.feedback.snapshot.json"),
+                      os.path.join(root, f"{name}.snapshot.pending-upload")):
+            try:
+                os.remove(stale)
+            except OSError:
+                pass
 
     too_big = size > a.max_upload_kb * 1024
     # On a render-triggered snapshot, upload only the small feedback file: one Drive call
@@ -188,12 +214,39 @@ def main():
                 f"Never split a capture across multiple uploads.")
     else:
         note = "Upload both files."
+    # This script writes files. It has no Drive access and never uploads anything.
+    # That was not obvious enough: a session ran the capture, read this block as a
+    # completion summary and stopped — "I treated the local save as the end of the
+    # step" — so the one channel back from a live quote went quiet again, and it was
+    # noticed only because Ayush asked why nothing was in the folder. The status comes
+    # first and says what has NOT happened, and a marker is left on disk so that a
+    # skipped upload is still discoverable afterwards instead of vanishing with the
+    # session.
+    # Named off fb_path so the snapshot run and the final run keep separate markers,
+    # the same way they keep separate titles.
+    marker = os.path.join(root, ("%s.snapshot.pending-upload" % name) if a.auto
+                          else ("%s.pending-upload" % name))
+    pending = [p for p in glob.glob(os.path.join(root, "*.pending-upload"))
+               if os.path.abspath(p) != os.path.abspath(marker)]
+    try:
+        json.dump({"ts": capture["ts"], "slug": name, "user": user,
+                   "files": [fb_path] + ([out] if send_full else [])},
+                  open(marker, "w", encoding="utf-8"), indent=1)
+    except OSError:
+        marker = None
+
     print(json.dumps({
+        "status": "NOTHING IS UPLOADED YET — this script only wrote the files below",
+        "next_step": "Upload each file in `upload` to drive_folder_id with the Google Drive "
+                     "connector, then delete `clear_when_uploaded`. The capture step is not "
+                     "done until the connector has returned an id for every file.",
         "upload": [
             {"path": fb_path, "title": os.path.basename(fb_path), "bytes": os.path.getsize(fb_path)},
         ] + ([{"path": out, "title": os.path.basename(out), "bytes": size}] if send_full else []),
+        "clear_when_uploaded": marker,
         "full_capture_kept_local": not send_full,
         "note": note,
+        "earlier_captures_never_uploaded": len(pending),
         "drive_folder_id": asset.get("drive_folder_id"), "user": user}, indent=2))
 
 

@@ -3,6 +3,64 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.24.0
+
+Four defects from a live World Cup shuttle quote run on 0.23.7, and the instrument that
+would have caught the worst of them.
+
+- **The public router answered for 8 of 16 legs and the quote shipped anyway.** `osrm()`
+  fired sixteen requests back to back at the free demo router with no retry and no delay
+  — the hardening `geocode()` got after an incident of exactly this shape was never
+  applied to the call beside it. It now retries once and self-throttles. More
+  importantly a *partial* result is no longer published: half the distance column
+  printing miles and half an em dash reads as a broken document, not a degraded
+  estimate, so the column goes out complete or not at all. Drive times are untouched —
+  they are the engine's. `verify_document.py` fails on a half-filled column as a
+  backstop. Every existing route check was per leg, and a leg with no distance is
+  individually valid, so the defect lived entirely in the comparison *between* legs
+  where nothing was looking.
+- **A session ran the capture and never uploaded it.** "I treated the local save as the
+  end of the step." The script writes files and has no Drive access, but its output read
+  like a completion summary, so the one channel back from a live quote went quiet and it
+  surfaced only because Ayush asked why the folder was empty. The output now leads with
+  `NOTHING IS UPLOADED YET`, names the marker to delete once Drive returns an id, and
+  reports how many earlier captures are still outstanding. Those markers also give the
+  Drive nudge and the setup check a real backlog number instead of "every capture on
+  this machine".
+- **Every quote was putting two identically named files in Drive.** Not a session
+  mistake: `create_file` always creates, and the documented flow uploads a render
+  snapshot at delivery and a richer record after the feedback exchange, both titled
+  `<slug>.feedback.json`. They now carry different titles, the local snapshot is cleaned
+  up when superseded, and `unpack_capture.py` prefers the richer record — so a folder
+  holding only a snapshot now means something: a session that delivered and never came
+  back. `capture.md` also told sessions to pass `--version N`, which does not exist and
+  stops the capture dead.
+- **`feedback.json` recorded an intention as a fact.** `full_capture.uploaded` was
+  written before any upload happened, so the weekly pass read `true` and believed the
+  file was in the folder. Renamed `should_be_uploaded`.
+- **New: `measure_pages.py`, wired into `regress.py --pdf`.** 0.23.9's `--pdf` gate
+  counts pages, which caught the pagination regression it was built for. It cannot see
+  the failure underneath: `.page` is a fixed box with `overflow:hidden`, so content that
+  does not fit is *cut*, and `pdftotext` still extracts every cut word — the count looks
+  right and the text is all present in the file while being invisible on paper. This
+  renders the real print HTML in the real browser and reports per-page fill and any
+  content crossing the footer. Cover pages are excluded: they are full-bleed by design,
+  and measuring them against a padding-derived limit invented a 53px defect that a
+  raster of the page disproved. Tolerance is 4px, far below a line of body text at
+  ~15px, and tight pages are still reported.
+- **Line notes are spread evenly across summary pages** instead of filling each to the
+  brim. Six legs of notes came out as a 71%-full page followed by a 16%-full one; they
+  now sit at 48% and 39%. The page count is fixed by the total either way. 0.23.9's
+  budgets are unchanged — measured against the fixtures they beat the alternatives,
+  getting `access-tca-wedding` into 3 pages with no page over 96% of its box.
+- **`sync_plugin_root.py`.** The paired-docs guard detects drift between a root file and
+  its shipped copy; nothing fixed it, so the answer to a red guard was a hand-copy. This
+  imports `_PAIRED_DOCS` and `_CROSS_PATH_PAIRS` from `regress.py` rather than restating
+  them, writes only the byte-identical pairs, and refuses to touch the README — the
+  shipped copy is the root cut off before "Working on this repo", and regenerating it
+  mechanically would paste the build instructions into the file a CSM is handed.
+  `plugin.json` is refused too, with a pointer to `--bump`.
+
 ## 0.23.9
 
 The first real run of `regress.py --pdf`, on Ayush's machine, against the installed
