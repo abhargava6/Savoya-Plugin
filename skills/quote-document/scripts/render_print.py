@@ -143,6 +143,36 @@ def cover_page(q):
 </section>"""
 
 
+def passenger_total(legs):
+    """How many people this quote moves, for the document header.
+
+    `max()` across legs was wrong and printed a wrong number on a client PDF: a
+    1,000-passenger job came out as 656, the largest single vehicle group, because
+    the party was split across 16 Mini Buses and 27 Sprinters on the same trip.
+    Plain `sum()` is wrong the other way — a three-day itinerary would treble, and
+    on the wedding fixture it reports 132 people for a 120-guest wedding.
+
+    A leg's `passenger_count` is that leg's share, not the whole party. Two 13-seat
+    Sprinters carrying 6 each are 12 people, not 6. So: legs that are the same
+    movement — same pickup datetime, same stop sequence — are one party and sum;
+    separate movements do not add, and the largest wins.
+
+    The stop sequence has to be exact. On the wedding fixture the Mini Buses run
+    Hilton -> Stonehurst -> Hilton while the Sprinters run Hilton -> Stonehurst;
+    those are genuinely different movements and summing them would overstate.
+    Cross-market sourcing makes this matter more, not less: one movement now
+    routinely splits across allocations from different markets.
+    """
+    movements = {}
+    for l in legs or []:
+        if l.get("alternative_of"):
+            continue              # Option B units are the same people, priced twice
+        sig = (l.get("date"),
+               tuple(str(s.get("label") or s.get("address") or "") for s in l.get("stops") or []))
+        movements[sig] = movements.get(sig, 0) + (l.get("passenger_count") or 0)
+    return max(movements.values(), default=0)
+
+
 def quote_page(q):
     m, pz = q["meta"], q.get("personalization", {})
     disc, sur = global_pct(q, True), global_pct(q, False)
@@ -151,7 +181,7 @@ def quote_page(q):
         ("Prepared by", m.get("prepared_by")),
         ("Travel coordinator", m.get("travel_coordinator")),
         ("Service area", m.get("service_area")),
-        ("Passengers", str(max((l.get("passenger_count") or 0) for l in q["legs"])) if q["legs"] else None),
+        ("Passengers", str(passenger_total(q["legs"])) if q["legs"] else None),
         ("Date", day(m.get("prepared_on"), "%m/%d/%Y")),
         ("Valid until", day(m.get("valid_until"), "%m/%d/%Y")),
         ("Discount", f"{abs(disc):g}%" if disc else None),

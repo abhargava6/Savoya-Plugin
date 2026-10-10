@@ -1375,6 +1375,63 @@ def lint_paired_docs():
     return True
 
 
+def lint_passenger_count():
+    """The document's passenger figure must count a split party once, and in full.
+
+    This printed 656 on a client PDF for a 1,000-passenger job: the party rode in
+    16 Mini Buses and 27 Sprinters on one trip, and the header took max() across
+    legs. The opposite error is just as real — summing every leg reports 132 people
+    for the 120-guest wedding fixture, because its Mini Buses run a round trip the
+    Sprinters do not.
+
+    Both wrong rules are included below, so this guard fails if either is ever
+    reinstated. Cases are built in memory rather than as a fixture: a fixture would
+    need invented pricing, and the money guards would rightly refuse it.
+    """
+    sys.path.insert(0, HERE)
+    import render_print
+
+    def leg(date, stops, pax, alt=None):
+        return {"date": date, "passenger_count": pax,
+                "stops": [{"label": x} for x in stops],
+                **({"alternative_of": alt} if alt else {})}
+
+    D1, D2 = "2027-05-30T14:30:00-04:00", "2027-05-31T09:00:00-04:00"
+    AB, ABA = ["Hilton", "Stonehurst"], ["Hilton", "Stonehurst", "Hilton"]
+    cases = [
+        ("one party split across two vehicle groups on one trip",
+         [leg(D1, AB, 656), leg(D1, AB, 344)], 1000),
+        ("the wedding: 2 Sprinters one-way + 3 Mini Buses round trip",
+         [leg(D1, AB, 6), leg(D1, AB, 6), leg(D1, ABA, 120)], 120),
+        ("separate days must not add",
+         [leg(D1, AB, 40), leg(D2, AB, 40)], 40),
+        ("Option B units are the same people priced twice",
+         [leg(D1, AB, 50), leg(D1, AB, 50, alt="a1")], 50),
+        ("a single leg is itself", [leg(D1, AB, 3)], 3),
+    ]
+    problems = []
+    for label, legs, want in cases:
+        got = render_print.passenger_total(legs)
+        if got != want:
+            problems.append(f"{label}: expected {want}, got {got}")
+
+    # The two rules this replaced, proven still wrong on the cases above.
+    split = [leg(D1, AB, 656), leg(D1, AB, 344)]
+    wedding = [leg(D1, AB, 6), leg(D1, AB, 6), leg(D1, ABA, 120)]
+    if max(l["passenger_count"] for l in split) == 1000:
+        problems.append("max() now passes the split-party case — this guard can no longer fail")
+    if sum(l["passenger_count"] for l in wedding) == 120:
+        problems.append("sum() now passes the wedding case — this guard can no longer fail")
+
+    if problems:
+        print("  \u2717 passenger count")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 passenger count ({len(cases)} cases, split party counted once and in full)")
+    return True
+
+
 def lint_route_guards():
     """A blank route map and a collapsed drive time both reached a client once.
     Prove the verifier still rejects them — no network needed."""
@@ -1493,6 +1550,7 @@ def main():
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
+    lint_ok = lint_passenger_count() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0
     # Counting pages never caught the worst failures here: `.page` is a fixed box with
