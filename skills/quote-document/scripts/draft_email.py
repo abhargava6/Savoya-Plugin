@@ -28,11 +28,15 @@ def main():
         date_txt = ""  # event name already carries the dates
     primaries = [l for l in q["legs"] if not l.get("alternative_of")]
     alts = [l for l in q["legs"] if l.get("alternative_of")]
+    def route_of(l, join=" → "):
+        stops = l.get("stops") or []
+        labels = [s.get("label") or s.get("address") or "" for s in stops]
+        if len(labels) >= 2 and labels[0] == labels[-1]:
+            return labels[0] + " (round trip" + (", " + labels[1] if len(labels) > 2 else "") + ")"
+        return join.join(labels)
+
     def line(l):
-        route = " → ".join(s["label"] for s in l["stops"])
-        if len(l["stops"]) >= 2 and l["stops"][0]["label"] == l["stops"][-1]["label"]:
-            route = l["stops"][0]["label"] + " (round trip" + (", " + l["stops"][1]["label"] if len(l["stops"]) > 2 else "") + ")"
-        return f"  • {l.get('ref','')} {day(l.get('date'),'%a %-m/%-d')} — {l['vehicle']['quantity']} × {l['vehicle']['name']}, {route}"
+        return f"  • {l.get('ref','')} {day(l.get('date'),'%a %-m/%-d')} — {l['vehicle']['quantity']} × {l['vehicle']['name']}, {route_of(l)}"
     legs_txt = "\n".join(line(l) for l in primaries)
     if alts:
         legs_txt += "\n  Option B swaps " + "; ".join(f"{l.get('ref')} for {next((p.get('ref') for p in primaries if p['key']==l.get('alternative_of')),'?')} ({l['vehicle']['quantity']} × {l['vehicle']['name']}, {l['pricing'].get('billable_hours') or ''} hrs)" for l in alts)
@@ -86,8 +90,21 @@ def main():
 
     def block(l, n=None, prefix=""):
         p, v = l["pricing"], l["vehicle"]
+        # Day, CLOCK TIME, route and headcount — the four things a CSM adds by hand
+        # otherwise. On a live Irvine quote every heading in the draft was rewritten
+        # before sending, because this said only "A1 – Saturday, March 20 – 2 × Mini
+        # Bus": no pickup time, and the route only when the leg's label happened to be
+        # under 60 characters. The PDF has carried all of it for months; the email is
+        # the copy the client actually reads first.
         when = day(l.get("date"), "%A, %B %-d")
-        hdr = f"{prefix}{l.get('ref','')} – {when} – {v['quantity']} × {v['name']}" + (f" ({l['label']})" if l.get("label") and len(l["label"]) < 60 else "")
+        clock = day(l.get("date"), "%-I:%M%p").lower()
+        route = route_of(l, " to ")
+        pax = l.get("passenger_count")
+        hdr = (f"{prefix}{l.get('ref','')} – {when}"
+               + (f", {clock}" if clock and clock != when else "")
+               + (f" – {route}" if route else "")
+               + (f" ({pax} guests)" if pax else "")
+               + f" – {v['quantity']} × {v['name']}")
         lines = [hdr, f"Vehicle type: {v['name']} (max capacity: {v.get('capacity')} passengers)"]
         # R51: say why the same vehicle type appears as two separate lines.
         if l.get("sourced_from_other_market") and l.get("service_area"):
@@ -117,7 +134,18 @@ def main():
 
     blocks = "\n\n".join(block(l) for l in primaries)
     if alts:
-        blocks += "\n\nOption B (in place of " + ", ".join(next((p.get('ref') for p in primaries if p['key']==l.get('alternative_of')),'?') for l in alts) + "):\n" + "\n\n".join(block(l) for l in alts)
+        # One entry per REPLACED leg, not per alternative. Two alternatives standing in
+        # for the same primary leg used to name it twice: a live Irvine quote where 12
+        # SUVs and a Sprinter together replaced one Mini Bus run produced "Option B (in
+        # place of A1, A1, A2)", and the CSM rewrote the heading by hand before sending.
+        replaced_refs = []
+        for l in alts:
+            ref = next((p.get("ref") for p in primaries
+                        if p["key"] == l.get("alternative_of")), "?")
+            if ref not in replaced_refs:
+                replaced_refs.append(ref)
+        blocks += ("\n\nOption B (in place of " + ", ".join(replaced_refs) + "):\n"
+                   + "\n\n".join(block(l) for l in alts))
     cxs = sorted({l["pricing"].get("cancellation_hours") for l in q["legs"] if l["pricing"].get("cancellation_hours")})
     cx_note = ""
     if cxs:

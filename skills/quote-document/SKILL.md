@@ -68,6 +68,8 @@ Exit 0 = everything available; exit 1 = some formats unavailable, and it prints 
 
 **Never show install commands, package managers or Terminal instructions to the user.** Setup is a one-time IT task (`SETUP.md`). The only technical instruction a CSM gets is Print → Save as PDF, worded for their OS by `preflight.py`.
 
+**Load the Drive tool now, in this same stage** — `tool_search "Google Drive create_file"` — not later at the capture step. It is needed only at the end, which is exactly why it has to be loaded here: the capture runs after delivery, when the session is winding down and one more setup step is the easiest thing in the flow to skip. Three live sessions in a row ended with the capture written locally and never uploaded, one of them saying plainly *"I didn't upload it because it needs the Google Drive connector, which I hadn't loaded."* If the search returns nothing, Drive isn't connected — carry on, and the capture step has a line for that.
+
 | Format | Needs | Without it |
 |---|---|---|
 | Quote, email copy, printable document | nothing | always works |

@@ -3,6 +3,36 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.6
+
+Three findings from a live Irvine quote with an Option A / Option B comparison — the first
+real test of the Option B total since it was fixed, and it reconciled: *"19 checks, 0
+failures, and both option totals match Savoya's"*. The $200 flat coordinator line also
+landed correctly in both options, which is the other half of that fix working.
+
+What still needed hand-work was the **email copy**, and all of it was in the headings:
+
+- **Option B named each alternative rather than each leg replaced.** Twelve SUVs and a
+  Sprinter both stood in for one Mini Bus run, so the heading read `Option B (in place of
+  A1, A1, A2)`. Deduplicated, preserving order.
+- **Leg headings had no pickup time and usually no route.** They read `A1 — Saturday,
+  March 20 — 2 × Mini Bus`; the route appeared only when the leg's label happened to be
+  under 60 characters. Every heading in that draft was rewritten before sending. They now
+  carry day, clock time, route and headcount, and the rendered output matches what the CSM
+  typed by hand word for word. The PDF line has carried all four for months — the email is
+  the copy the client reads first and the one that gets pasted.
+- **The Drive tool is now loaded at Stage 0**, with the machine check, instead of at the
+  capture step. The capture runs after delivery when the session is winding down, and a
+  fresh connector load at that moment is the easiest step in the flow to skip: three
+  sessions in a row ended with the capture written locally and never sent, this one saying
+  outright *"I didn't upload it because it needs the Google Drive connector, which I
+  hadn't loaded."* The durability warning added in sourcing.3 did work — the session told
+  the user the log was temporary and would be lost — so the gap was the upload, not the
+  reporting.
+
+One new guard, broken three ways first: the Option B heading must not repeat a replaced
+leg, and the leg headings must each carry a clock time, a route and a headcount.
+
 ## 0.25.0-sourcing.5
 
 Three defects a live quote on sourcing.4 found — two of them introduced by the fixes in

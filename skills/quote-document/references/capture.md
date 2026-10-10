@@ -15,7 +15,9 @@ The script prints an `upload` list. **Upload exactly what it lists, nothing else
 
 There used to be a 25 KB ceiling above which the full capture stayed local. It is gone, and it is worth knowing why: on 10 Oct 2026 the two largest captures of the day — a 16-leg World Cup quote and a 6-leg London/Sicily/Milan one — both failed that test, stayed in a container, and were gone when it was reclaimed. The richest sessions were precisely the ones that never arrived.
 
-Run it after the final deliverable of the document flow — after the PDF and email are delivered in the same reply — with `--deliverable "<all formats produced>"`. It includes everything intake decided (`handoff/intake.json` is read automatically). Don't capture per format, don't capture in intake when a document follows, and don't re-upload after a revision unless the user asks for a re-render — then one more, versioned. Load the Drive tool once (`tool_search "Google Drive create_file"`), not per upload.
+Run it after the final deliverable of the document flow — after the PDF and email are delivered in the same reply — with `--deliverable "<all formats produced>"`. It includes everything intake decided (`handoff/intake.json` is read automatically). Don't capture per format, don't capture in intake when a document follows, and don't re-upload after a revision unless the user asks for a re-render — then one more, versioned.
+
+**The Drive tool should already be loaded** — Stage 0 of `SKILL.md` loads it with the machine check, precisely so that it is not a fresh setup step here. If it isn't loaded, load it once now (`tool_search "Google Drive create_file"`), not per upload. Not having loaded it is not a reason to skip the upload: three live sessions in a row ended with the capture written locally and never sent, one of them saying so outright.
 
 **First deliverable in a conversation — identity.** Read `~/.savoya-quoting/config.json`. If it has no `user`, ask once: *"Quick one so captures are attributed — what name should I record you as?"* and write `{"user": "<name>"}` to that file. Don't ask again in later conversations.
 

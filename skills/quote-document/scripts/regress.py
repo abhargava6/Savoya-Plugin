@@ -1816,6 +1816,95 @@ def lint_client_safe_labels():
     return True
 
 
+def lint_email_headings():
+    """The email's own headings must carry what a CSM would otherwise type in.
+
+    On a live Irvine quote on 10 Oct 2026 every heading in the draft was rewritten
+    before sending. Two faults:
+
+      * `Option B (in place of A1, A1, A2)` — the refs were listed once per
+        ALTERNATIVE rather than once per leg replaced, and twelve SUVs plus a Sprinter
+        both stood in for the same Mini Bus run.
+      * `A1 - Saturday, March 20 - 2 x Mini Bus` — no pickup time, and the route only
+        when the leg's label happened to be under 60 characters.
+
+    The PDF has carried the time, route and headcount for months. The email is the copy
+    the client reads first, and it is the one a CSM pastes, so a heading they have to
+    retype is a heading that can be retyped wrong.
+    """
+    import copy
+    import json as _json
+    import re as _re
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(SKILL, "evals", "fixtures", "access-tca-wedding", "quote.json")
+    with open(fx, encoding="utf-8") as fh:
+        q = copy.deepcopy(_json.load(fh))
+    # two alternatives standing in for ONE primary leg, plus a third for another
+    base_a, base_b = q["legs"][0], q["legs"][1]
+    for i, (src, ref, qty) in enumerate(((base_a, "B1", 12), (base_a, "B2", 1),
+                                         (base_b, "B3", 5))):
+        alt = copy.deepcopy(src)
+        alt.update({"key": f"guard-{ref}", "ref": ref,
+                    "alternative_of": src["key"], "passenger_count": 10 + i})
+        alt["vehicle"] = dict(alt["vehicle"], quantity=qty)
+        q["legs"].append(alt)
+
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        qp = os.path.join(d, "quote.json")
+        with open(qp, "w", encoding="utf-8") as fh:
+            _json.dump(q, fh)
+        r = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qp],
+                           capture_output=True, text=True)
+    body = r.stdout or ""
+    if not body:
+        print(f"  \u2717 email headings: draft_email produced nothing "
+              f"({(r.stderr or '')[:160]})")
+        return False
+
+    m = _re.search(r"Option B \(in place of ([^)]*)\)", body)
+    if not m:
+        problems.append("no 'Option B (in place of …)' heading at all")
+    else:
+        refs = [x.strip() for x in m.group(1).split(",")]
+        if len(refs) != len(set(refs)):
+            problems.append(f"the Option B heading repeats a replaced leg: {m.group(1)!r}"
+                            f" — list each leg replaced once, not each alternative")
+        if len(refs) != 2:
+            problems.append(f"the Option B heading names {len(refs)} legs; three "
+                            f"alternatives replace two primaries here")
+
+    # every leg heading must carry a clock time, a route and a headcount
+    heads = [ln for ln in body.splitlines() if _re.match(r"^\S+ [–-] \w", ln)]
+    if not heads:
+        problems.append("could not find any leg headings to check")
+    for ln in heads:
+        if not _re.search(r"\d:\d\d(am|pm)", ln):
+            problems.append(f"heading has no pickup time: {ln[:70]!r}")
+            break
+    for ln in heads:
+        if " to " not in ln and "round trip" not in ln:
+            problems.append(f"heading has no route: {ln[:70]!r}")
+            break
+    for ln in heads:
+        if "guests)" not in ln:
+            problems.append(f"heading has no headcount: {ln[:70]!r}")
+            break
+
+    if problems:
+        print("  \u2717 email headings")
+        for b in problems[:6]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10: a heading a CSM has to retype is one")
+        print("      that can be retyped wrong")
+        return False
+    print(f"  \u2713 email headings ({len(heads)} headings carry time, route and "
+          f"headcount; Option B names each replaced leg once)")
+    return True
+
+
 def lint_option_b_is_cores():
     """Option B's total must be Core's amounts summed, never percentages re-applied.
 
@@ -2468,6 +2557,7 @@ def main():
     lint_ok = lint_sourced_line() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
+    lint_ok = lint_email_headings() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_path_resolution() and lint_ok

@@ -142,6 +142,23 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - The document flow's questions are driven by `decide.py --next` — post what it prints, record, repeat. Never skip, merge, or reorder.
 - Alternatives are Option A / Option B with program totals, never a price folded into a note.
 
+- **An email heading a CSM has to retype is one that can be retyped wrong**
+  (2026-10-10). The draft's leg headings read `A1 — Saturday, March 20 — 2 × Mini Bus`:
+  no pickup time, and the route only when the leg's label happened to be under 60
+  characters. On a live Irvine quote every heading was rewritten before sending. They now
+  carry day, clock time, route and headcount — the same four facts the PDF line has had
+  for months — and the rendered output matches what that CSM typed by hand, word for word.
+- **Option B names each leg it replaces once, not each alternative** (2026-10-10). Twelve
+  SUVs and a Sprinter both standing in for one Mini Bus run produced `Option B (in place
+  of A1, A1, A2)`, because the refs were listed per alternative. Deduplicate, preserving
+  order.
+- **Load the Drive tool at Stage 0, not at the capture step** (2026-10-10). The capture
+  runs after delivery, when the session is winding down, and a fresh connector load at
+  that moment is the easiest thing in the flow to skip — three live sessions in a row
+  ended with the capture written locally and never uploaded, one saying outright *"I
+  didn't upload it because it needs the Google Drive connector, which I hadn't loaded."*
+  It is loaded with the machine check instead, before any of the work.
+
 ## Deliverables
 - The no-PDF fallback is the **`.print.html`** (the PDF's own source, identical when printed) — never the email HTML from `render_html.py`, which is a dark message body for a different purpose.
 - **Verify before delivering.** `verify_document.py` exit 0 deliver · 1 fix and re-verify · 2 PARTIAL deliver but say it wasn't fully verified. `render_print.py` exit 3 = no PDF engine; deliver the HTML and say so.
