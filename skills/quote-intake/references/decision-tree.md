@@ -45,13 +45,25 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 - E said yes → **call**. E said no → **skip** (node G's response carries every candidate priced, which is the same discovery).
 - Later "show me the rate sheet" → call it then; stop refs live ~24h.
 
+**F2 · Nearby markets** — `lookup_nearby_markets`, only when the primary market is short or the CSM asks
+- **Check inventory before every exact quote**, even when E said no rate sheet: run the preview with `display: "internal"` and compare the requested vehicle count against the returned market count. No count stated → derive it from passenger count and the returned capacity. Covers the request → quote in the primary market and **skip this node entirely**. This is an inventory check, not a driver or vendor schedule check.
+- **Skip unless short, or the CSM explicitly asks to explore other markets.** R48 is user-initiated this phase; the plugin does not go shopping on its own.
+- Different starting market named by the CSM → `resolve_service_areas` first, and let them pick among ambiguous hits. Never infer a service-area id from a city name.
+- **Call** with `reference_service_area_id` and `inventory_date`. Returns the three nearest markets **by road distance**, each with the vehicle types and quantities it *adds*, plus a signed `market_ref`.
+- **The counts are "additional", not totals.** Vehicles whose vendors already serve the reference market are excluded, because they are already counted there. Say so when you present the table — a CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four *extra* SUVs. The counts are also **unconfirmed** and promise nothing about fulfilment; say that too.
+- **Sourced vehicles bill at the primary market's rates.** Rate questions are answered from the primary-market preview, not from the nearby market — there is no separate rate sheet to fetch, and showing one would show rates that are never charged.
+- **Present, then stop.** A lookup is not a choice. **Ask** which market or mix the CSM wants, and the vehicle type and quantity for each. Never pick a source market for them, and never read a lookup or a preview as consent.
+- `market_ref` is valid **24 hours**. `sourcing_reference_expired` → look up again from the same market and date, swap in the new ref for the same service area, retry. Don't re-ask; they already chose. Only if that market is no longer returned do you show the new options and ask again.
+- `market_inventory_shortfall` → **no price**. State, per returned market or market group, the vehicle type, the requested count and the available count. Markets returned together **share vendors**, so their combined distinct vehicles can fall short even when each looks sufficient alone. Then ask for a new split.
+
 **G · Quote** — **one call**, all units
 
 | Condition | Tool | Shape |
 |---|---|---|
 | best or options | `generate_quote_options` | an `options` array, **2–5**, each with its own `key`, `label` and a **complete** `quote_units` list. Usually two: **value** (candidate `vehicle_type_ids`, Core prices each and takes the lowest per unit) and **elevated** (a fixed premium `vehicle_type_id`) |
 | you define | `calculate_quote_units` | **one** `vehicle_type_id` per unit — candidate lists are not accepted here |
-| user supplied a temporary rate or an extra discount | `calculate_temporary_quote_units` | one `vehicle_type_id` per unit, plus `temporary_rate` (`rate_type`: `hourly` \| `transfer`, `amount` in **cents**) and/or `temporary_discount` (`basis_points`; 500 = 5%). At least one of the two is required. **Never persisted — say so.** |
+| vehicles sourced from a market the CSM chose at F2 | `calculate_sourced_quote_units` | one allocation per itinerary × vehicle type × source market, **all in one call** including the primary-market ones. `source_market_ref` is the signed ref from F2; omit it for primary-market allocations. `quantity` is **required** and means *vehicle count* — it does **not** mean what it means on `calculate_quote_units`, where it is a repeat count. Never quote the primary portion alone and present it as the full package |
+| user supplied a temporary rate or an extra discount (**including on a sourced package** — resend every allocation, primary ones too, each carrying the temporary input and its `source_market_ref`) | `calculate_temporary_quote_units` | one `vehicle_type_id` per unit, plus `temporary_rate` (`rate_type`: `hourly` \| `transfer`, `amount` in **cents**) and/or `temporary_discount` (`basis_points`; 500 = 5%). At least one of the two is required. **Never persisted — say so.** |
 
 - **No stored rate in the market** is not a dead end and never an estimate. Core's own
   recovery wording is the flow: **ask the user for a temporary rate, or pick another

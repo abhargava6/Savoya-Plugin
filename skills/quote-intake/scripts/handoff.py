@@ -120,7 +120,27 @@ def unit_lines(unit, indent="  ", seen=None):
     cx = ps.get("cancellation_hours")
     if cx is not None:
         body += f" · {cx}-hr cancel"
+    # Cross-market sourcing. Core used to signal this only as a free-text warning
+    # ("No local providers in X"), which is still translated below; it now also comes
+    # back structured on the unit. Both are handled on purpose — the warning path is
+    # what older captures and fixtures carry, and a signal moving is how three live
+    # bugs in 0.23 happened.
+    src = (unit.get("source_service_area") or {}).get("name")
+    primary = (unit.get("primary_service_area") or {}).get("name")
+    if src and src != primary:
+        body += f" · sourced from {src}"
     out = [head, body]
+    drive = unit.get("sourcing_drive_time") or {}
+    hours = drive.get("additional_quoted_time_hours")
+    delta = drive.get("incremental_client_amount")
+    if hours is not None or delta is not None:
+        bits = []
+        if hours is not None:
+            bits.append(f"+{hours:g} hr quoted time")
+        if delta is not None:
+            bits.append(f"{money(delta)} added to the client price")
+        out.append(f"{indent}↳ excess drive time from {src or 'another market'}: "
+                   + " · ".join(bits))
     if ps.get("special_event"):
         out.append(f"{indent}⚠ {ps['special_event'].get('name')} event pricing in effect")
     priced = (ps.get("status") or "priced") == "priced"

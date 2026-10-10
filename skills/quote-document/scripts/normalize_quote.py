@@ -161,10 +161,21 @@ def normalize_unit(unit, presentation_unit):
         engine_discount_pct = bps / 100.0
     engine_fuel_pct = (adj.get("fuel_surcharge_basis_points") or 0) / 100.0 or None
     engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
-    service_area = next((s.get("service_area", {}).get("name") for s in unit.get("stops", []) if s.get("service_area")), None)
+    pickup_service_area = next((s.get("service_area", {}).get("name") for s in unit.get("stops", []) if s.get("service_area")), None)
+    # Cross-market sourcing (PRD R48-R51). Core carries ONE source per unit, not an
+    # array per leg: a mixed-market package is several units, each with its own
+    # source_service_area, which is exactly how calculate_sourced_quote_units takes
+    # the allocation. `service_area` therefore means "where this vehicle came from",
+    # and `primary_service_area` means "where the work is".
+    source_service_area = (unit.get("source_service_area") or {}).get("name")
+    service_area = source_service_area or pickup_service_area
+    primary_service_area = (unit.get("primary_service_area") or {}).get("name") or pickup_service_area
     leg = {
         "key": unit.get("key"),
         "service_area": service_area,
+        "primary_service_area": primary_service_area,
+        "sourced_from_other_market": bool(source_service_area
+                                          and source_service_area != primary_service_area),
         "label": unit.get("label") or unit.get("key"),
         "date": unit.get("pickup_date") or (presentation_unit or {}).get("date"),
         "passenger_count": unit.get("passenger_count") or ps.get("calculation", {}).get("passenger_count"),
@@ -186,6 +197,23 @@ def normalize_unit(unit, presentation_unit):
         },
         "client_notes": [],
     }
+    # The excess drive-time cost of pulling this vehicle from another market. R51 says
+    # it is disclosed as its own visible line, never folded silently into the rate, so
+    # it is kept as a named amount here rather than appended as prose to client_notes.
+    #
+    # ASSUMPTION, and a deliberate one: `incremental_client_amount` is treated as a
+    # component ALREADY INSIDE `line_total_cents`, not an addition to it. If that is
+    # backwards, the money-ownership check (C4) fails closed and refuses to render
+    # rather than shipping a wrong total — which is the point of C4. Confirm against a
+    # real sourced quote before trusting either reading.
+    drive = unit.get("sourcing_drive_time") or {}
+    if drive.get("additional_quoted_time_hours") is not None or \
+            drive.get("incremental_client_amount") is not None:
+        leg["pricing"]["sourcing_drive_time"] = {
+            "from_service_area": source_service_area,
+            "additional_quoted_hours": drive.get("additional_quoted_time_hours"),
+            "amount_cents": drive.get("incremental_client_amount"),
+        }
     if engine_fuel_pct:
         leg["engine_fuel_pct"] = engine_fuel_pct
     if engine_handling_pct:

@@ -20,11 +20,7 @@ Two audiences, two lists. The CSM's part takes five minutes in the app and needs
 
 **1. Install the plugin.** Download the `.plugin` file and import it in Claude. If an older version is installed, remove it first.
 
-**2. Connect Savoya.** The first time Claude prices something it will ask you to sign in. If it asks for an *OAuth client ID*, paste exactly:
-```
-https://mcp-acceptance.savoya.net/oauth/clients/claude.json
-```
-Leave the secret blank and sign in with your Savoya account. If sign-in works but quoting fails, your account needs the `access:savoya_mcp` permission — ask engineering.
+**2. Connect Savoya.** The first time Claude prices something it will ask you to sign in. Sign in with your Savoya account — there is nothing to paste and no secret to fill in. If Claude still shows a client ID or secret field, leave both blank. If sign-in works but quoting fails, your account needs the `access:savoya_mcp` permission — ask engineering.
 
 **3. Connect Google Drive.** In Claude's settings, turn on the Google Drive connector and sign in with your Savoya Google account. This is how your quote sessions get saved to the shared folder so the tool keeps improving. Nothing else uses it.
 

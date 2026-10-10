@@ -1,22 +1,53 @@
-# The Savoya MCP contract — nine tools
+# The Savoya MCP contract — twelve tools
 
 **This file is the contract.** `regress.py`'s tool-contract guard parses the block below
 and fails if any instruction file or script names a tool that isn't in it. When the server
 changes, edit this file first and let the suite tell you what else has to move.
 
-Last verified **2026-10-07** by reading all nine tool schemas off the live connector.
+Last verified **2026-10-09** by reading all twelve tool schemas off the live connector.
+The server went from nine tools to twelve on 9 October (cross-market sourcing,
+`GREEN-371` / PRD R48–R51) and **nothing told us** — the guard below only fails when
+*we* name a tool outside the contract, so it cannot see the server gaining tools. It
+was found by re-querying the connector on a hunch. A bidirectional check is still
+outstanding.
 
 ```tools
 resolve_client
 resolve_passengers
 resolve_itinerary_stops
 resolve_vehicle_types
+resolve_service_areas
 preview_rates
 preview_rate_batch
+lookup_nearby_markets
 calculate_quote_units
+calculate_sourced_quote_units
 calculate_temporary_quote_units
 generate_quote_options
 ```
+
+## Added 2026-10-09 — cross-market sourcing
+
+| Tool | What it does |
+|---|---|
+| `resolve_service_areas` | Find a service area by a name the CSM typed, and return its id. Needed only when the CSM anchors the nearby-market lookup somewhere other than the itinerary's own market. Never infer the id from a city name. |
+| `lookup_nearby_markets` | The three nearest markets **by road distance** (not linear — that correction was the point), each with the vehicle types and quantities it *adds*. Takes `reference_service_area_id` and `inventory_date`. Returns a signed `market_ref` per market. |
+| `calculate_sourced_quote_units` | The exact-quote path when some or all vehicles come from a non-primary market. One allocation per itinerary × vehicle type × source market; primary-market allocations omit `source_market_ref`. `quantity` is **required** here and means *vehicle count*, which is not what it means on `calculate_quote_units`. |
+
+`calculate_temporary_quote_units` also gained `source_market_ref`, so a sourced package
+can still be discounted — but every allocation must be resent, primary-market units
+included, each carrying the temporary input.
+
+Three things to know that are not in any schema:
+
+- **A `market_ref` is valid for 24 hours.** Core returns `sourcing_reference_expired`
+  past that; look the markets up again and retry with the new ref for the same market.
+- **Core can return `market_inventory_shortfall`.** Markets returned together share
+  vendors, so their *combined distinct* vehicles can fall short even when each market
+  alone looks sufficient. Never show a price on a shortfall.
+- **Counts are "unconfirmed"** and exclude vehicles whose vendors already serve the
+  reference market — so the number is *additional* supply, not that market's total.
+  Say which when presenting it; a CSM reading "SUV 4" will assume four exist there.
 
 ## Removed — do not call, do not reference
 
