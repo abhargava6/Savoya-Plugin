@@ -208,6 +208,29 @@ def summarize(raw, select=None):
     return "\n".join(lines)
 
 
+def temporary_pricing_of(units):
+    """The additional discount or temporary rate Core applied, read off the response.
+
+    Core reports it per unit under `pricing_summary.adjustments`. The document flow needs
+    it to draw the additional-discount line and to say the pricing was not persisted, and
+    it was being hand-written into the handoff. The label is passed through as Core sent
+    it; `normalize_quote.client_label()` is what makes it safe to print.
+    """
+    for u in units or []:
+        adj = ((u.get("pricing_summary") or {}).get("adjustments") or {})
+        bps = adj.get("temporary_discount_basis_points") or 0
+        rate_used = adj.get("temporary_rate_used")
+        label = adj.get("temporary_discount_label")
+        if bps or rate_used:
+            return {
+                "rate": ((u.get("pricing_summary") or {}).get("rate") or {})
+                        .get("effective_rate_amount") if rate_used else None,
+                "discount": ({"basis_points": bps, "label": label} if bps else None),
+                "label": label,
+            }
+    return None
+
+
 def write(a):
     os.makedirs(a.dir, exist_ok=True)
     shutil.copy(a.request, os.path.join(a.dir, "request.md"))
@@ -260,6 +283,15 @@ def write(a):
         "client_questions": a.client_question, "final": a.final,
         "selection": {"select": [u["key"] for u in units], "alternatives": {}},
         "decisions": prev.get("decisions", {}),
+        # DERIVED from the response, not passed in. Two of the three live sessions on
+        # 10 Oct 2026 patched these into intake.json by hand -- "since handoff.py write
+        # has no flags for them" -- and a hand-patched handoff is one a session can get
+        # wrong or forget while firefighting. They are all in the raw quote already, so
+        # asking for them as flags was the mistake, not the missing flags.
+        "source_tool": a.tool,
+        "persisted": raw.get("persisted"),
+        "aggregate_total": raw.get("aggregate_total"),
+        "temporary_pricing": temporary_pricing_of(units_src),
         "log": prev.get("log", []) + [{"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                                        "step": "quote",
                                        "note": f"{a.tool}, mode={a.mode}, option={a.selected}, final={a.final}"}],

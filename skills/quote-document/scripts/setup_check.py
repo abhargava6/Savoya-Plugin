@@ -102,6 +102,40 @@ def check_map():
     return lines, actions, detail
 
 
+def installed_copies():
+    """Every copy of this plugin installed for the user, with its version.
+
+    On 10 Oct 2026 the account had TWO, with different server plugin ids and both named
+    savoya-quoting, so the newer one was unpacked beside the old one as
+    `savoya-quoting~g2`:
+
+        savoya-quoting      0.19.1   (September)
+        savoya-quoting~g2   0.25.0-sourcing.1
+
+    A session that resolves the plugin by name lands on the first, whose decision tree
+    contains no cross-market sourcing nodes at all and asks a different set of questions.
+    Two live sessions reported the intake references "failing to load" and improvising the
+    order from memory -- one skipped the three mandatory questions and the user noticed.
+    Nothing in the plugin can pick the right copy, so the only fix is to remove the stale
+    upload, and the only thing this can do is say so plainly.
+    """
+    found = []
+    roots = [os.path.expanduser("~/.claude/plugins/synced"),
+             os.path.expanduser("~/.claude/plugins")]
+    seen = set()
+    for root in roots:
+        for man in sorted(glob.glob(os.path.join(root, "*", "savoya-quoting*",
+                                                 ".claude-plugin", "plugin.json"))):
+            d = os.path.dirname(os.path.dirname(man))
+            if ".trash" in man.lower() or d in seen:
+                continue
+            seen.add(d)
+            found.append({"dir": d, "name": os.path.basename(d),
+                          "version": load_json(man, {}).get("version"),
+                          "mtime": os.path.getmtime(man)})
+    return found
+
+
 def main():
     cfg = load_json(CONFIG, {})
     user = cfg.get("user")
@@ -130,6 +164,25 @@ def main():
     ).get("version")
 
     lines, actions = [], []
+
+    copies = installed_copies()
+    if len(copies) > 1:
+        newest = max(copies, key=lambda c: c["mtime"])
+        stale = [c for c in copies if c is not newest]
+        lines.append(
+            f"There are {len(copies)} copies of the quoting tool installed, and they are "
+            f"different versions ("
+            + ", ".join(sorted(str(c["version"]) for c in copies))
+            + "). That is the one thing here that quietly changes how quotes get built: "
+              "whichever copy a session happens to pick decides which questions it asks "
+              "and whether it knows about sourcing from a nearby market at all."
+        )
+        actions.append(
+            "Remove the older upload"
+            + (f" (version {stale[0]['version']})" if stale and stale[0]["version"] else "")
+            + " from your plugin list, keeping version "
+            + f"{newest['version']}. Two uploads with the same name is what causes it."
+        )
 
     if user:
         lines.append(f"Saved sessions are recorded under your name, {user}.")
@@ -187,6 +240,8 @@ def main():
         "local_sessions": len(set(os.path.basename(p).split(".")[0]
                                   for p in (captures + feedback))),
         "failed_captures": len(failed),
+        "installed_copies": [{"name": c["name"], "version": c["version"]} for c in copies],
+        "duplicate_install": len(copies) > 1,
         "never_uploaded": len(pending),
         "never_uploaded_oldest": (ago(min(os.path.getmtime(p) for p in pending))
                                   if pending else None),

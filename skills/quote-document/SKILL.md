@@ -107,7 +107,16 @@ Ask about it in the post-rate-sheet question above; never add or omit it silentl
 
 **Cover page** — the PDF opens with one of Savoya's audience covers (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/covers/catalog.json`): general, executive-assistants, event-planners, high-demand-events, security-teams, flight-departments, athletic-recruiters, or `custom` (generated, for a hosted hero image). Ask which fits the buyer — in one line, with your recommendation first: *"This reads like an events planner — go with the Meetings & Events cover, or would you rather General?"* Infer from the request (an EA booking one exec → executive-assistants; a 120-person offsite → event-planners; FBO pickup → flight-departments). Default to general only if they don't care. Set `personalization.cover` to the key.
 
-**Personalization** — set from the one question above; defaults if unmentioned. `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/personalization.md` has the menu and rules (hosted URLs only, what a good intro note looks like, where each element lands). The route map (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py`) needs internet, adds ~10–20s, and skips itself if a service is down — no map at all rather than a blank panel.
+**Personalization** — set from the one question above; defaults if unmentioned. **Write it with the setter, never by editing `quote.json`:**
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/set_personalization.py quote.json \
+  --event-name "…" --intro-note "…" [--cover KEY] [--am-name "…"] [--closing-note "…"]
+```
+
+`decide.py` records the answer in the handoff; it does not reach the document on its own, and before the setter existed every session hand-edited `quote.json` to get it there. That is also how a wrong claim got into a client PDF — an intro note asserting tax and gratuity were included, contradicting the terms on its own final page. The setter refuses the contradictions it can recognise, so if it rejects a note, the note is wrong, not the check.
+
+`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/personalization.md` has the menu and rules (hosted URLs only, what a good intro note looks like, where each element lands). The route map (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py`) needs internet, adds ~10–20s, and skips itself if a service is down — no map at all rather than a blank panel.
 
 **Drive times come from the engine, not the map.** `travel_times` on the quote is Savoya's own number and the one the web app shows; the map's router only supplies distance and the drawn line. If a leg has no drive time, the map couldn't resolve every stop on it — say the drive time isn't available for that leg rather than quoting a routed guess, which understates any leg whose middle stop was lost.
 

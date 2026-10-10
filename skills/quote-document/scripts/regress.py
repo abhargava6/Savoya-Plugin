@@ -1503,6 +1503,103 @@ _NO_OWN_MATH = {
 }
 
 
+def lint_no_hand_editing():
+    """The flow must have a way to set what it asks about, and derive what Core sent.
+
+    Two of the three live sessions on 10 Oct 2026 edited quote.json by hand because
+    `decide.py` asks the personalization question, records the answer in intake.json, and
+    nothing writes it into the document -- `event_name` and `intro_note` "stayed null and
+    had to be set manually". The same two patched `source_tool`, `persisted`,
+    `aggregate_total` and `temporary_pricing` into the handoff by hand, "since handoff.py
+    write has no flags for them".
+
+    Hand-editing a client document is how wrong claims get in: one of those sessions put
+    an intro note in asserting that tax and driver gratuity were included, which the terms
+    on the final page of the same PDF contradict. It was caught by re-reading before
+    render, not by anything here.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+
+    setter = os.path.join(HERE, "set_personalization.py")
+    problems = []
+    if not os.path.exists(setter):
+        print("  \u2717 no hand editing: set_personalization.py is missing, so the "
+              "personalization answer has nowhere to go but a hand edit")
+        return False
+
+    fx = os.path.join(DEFAULT_FIXTURES, "access-tca-wedding", "quote.json")
+    with tempfile.TemporaryDirectory() as d:
+        qp = os.path.join(d, "quote.json")
+        with open(fx, encoding="utf-8") as fh:
+            _json.dump(_json.load(fh), open(qp, "w", encoding="utf-8"))
+
+        # it must refuse a note that contradicts the terms -- the real mistake
+        bad = subprocess.run([sys.executable, setter, qp, "--intro-note",
+                              "Tax and driver gratuity are included."],
+                             capture_output=True, text=True)
+        if bad.returncode == 0:
+            problems.append("an intro note claiming tax and gratuity are included was "
+                            "accepted; the terms on the final page say otherwise")
+
+        # and it must actually write the fields
+        ok = subprocess.run([sys.executable, setter, qp,
+                             "--event-name", "Guard Event",
+                             "--intro-note", "Gratuity is not expected; variable fees are "
+                                             "billed at cost.",
+                             "--am-name", "Guard"], capture_output=True, text=True)
+        if ok.returncode != 0:
+            problems.append(f"a correct personalization write failed: "
+                            f"{(ok.stderr or '')[:160]}")
+        else:
+            pers = (_json.load(open(qp, encoding="utf-8")).get("personalization") or {})
+            for key, want in (("event_name", "Guard Event"),):
+                if pers.get(key) != want:
+                    problems.append(f"{key} was not written to quote.json")
+            if not pers.get("intro_note"):
+                problems.append("intro_note was not written to quote.json")
+
+    # the handoff must derive what Core already sent, rather than need flags for it
+    sys.path.insert(0, os.path.join(SKILL, "..", "quote-intake", "scripts"))
+    try:
+        import handoff as _handoff
+    except ImportError as ex:
+        problems.append(f"cannot import handoff.py: {ex}")
+    else:
+        if not hasattr(_handoff, "temporary_pricing_of"):
+            problems.append("handoff.py has no temporary_pricing_of(), so the additional "
+                            "discount has to be hand-patched into intake.json")
+        else:
+            units = [{"pricing_summary": {"adjustments": {
+                "temporary_discount_basis_points": 500,
+                "temporary_discount_label": "Additional 5% discount"}}}]
+            got = _handoff.temporary_pricing_of(units) or {}
+            if (got.get("discount") or {}).get("basis_points") != 500:
+                problems.append(f"temporary_pricing_of did not read Core's basis points: "
+                                f"{got!r}")
+            if _handoff.temporary_pricing_of([{"pricing_summary": {"adjustments": {}}}]):
+                problems.append("temporary_pricing_of invents a discount where Core "
+                                "reported none")
+        src = open(os.path.join(SKILL, "..", "quote-intake", "scripts", "handoff.py"),
+                   encoding="utf-8").read()
+        for field in ("source_tool", "persisted", "aggregate_total", "temporary_pricing"):
+            if f'"{field}"' not in src:
+                problems.append(f"the handoff does not record {field}, so a session has "
+                                f"to patch intake.json by hand")
+
+    if problems:
+        print("  \u2717 no hand editing")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10: a document the flow asks about must be")
+        print("      writable by the flow, and what Core sent is derived, never retyped")
+        return False
+    print("  \u2713 no hand editing (personalization setter refuses contradictions; "
+          "handoff derives 4 fields)")
+    return True
+
+
 def lint_client_safe_labels():
     """Core's own strings are read, not published unexamined.
 
@@ -2141,6 +2238,7 @@ def main():
     lint_ok = lint_sourced_line() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
+    lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_core_coordinates() and lint_ok
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok

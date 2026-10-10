@@ -80,8 +80,31 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - **Operational** (greeter, on-site staff, signage, PA, luggage vehicle) — the document flow asks the user for a cost; an amount becomes a line, no amount becomes a "arranged separately, not in vehicle pricing" note.
 - **Data-answered** (pickup times, drive times, vehicle counts, how long the vehicle is held) — the quote holds the answer implicitly. Surface it as an explicit callout at the top of the PDF **and** the email. Never make a client decode sixteen timestamps.
 
+## Two copies of this plugin is a silent fork
+- **One installed copy, or sessions disagree about the flow** (2026-10-10). The account
+  had two uploads both named `savoya-quoting` — 0.19.1 from September and
+  0.25.0-sourcing.1 — so the newer one unpacked beside the old as `savoya-quoting~g2`. A
+  session resolving the plugin by name hits the older directory, whose decision tree
+  contains no cross-market sourcing nodes and asks a different set of questions. Two live
+  sessions reported the intake references "failing to load" and improvised the order from
+  memory; one skipped the three mandatory questions and the user noticed. Nothing in the
+  plugin can choose the right copy, so `setup_check.py` reports the duplicate and names
+  the stale version to remove. **Uploading a new build does not replace the old one if
+  the name collides.**
+
 ## Flow
 - Every enumerable question uses `ask_user_input_v0`, **one per turn**, never bare prose. Labels: `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`.
+- **What the flow asks about, the flow writes** (2026-10-10). `decide.py` recorded the
+  personalization answer in the handoff and nothing carried it into `quote.json`, so two
+  of three live sessions hand-edited the document to set `event_name` and `intro_note`.
+  Hand-editing a client document is how wrong claims get in: one of those notes asserted
+  that tax and driver gratuity were included, contradicting the terms on the final page of
+  the same PDF. Use `set_personalization.py`, which refuses the contradictions it
+  recognises; a rejected note is a wrong note.
+- **What Core sent is derived, never retyped** (2026-10-10). `source_tool`, `persisted`,
+  `aggregate_total` and `temporary_pricing` were patched into `intake.json` by hand
+  "since handoff.py write has no flags for them". They are all in the response already,
+  so the missing flags were never the problem — the handoff reads them now.
 - The document flow's questions are driven by `decide.py --next` — post what it prints, record, repeat. Never skip, merge, or reorder.
 - Alternatives are Option A / Option B with program totals, never a price folded into a note.
 
