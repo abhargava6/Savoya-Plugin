@@ -81,6 +81,24 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   by construction, which is exactly why they cannot catch a line mislabelled as its
   opposite. A line stating a positive percentage must never carry a negative amount.
 
+## Commission is stated, never calculated
+- **A commission changes no arithmetic** (2026-10-10). It is the first answer in the
+  question set that is purely presentational: it never enters `adjustments`, the total is
+  identical with it and without it, and C4 stays meaningful. `apply_adjustments.py
+  --commission-pct <pct|none>` records it — in that script because it owns the terms
+  block, so the rate and its terms bullet land in one call and cannot get out of order.
+- **Never compute a commission amount.** The basis is not ours to assume — the quoted
+  total? before discount? excluding fuel? — and a figure nobody returned is a figure
+  nothing can check. The rate is stated and that is all.
+- **It names no beneficiary.** The commission may be earned by the client or by an agency
+  acting for them, and a client-facing document must not assert which. The wording is
+  *"A {pct}% commission applies to this program."* on every format.
+- **Three places, all automatic once recorded**: the PDF heading block beside Discount and
+  Fuel surcharge, the terms list (which is how the HTML email gets it), and one flat
+  sentence in the email copy after the inclusions paragraph. **Flat in the email on
+  purpose** — it moves the needle sometimes, but the client is reading a quote, not an
+  offer. On *No*, nothing is recorded and the word appears nowhere.
+
 ## What reaches the client
 - Never: rate ids, inventory counts, "hourly fallback", basis points, profile or passenger ids, estimate_type as a word.
 - Always: pricing basis with minimums, per-leg cancellation, quantity × vehicle with capacity, special-event pricing, TBD flights as "to be confirmed", out-of-market positioning ("vehicles positioned from [city]; additional drive time included").

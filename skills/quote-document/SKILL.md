@@ -57,7 +57,7 @@ usage and the session recorded nothing. Prefer the Base directory header over an
 this; it is already correct.
 
 
-Never work around a missing script by hand-building the document or inventing the question sequence — that produces a plausible-looking document with invented numbers. The seven question keys are listed inline in Stage 2 so the flow still holds if a reference fails to load.
+Never work around a missing script by hand-building the document or inventing the question sequence — that produces a plausible-looking document with invented numbers. The question keys are listed inline in Stage 2 so the flow still holds if a reference fails to load.
 
 ## Stage 0 — Machine check (once per conversation, before the first render)
 
@@ -110,7 +110,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py <key> <ans
 
 Ask what it prints using **`ask_user_input_v0` with tappable options** (labels in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`), record the answer, repeat until `all answered`. Never ask one of these in prose and never fold two into one sentence — that is what makes the flow skip questions.
 
-The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· cover · personalization · map · format**. There is no `fuel` key — fuel is Core's and not adjustable here.
+The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· commission_pct · cover · personalization · map · format**. There is no `fuel` key — fuel is Core's and not adjustable here.
+
+**commission_pct** is the one that changes no numbers. *"Does this client get a commission on this quote? No, 1%, 5%, or another percentage."* Record it with `apply_adjustments.py quote.json --commission-pct <pct|none>`, which also rebuilds the terms so the rate and its bullet cannot get out of step. It never enters `adjustments` and the total is identical with it and without it. **Never compute a commission amount** — the basis is not ours to assume, and a figure nobody returned is a figure nothing can check. It names no beneficiary, because the commission may be the client's or an agency's. Once recorded it appears in the PDF heading block beside Discount and Fuel surcharge, in the terms list (which is how the HTML email gets it), and as one flat sentence in the email copy. **Keep it flat in the email** — it moves the needle sometimes, but the client is reading a quote, not an offer.
 
 **If the user has already said which format they want — "just draft the email", "send me the spreadsheet" — record it first: `decide.py format <value>`.** Only the PDF and the printable document use a cover page or a route map, so once the format is known the script stops asking about them. Asking a CSM to pick a cover for an email is not a neutral extra question, and answering the map question costs 10–20 seconds of routing for a field the email never reads.
 

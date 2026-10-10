@@ -1867,6 +1867,123 @@ def lint_client_safe_labels():
     return True
 
 
+def lint_commission():
+    """A commission is STATED on every format, and changes no arithmetic anywhere.
+
+    Added 10 Oct 2026. It is the first question whose answer is purely presentational, so
+    the two things worth pinning are the two that would be easy to get wrong later:
+
+      * the total must be byte-identical with the commission and without it -- it is not
+        an adjustment, it never enters `adjustments`, and C4 must stay meaningful;
+      * no commission AMOUNT is ever computed. The basis is not ours to assume (the
+        quoted total? before discount? excluding fuel?) and a figure nobody returned is a
+        figure nothing can check.
+
+    It also names no beneficiary, because the commission may be earned by the client or
+    by an agency acting for them, and a client-facing document should not assert which.
+    """
+    import copy
+    import json as _json
+    import re as _re
+    import subprocess
+    import tempfile
+
+    sys.path.insert(0, HERE)
+    import render_html
+    import render_print
+
+    fx = os.path.join(DEFAULT_FIXTURES, "access-tca-wedding", "quote.json")
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        plain = os.path.join(d, "plain.json")
+        comm = os.path.join(d, "comm.json")
+        with open(fx, encoding="utf-8") as fh:
+            base = _json.load(fh)
+        for path in (plain, comm):
+            with open(path, "w", encoding="utf-8") as fh:
+                _json.dump(copy.deepcopy(base), fh)
+
+        r = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                            comm, "--commission-pct", "5"], capture_output=True, text=True)
+        if r.returncode:
+            print(f"  \u2717 commission: recording a rate failed ({(r.stderr or '')[:160]})")
+            return False
+        subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), plain],
+                       capture_output=True, text=True)
+
+        with open(plain, encoding="utf-8") as fh:
+            qp = _json.load(fh)
+        with open(comm, encoding="utf-8") as fh:
+            qc = _json.load(fh)
+
+        # 1. the money must not move
+        if qp["total_cents"] != qc["total_cents"]:
+            problems.append(f"the total changed when a commission was recorded: "
+                            f"{qp['total_cents']} -> {qc['total_cents']} — a commission is "
+                            f"stated, not charged")
+        if len(qp.get("adjustments", [])) != len(qc.get("adjustments", [])):
+            problems.append("recording a commission added an adjustment line — it must "
+                            "never enter `adjustments`")
+        if any("commission" in (a.get("label") or "").lower()
+               for a in qc.get("adjustments", [])):
+            problems.append("a commission appeared as an adjustment label")
+
+        # 2. it must be stated on every format, and never as an amount
+        mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), comm],
+                              capture_output=True, text=True)
+        surfaces = {
+            "PDF": _re.sub(r"<[^>]+>", " ", render_print.render_html(qc)),
+            "HTML email": _re.sub(r"<[^>]+>", " ", render_html.render(qc)),
+            "email copy": mail.stdout or "",
+        }
+        for name, text in surfaces.items():
+            if not text:
+                problems.append(f"{name}: produced nothing, so it is untested")
+                continue
+            if "commission" not in text.lower():
+                problems.append(f"{name}: does not state the commission at all")
+            if _re.search(r"commission[^.\n]{0,40}\$[\d,]", text, _re.I):
+                problems.append(f"{name}: states a commission AMOUNT. The basis is not "
+                                f"ours to assume and nothing can check a figure Core "
+                                f"never returned")
+        head = surfaces["PDF"]
+        if "commission" in head.lower() and not _re.search(r"Commission\s+5%", head):
+            problems.append("the PDF heading block does not show 'Commission 5%' beside "
+                            "Discount and Fuel surcharge")
+        if "commission applies to this program" not in surfaces["PDF"].lower():
+            problems.append("the terms list has no commission bullet")
+
+        # 3. 'No' must leave no trace
+        for name, text in {
+                "PDF": _re.sub(r"<[^>]+>", " ", render_print.render_html(qp)),
+                "HTML email": _re.sub(r"<[^>]+>", " ", render_html.render(qp)),
+                "email copy": subprocess.run(
+                    [sys.executable, os.path.join(HERE, "draft_email.py"), plain],
+                    capture_output=True, text=True).stdout or "",
+        }.items():
+            if "commission" in text.lower():
+                problems.append(f"{name}: mentions a commission when none was recorded")
+
+        # 4. a nonsense rate is refused rather than printed
+        for bad in ("150", "abc", "-4"):
+            rb = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                                 plain, "--commission-pct", bad],
+                                capture_output=True, text=True)
+            if rb.returncode == 0:
+                problems.append(f"--commission-pct {bad!r} was accepted")
+
+    if problems:
+        print("  \u2717 commission")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10: a commission is stated on every format and")
+        print("      changes no arithmetic; no amount is ever computed")
+        return False
+    print("  \u2713 commission (stated on 3 formats, absent when declined, total "
+          "unchanged, no amount computed)")
+    return True
+
+
 def lint_instructions_match_the_code():
     """No instruction file may tell a session to do something the code refuses.
 
@@ -2670,6 +2787,7 @@ def main():
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok
     lint_ok = lint_instructions_match_the_code() and lint_ok
+    lint_ok = lint_commission() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_path_resolution() and lint_ok

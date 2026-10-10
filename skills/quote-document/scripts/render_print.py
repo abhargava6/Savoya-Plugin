@@ -225,6 +225,11 @@ def quote_page(q):
         ("Valid until", day(m.get("valid_until"), "%m/%d/%Y")),
         ("Discount", f"{abs(disc):g}%" if disc else None),
         ("Fuel surcharge", f"{sur:g}%" if sur else None),
+        # Stated with the other rates, never calculated into a figure, and naming no
+        # beneficiary — the commission may be earned by the client or by an agency
+        # acting for them, and a client document should not assert which.
+        ("Commission", (f"{float(q['commission_pct']):g}%"
+                        if q.get("commission_pct") else None)),
     ]
     meta_html = "".join(f"<div><label>{e(k)}</label><span>{e(v)}</span></div>" for k, v in meta_cells if v)
 

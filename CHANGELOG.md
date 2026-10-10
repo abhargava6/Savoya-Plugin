@@ -3,6 +3,40 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.26.0
+
+**New: a commission question in the document flow.** *"Does this client get a commission on
+this quote?"* — No, 1%, 5%, or another percentage, asked after the pricing questions and
+before the presentation ones, so the numbers are settled first.
+
+It is the first answer in the set that is purely presentational, and the two properties
+worth stating plainly are the two that would be easy to lose later:
+
+- **No arithmetic changes.** A commission never enters `adjustments`, the total is
+  identical with it and without it, and C4 stays meaningful. Recorded with
+  `apply_adjustments.py --commission-pct <pct|none>` — in that script because it owns the
+  terms block, so the rate and its bullet land in one call and cannot get out of order.
+- **No amount is ever computed.** The basis is not ours to assume (the quoted total?
+  before discount? excluding fuel?) and a figure nobody returned is a figure nothing can
+  check. The rate is stated and that is all.
+
+It **names no beneficiary**, because the commission may be earned by the client or by an
+agency acting for them and a client-facing document should not assert which. The wording is
+*"A 5% commission applies to this program."* everywhere.
+
+Three places, all automatic once recorded: the PDF heading block beside Discount and Fuel
+surcharge, the terms list (which is how the HTML email picks it up), and one flat sentence
+in the email copy after the inclusions paragraph — deliberately flat, because the client is
+reading a quote, not an offer. On *No*, nothing is recorded and the word appears nowhere.
+
+A rate outside 0–100% or anything non-numeric is refused rather than printed. A trailing
+`%` is accepted; `none`, `no` and `0` all mean no commission.
+
+New guard, broken three ways first: making the commission an adjustment, dropping the PDF
+heading cell, and printing an amount in the terms bullet. It also pins the declined case —
+the word must appear in none of the three formats. The question-set guard caught the two
+instruction files before this was finished, which is what it is for.
+
 ## 0.25.0-sourcing.9
 
 Ayush challenged the `--waive` fix in sourcing.8: the waiver was only ever for the fuel

@@ -41,6 +41,7 @@ def build_terms(quote):
     except FileNotFoundError:
         return quote.get("terms", [])
     fuel = has_fuel_surcharge(quote)
+    commission = quote.get("commission_pct")
     for line in lines:
         line = line.strip()
         if not line.startswith("- "):
@@ -51,6 +52,11 @@ def build_terms(quote):
             if m.group(1) == "fuel_surcharge" and fuel:
                 pct = fuel_pct(quote)
                 out.append(m.group(2).replace("{pct}", f"{pct:g}") if pct else m.group(2).replace("{pct}", "5"))
+            # A recorded commission rate, stated and never calculated. It names no
+            # beneficiary: the commission may be earned by the client or by an agency
+            # acting for them, and a client document should not assert which.
+            elif m.group(1) == "commission" and commission:
+                out.append(m.group(2).replace("{pct}", f"{float(commission):g}"))
             continue
         out.append(body)
     return out
@@ -253,12 +259,35 @@ def main():
     ap.add_argument("--add", action="append", default=[])
     ap.add_argument("--remove", action="append", default=[])
     ap.add_argument("--clear", action="store_true")
+    ap.add_argument("--commission-pct", dest="commission_pct", default=None,
+                    help="commission rate recorded for this quote, from the "
+                         "commission_pct question: a percentage, or 'none'. It is STATED "
+                         "on the documents and changes no arithmetic — it is set here "
+                         "rather than in a setter because this script owns the terms "
+                         "block, so the rate and the terms bullet land in one call and "
+                         "cannot get out of order.")
     ap.add_argument("--waive", action="append", default=[],
                     help="Waive an engine-applied line (e.g. 'Fuel surcharge'): kept for audit, amount 0, not shown")
     args = ap.parse_args()
 
     with open(args.quote, encoding="utf-8") as f:
         quote = json.load(f)
+
+    if args.commission_pct is not None:
+        raw = str(args.commission_pct).strip().lower().rstrip("%").strip()
+        if raw in ("none", "no", "0", ""):
+            quote.pop("commission_pct", None)
+        else:
+            try:
+                pct = float(raw)
+            except ValueError:
+                sys.exit(f"--commission-pct wants a percentage or 'none', not "
+                         f"{args.commission_pct!r}")
+            if not 0 < pct <= 100:
+                sys.exit(f"--commission-pct {pct:g} is outside 0–100%. A commission is a "
+                         f"share of the program, and a rate this far out is a typo rather "
+                         f"than a deal.")
+            quote["commission_pct"] = pct
 
     if args.clear:
         quote["adjustments"] = [a for a in quote.get("adjustments", []) if a.get("source") == "engine"]

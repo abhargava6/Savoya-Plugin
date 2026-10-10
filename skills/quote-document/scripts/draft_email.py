@@ -167,10 +167,17 @@ def main():
     incl = ("Our pricing includes all charges other than variable fees (parking, tolls, airport fees), which are passed along at cost if incurred"
             + (f", and the {fuel['value']:g}% fuel surcharge is included in the figures above" if fuel else "")
             + ". Our drivers are well compensated and additional gratuity is not expected.")
+    # One plain sentence, on its own, after the inclusions and before the close. It is
+    # kept deliberately flat and names no beneficiary: the commission may be earned by
+    # the client or by an agency acting for them, and this is a note on the arrangement
+    # rather than something to sell. No figure is calculated.
+    commission = q.get("commission_pct")
+    commission_line = (f"A {float(commission):g}% commission applies to this program."
+                       if commission else "")
     tbd_line = "Send over the flight details when you have them and we'll lock in the timing." if tbd else ""
     closer = ("We'll be standing by at your service!" if register == "sales" else "As always, let us know if you have any questions! We are happy to help.")
     signoff = "Warm Regards," if register == "sales" else "All the best,"
-    body = "\n\n".join(x for x in [greet, opener, blocks, cx_note, total_line + " The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " + day(m.get('valid_until'), '%B %-d') + ".", incl, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
+    body = "\n\n".join(x for x in [greet, opener, blocks, cx_note, total_line + " The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " + day(m.get('valid_until'), '%B %-d') + ".", incl, commission_line, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
     out = {"to": a.to, "subject": subject, "body": body, "attachment": a.attachment}
     if a.json:
         json.dump(out, open(a.json, "w", encoding="utf-8"), indent=2)

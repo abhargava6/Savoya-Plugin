@@ -148,15 +148,16 @@ The rate check is the constant; the *location* follows who raised it. Something 
 - `final: false` → **stop**: "The quote isn't final yet."
 - No handoff (quote from elsewhere) → fallback: save the response, ask which units are chosen, normalize with `--select` / `--alternative`.
 
-**L · Five questions, one per message, driven by the script**
+**L · Six questions, one per message, driven by the script**
 `decide.py --next` prints the next unanswered key and its exact question text; post that and nothing else; record the answer; repeat until `all answered`. Never batch, never skip, never reorder. The script also *drops* questions: `cover` and `map` are not asked for an email-only job, because nothing but the PDF and printable document reads those answers.
 
 1. **discount_pct** — **a Core re-quote, not a document line.** `calculate_temporary_quote_units` with `temporary_discount.basis_points` (500 = 5%), then re-normalize from the response. This node used to say *never re-quote through the engine*; that was right under the old contract and is **wrong now** — a discount applied here was our arithmetic on Core's number, and Core returns the whole standard → discount → net line with nothing left to compute. Discounts are **additive in basis points**: 30% contracted + 10% here = `4000`, not 37%. Never persisted — say so. If the client's contracted discount is already on the quote, the question says this one is additional.
 2. **greeter_cost** — *inserted only when a client question mentions a greeter or on-site staff, and only a market with no greeter rate gets this far.* Check Core first; never ask a human for a number Core has (see **G3**).
-3. **cover** — catalog keys with audiences, recommendation first, or their own upload (`--cover-file`).
-4. **personalization** — event name, intro note, contact card, logo URL, per-leg notes, closing line; defaults stand for anything unmentioned.
-5. **map** — yes → `route_map.py` (drive times already come from the engine; this adds the map image).
-6. **format** — PDF · email copy + PDF · HTML · DOCX · XLSX.
+3. **commission_pct** — *"Does this client get a commission on this quote?"* No · 1% · 5% · something else. **Stated, never calculated**: record it with `apply_adjustments.py --commission-pct <pct|none>` (that script owns the terms block, so the rate and its bullet land together) and **no arithmetic changes** — it never enters `adjustments` and the total is identical either way. Never compute a commission amount; the basis is not ours to assume. The wording names no beneficiary, because the commission may be the client's or an agency's. On *No*, nothing is recorded and the word appears nowhere.
+4. **cover** — catalog keys with audiences, recommendation first, or their own upload (`--cover-file`).
+5. **personalization** — event name, intro note, contact card, logo URL, per-leg notes, closing line; defaults stand for anything unmentioned.
+6. **map** — yes → `route_map.py` (drive times already come from the engine; this adds the map image).
+7. **format** — PDF · email copy + PDF · HTML · DOCX · XLSX.
 
 **There is no fuel question** (C3, 7 Oct). Fuel is market-scoped and engine-applied; nothing in the contract subtracts it, and `temporary_discount` is additive rather than a way to remove a surcharge. A CSM who needs it waived does that in Savoya. The `[if:fuel_surcharge]` terms bullet stays, because it reflects what Core applied.
 

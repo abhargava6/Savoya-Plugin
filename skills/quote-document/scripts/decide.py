@@ -11,7 +11,7 @@ in Savoya, so it was never ours to give. Core applies it; we present it as Core 
 it."""
 import argparse, datetime as dt, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASE_ORDER = ["discount_pct", "cover", "personalization", "map", "format"]
+BASE_ORDER = ["discount_pct", "commission_pct", "cover", "personalization", "map", "format"]
 GREETER_RE = re.compile(r"greeter|on-?site (staff|support|coordinat)|meet (and|&) greet|hostess", re.I)
 
 
@@ -55,6 +55,7 @@ def order_for(intake):
     return o
 QUESTIONS = {
   "discount_pct": "Any additional discount for this client? A whole percentage, or none. I'll re-quote it through Savoya rather than adjusting the number here.{engine}",
+  "commission_pct": "Does this client get a commission on this quote? No, 1%, 5%, or another percentage. It goes on the quote and in the email as a stated rate \u2014 it changes none of the numbers.",
   "greeter_cost": "The client asked about a greeter / on-site coordinator. How many hours? I'll price it through Savoya at the market rate. If this market has no greeter rate I'll come back and ask for a cost, or leave it off as arranged separately.",
   "cover": "Which cover?\n{covers}\n…or upload your own (PDF or image).",
   "personalization": "I'll use: event name \"{event}\", a two-line intro note from you, your contact card at the end, no client logo, no per-leg notes, no closing line. Confirm, or tell me what to change (logo URL, notes, closing line).",
