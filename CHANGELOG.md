@@ -3,6 +3,117 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.3
+
+Eleven defects from three live Yerdle quotes run on `0.25.0-sourcing.1` — a 16-leg World
+Cup shuttle programme, a 6-leg London/Sicily/Milan itinerary, and a 2-leg Irvine shuttle
+day. Their captures were replayed through this build rather than trusted as notes, which
+is how two of the fixes below turned out to be defects in the previous build's own
+sourcing work. **Every guard in the suite passed while all eleven were live.**
+
+- **The email overstated every price whenever a second discount applied.**
+  `draft_email.py` built one multiplicative factor over the percent adjustments —
+  0.70 × 0.95 × 1.10 — where Core adds discounts in basis points and applies the sum
+  once. On the World Cup quote all sixteen lines came out high and the email totalled
+  **$26,145.63 against the $25,555.91 the PDF showed for the same job**, so the CSM
+  pasted an email contradicting its own attachment and rebuilt it by hand. With a single
+  discount the two models agree to the cent (0.77 either way), which is why it survived
+  months of sessions and only surfaced once an additional discount became routine. Line
+  amounts now come from `engine_net_line_cents` and per-unit figures from Core's own unit
+  count. The opener named only the first discount it found, telling the client 30% when
+  they were given 35%. The PDF never had the bug, because `render_print` sums the
+  percentages. A new guard reconciles the email against the engine on a quote with two
+  stacked discounts; nothing had ever checked the email's arithmetic.
+- **Core's discount label reached the client unexamined, twice.** "Temporary
+  user-supplied discount" printed in a client PDF — *temporary* is Core's word for
+  pricing it did not persist, which `RULES.md` forbids showing — and "Additional 5%
+  discount" printed its percentage twice because the adjustment table appends one.
+  `client_label()` maps the first to neutral wording; `pct_suffix()` withholds the
+  suffix when the label already carries one. The label itself is never edited to fix
+  this: an attempt that stripped any percentage it found turned "Loyalty 12.5% off" into
+  "Loyalty off".
+- **"Wimbledon 2022" printed three times on a July 2027 proposal** — both London line
+  notes and the rate card — because Core returned it as the special-event name on
+  `rate_id` 1264. The name is withheld when its year is not the year of travel; the
+  disclosure stays, because the minimum and the cancellation window are real. The
+  mismatch goes to the internal placeholders. Core's stale record is raised separately.
+- **Out-of-market positioning was stated twice per leg.** The sourced-line marker added
+  in `sourcing.2` and the older `excess_drive_time` line note describe the same fact, and
+  every Irvine leg was both — so the PDF said "positioned from our San Diego, CA
+  partners" twice on each. Caught by replaying the capture before the build shipped. The
+  note now yields to the marker and keeps the case the marker cannot see.
+- **The expensive sourcing case was not flagged as sourcing at all.** When no stop sits
+  in a service area, Core prices from the nearest fleet and reports `primary == source`,
+  so `source != primary` — the cross-market test — is false for it. It is also the costly
+  case: a **36-minute Catania transfer billed 14.75 hours** out of Naples, $9,233.50, and
+  **$18,623 of a $23,259 quote** with its return. It now earns the client-facing marker
+  plus an internal flag stating the hours and the money. Telling `service_area: null`
+  from an absent `location` matters here and the suite proved it — the looser test marked
+  three single-market fixtures as sourced.
+- **The document header named the source market, not the market the work is in**,
+  putting San Diego on an Orange County event whose Mini Buses were positioned from San
+  Diego. `meta.service_area` reads `primary_service_area`.
+- **Two readers were still on the old response shape.** `service_area` lives at
+  `stop.location.service_area`; no stop in any of the three captures has the top-level
+  key the code read, so `pickup_service_area` — the fallback behind every service-area
+  field — was always `None`, and the as-directed map label always rendered without its
+  city. Third instance of the pattern `CLAUDE.md` warns about.
+- **Converging shuttles counted as separate parties.** Four World Cup shuttles ran from
+  four stations to MetLife and back on each match date, ten guests each, and the header
+  read **PASSENGERS 10** for a date on which forty travelled. Keying on the destination
+  alone fixes that and breaks the wedding fixture instead (132 guests at a 120-guest
+  wedding), so the movement key keeps the trip's shape and drops only the origin. World
+  Cup 40, Irvine 80, London 5, wedding 120. All three rejected rules — `max()`, `sum()`
+  and the exact stop sequence — are now pinned as failures.
+- **A capture that reaches nobody is not a capture.** All three sessions produced one and
+  the team got none without asking: one call passed `--dir` with no `--slug` and failed
+  silently, one upload was never made, one was outstanding when the session ended. And
+  the two largest captures — 192 KB and 36 KB — were over the 25 KB ceiling that kept the
+  full capture local, so they sat in a container until it was reclaimed. The ceiling is
+  gone, because it was never needed: that 192 KB capture is **12.8 KB gzipped, 17.1 KB
+  base64 for Drive** — 15× on the worst real case. The full capture is always compressed
+  and always in the upload list. `~` is not the user's computer — a container on
+  claude.ai, an isolated VM on a linked desktop — so the report states
+  `local_copy.durable` with the reason and the instruction is to pass `--dir` inside a
+  connected folder when the session has one. `--mark-uploaded <slug> --file-id <id>`
+  replaces an `rm` the auto-mode classifier denies, which had left an upload that *did*
+  succeed reading as outstanding and the backlog line quoting a false number. It refuses
+  without a Drive id. `expected.pdf_pages` was the literal `3` on every capture ever
+  taken while the real deliverables were 4, 5 and 8 — it is measured from `--pdf` or left
+  out. A refused call now leaves a record, with microseconds in the filename because two
+  in one second collided and one replaced the other. `unpack_capture.py` reads the new
+  envelope, and no longer crashes on a capture with no request — an absence that is
+  deliberate, and that crashed the unpacker on exactly the sessions worth reading.
+- **The flow needed a hand edit to say what it had asked about.** `decide.py` records the
+  personalization answer in the handoff and nothing carried it into `quote.json`, so two
+  of three sessions edited the document by hand. That is how an intro note asserting tax
+  and driver gratuity were included reached a PDF whose own final page says otherwise.
+  `set_personalization.py` writes the fields and refuses the contradictions it can
+  recognise. `source_tool`, `persisted`, `aggregate_total` and `temporary_pricing` were
+  likewise patched into `intake.json` by hand "since handoff.py write has no flags for
+  them" — all four are in Core's response, so the handoff derives them now.
+- **Two copies of this plugin are installed, and they are a silent fork.** The account
+  has two uploads both named `savoya-quoting`, 0.19.1 from September and
+  0.25.0-sourcing.1, so the newer one unpacked beside the old as `savoya-quoting~g2`. A
+  session resolving the plugin by name gets the September copy, whose decision tree has
+  no cross-market sourcing nodes and a different question set — the best explanation for
+  two sessions reporting the intake references "failed to load", improvising the order
+  from memory, and skipping the three mandatory questions. Uploading a new build does not
+  replace the old one when the name collides. `setup_check.py` now reports the duplicate
+  in plain language and names the version to remove; nothing in the plugin can choose the
+  right copy.
+
+Four new guards — email reconciliation, client-safe labels, no-hand-editing, and six more
+assertions on capture resilience — plus the sourcing and passenger guards extended. Each
+was broken on purpose and confirmed red before being kept. The capture size assertion
+needed a synthetic capture as large as the ones that were lost: no fixture here produces
+one over 19 KB, so the first version of that check passed happily with the ceiling put
+back.
+
+Savoya-side, raised as `ENGINEERING.md` **G6**: four tool responses on the 16-unit
+package exceeded output limits (230 KB from one `preview_rate_batch`) and had to be read
+from disk with `jq`.
+
 ## 0.24.0
 
 Four defects from a live World Cup shuttle quote run on 0.23.7, and the instrument that

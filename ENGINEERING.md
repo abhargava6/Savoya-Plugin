@@ -25,6 +25,7 @@ answer and the date, and only when Ayush says it is resolved.
 | **G3** | `temporary_rate_used` is `false` at aggregate level while the unit says `true` | 2026-10-08 | Open |
 | **G4** | The quote response carries `excess_drive_time` but not the no-local-provider warning — we need **both** | 2026-10-08 | Open |
 | **G5** | `greeter_fee` / `adjusted_greeter_fee` exist on every vehicle's quote object but no tool sets them | 2026-10-08 | Open |
+| **G6** | Tool responses exceed output limits on a 16-unit package — 230 KB from one `preview_rate_batch` | 2026-10-10 | Open |
 
 ---
 
@@ -239,3 +240,38 @@ booking with a greeter actually costs. Worth knowing before anything is built on
 
 **Need:** confirm which model is intended — a separate greeter quote unit, or a fee on the
 vehicle's quote — and if it's the fee, which tool is meant to set it.
+
+## G6 — Tool responses exceed output limits on large packages
+
+**Observed (2026-10-10)** On a live 16-unit World Cup shuttle quote, four of the tool
+responses were too large to read directly and had to be written to disk and pulled apart
+with `jq` before the flow could continue.
+
+**Evidence** From the session capture for `yerdle-world-cup-2027` (16 units: 4 origins ×
+4 match dates, one Mercedes Sprinter each, out-and-back hourly with a 4.5-hour wait):
+
+| Tool | Response size |
+|---|---|
+| `preview_rate_batch` | ~230 KB |
+| `generate_quote_options` | ~190 KB |
+| `calculate_temporary_quote_units` | ~124 KB |
+| `calculate_quote_units` | ~108 KB |
+
+Sixteen units is not an unusual job — it is four shuttles on four dates, and the request
+that produced it was two sentences long. A 43-vehicle request would be several times
+larger again.
+
+**Why it matters.** Each response has to be read before the next step can be chosen, so
+when one cannot be read the session improvises: in this case saving the payload and
+querying it with `jq`, which worked but is outside the documented flow and was recorded as
+a workaround. The plugin's own slimming (`capture_session.slim_raw`) only helps *after*
+the response has been received; it cannot help a response that cannot be received.
+
+Most of the volume is repetition. Every unit carries the full `presentation` block, and
+`generate_quote_options` repeats near-identical vehicle options per unit — the capture
+drops `vehicle_options` and `elevated_option` as duplicates of `value_option` and gets
+about 3× smaller doing it, with nothing the plugin needs lost.
+
+**Need:** a compact or summary response mode for multi-unit packages — ideally one that
+omits `presentation` and collapses duplicated vehicle options, so a 16-unit quote can be
+read in one call.
