@@ -188,17 +188,33 @@ def recompute(quote):
     # real one. Absorbing it also meant the engine line printed an amount that was not the
     # percentage it claimed.
     #
-    # Checked only when no document line has been added, because once a CSM adds a line the
-    # total is deliberately no longer the engine's.
+    # A document line does not excuse the check, it just moves what is compared.
+    #
+    # This used to run only when NO document line had been added, on the reasoning that
+    # the total is then deliberately no longer the engine's. True of the total; not true
+    # of the engine's share of it. The effect was that adding one flat line switched off
+    # the only fail-closed money check in the plugin — and on a live Irvine quote on
+    # 10 Oct 2026 it did exactly that: a $200 on-site coordinator line meant the quote
+    # rendered with no comparison against Savoya's aggregate at all. That quote was also
+    # built from a hand-transcribed engine response, which is precisely when the check
+    # matters most.
+    #
+    # So the document lines are subtracted back out and the ENGINE portion is compared.
+    # Only flat lines can be document-sourced (C2 refuses document percentages), so the
+    # subtraction is exact.
     eng_total = quote.get("engine_total_cents")
     eng_lines = [a for a in quote.get("adjustments", []) if a.get("source") == "engine" and not a.get("waived")]
     doc_lines = [a for a in quote.get("adjustments", []) if a.get("source") != "engine" and not a.get("waived")]
-    if eng_total and eng_lines and not doc_lines and quote["total_cents"] != eng_total:
-        gap = quote["total_cents"] - eng_total
+    engine_share = quote["total_cents"] - sum(int(a.get("amount_cents") or 0) for a in doc_lines)
+    if eng_total and eng_lines and engine_share != eng_total:
+        gap = engine_share - eng_total
         sys.exit(
             "REFUSING TO RENDER: this document's total does not match Savoya's.\n"
             f"  Savoya quoted   {eng_total/100:,.2f}\n"
-            f"  This document   {quote['total_cents']/100:,.2f}\n"
+            f"  This document   {engine_share/100:,.2f}"
+            + (f"  (the engine share of {quote['total_cents']/100:,.2f}, "
+               f"after {len(doc_lines)} added line{'s' if len(doc_lines) != 1 else ''})"
+               if doc_lines else "") + "\n"
             f"  Difference      {gap/100:+,.2f}\n"
             "\nThe numbers on a client quote have to be Savoya's, so this stops here rather\n"
             "than papering over the gap. Re-run the quote in intake and rebuild the document\n"

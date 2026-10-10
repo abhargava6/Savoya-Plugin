@@ -735,6 +735,30 @@ def lint_money_ownership():
         elif "REFUSING TO RENDER" not in (r2.stdout + r2.stderr):
             problems.append("it failed, but without a message a CSM could act on")
 
+        # ...and it must STILL fail closed when a document line has been added.
+        #
+        # C4 used to run only when no document line existed, on the reasoning that the
+        # total is then deliberately no longer the engine's. True of the total; not true
+        # of the engine's share of it. The effect was that adding one flat line switched
+        # off the only fail-closed money check in the plugin. On a live Irvine quote on
+        # 10 Oct 2026 a $200 on-site coordinator line did exactly that, and that quote
+        # was also built from a hand-transcribed engine response — the case where the
+        # check matters most. Reproduced here: a $100 slip in a leg's line total ships a
+        # client document $100 light, silently, with the old condition in place.
+        with open(skew, "w") as fh:
+            json.dump(quote2, fh)
+        r3 = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                             skew, "--clear", "--add", "On-site coordination|flat|200"],
+                            capture_output=True, text=True)
+        if r3.returncode == 0:
+            problems.append("the same gap rendered once a $200 document line was added — "
+                            "one flat line must not switch off the only fail-closed "
+                            "money check in the plugin")
+        elif "engine share" not in (r3.stdout + r3.stderr):
+            problems.append("it refused, but did not say the comparison was against the "
+                            "ENGINE share of the total — a CSM reading it would think "
+                            "their own added line was the discrepancy")
+
     if problems:
         print("  ✗ money ownership")
         for pr in problems:

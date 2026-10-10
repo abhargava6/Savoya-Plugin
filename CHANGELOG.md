@@ -3,6 +3,29 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.7
+
+Two changes from reviewing the Irvine test more closely, after Ayush asked why the Drive
+failure couldn't just prompt him and what the hand-typed raw quote actually risks.
+
+- **One flat line used to switch off the only fail-closed money check.** C4 compares the
+  document's total against Savoya's aggregate and refuses to render on any gap — but it
+  ran only when no document line had been added. The reasoning was that the total is then
+  deliberately no longer the engine's, which is true of the total and not of the engine's
+  *share* of it. The Irvine quote had a $200 on-site coordinator line, so it rendered with
+  no comparison against Savoya at all — and it was also built from a hand-transcribed
+  engine response, which is exactly when the check earns its keep. Reproduced: a $100 slip
+  in one leg's line total ships a client document $100 light, silently. Document lines are
+  now subtracted back out and the engine share is compared, which is exact because C2
+  refuses document percentages. The refusal names the engine share explicitly, so a CSM
+  does not read their own added line as the discrepancy.
+- **A failed Drive upload now asks the user instead of mentioning it.** The soft line was
+  something they could do nothing with at that moment, and three sessions running ended
+  with the record stranded. They are the only one who can switch the connector on, so the
+  capture step asks while the session is still alive — "I've turned it on, try again" or
+  "Skip it this time" — once, after the deliverable, never before it. A connector that is
+  on but lacks Editor on the folder fails identically and the same ask covers it.
+
 ## 0.25.0-sourcing.6
 
 Three findings from a live Irvine quote with an Option A / Option B comparison — the first

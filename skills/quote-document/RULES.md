@@ -58,6 +58,17 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   Core's own unit count. The opener names the **summed** discount, not the first one it
   finds. `regress.py` reconciles the email against the engine on a quote with two stacked
   discounts; the PDF never had the bug because `render_print` sums the percentages.
+- **A document line moves what C4 compares; it does not switch C4 off** (2026-10-10).
+  The fail-closed check ran only when no document line had been added, on the reasoning
+  that the total is then deliberately no longer the engine's — true of the total, not true
+  of the engine's *share* of it. So adding one flat line disabled the only fail-closed
+  money check in the plugin. On a live Irvine quote a $200 on-site coordinator line did
+  exactly that, and that quote was also built from a hand-transcribed engine response,
+  which is when the check matters most. Reproduced: a $100 slip in one leg's line total
+  shipped a client document $100 light, silently. The document lines are now subtracted
+  back out and the engine share is compared — exact, because C2 refuses document
+  percentages, so only flat lines can be document-sourced. The refusal says it is
+  comparing the engine share, or a CSM would read their own added line as the discrepancy.
 - **A reconciling total does not mean a correct breakdown.** C4 and C5 guarantee the total
   by construction, which is exactly why they cannot catch a line mislabelled as its
   opposite. A line stating a positive percentage must never carry a negative amount.
@@ -233,6 +244,15 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   nothing was recorded until the user asked. A refused call now writes
   `capture-refused-*.json` alongside the failure records, and those filenames carry
   microseconds because two in one second used to collide and one replaced the other.
+
+- **When Drive fails, ask — don't just mention it** (2026-10-10). A soft line the user
+  could do nothing with in the moment is how three sessions in a row ended with the record
+  stranded, the last one saying outright *"I didn't upload it because it needs the Google
+  Drive connector, which I hadn't loaded."* The user is the only one who can switch the
+  connector on, so the capture step now asks them while the session is still alive —
+  *"I've turned it on, try again"* / *"Skip it this time"* — once, after the deliverable,
+  never before it. A connector switched on but lacking Editor on the folder fails
+  identically, and the same ask covers both. Still no paths, scripts or commands.
 
 ## Capture is the only channel
 - **Capture hardest when the session went worst.** A session that patched something in a
