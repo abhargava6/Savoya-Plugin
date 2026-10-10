@@ -202,10 +202,20 @@ def recompute(quote):
     # So the document lines are subtracted back out and the ENGINE portion is compared.
     # Only flat lines can be document-sourced (C2 refuses document percentages), so the
     # subtraction is exact.
+    # A WAIVED engine line is the other adjustment to make before comparing. Core's
+    # aggregate still contains it — the waiver is ours, recorded so the booking carries
+    # the same waiver in Savoya — so the document total is legitimately short by exactly
+    # that amount. Without adding it back, waiving anything made this refuse to render,
+    # which made `--waive` unusable: on the Irvine quote, waiving the fuel surcharge
+    # produced a $58.50 "gap" that was the waiver itself. That was true before the
+    # document-line fix above and had no guard on it at all.
     eng_total = quote.get("engine_total_cents")
     eng_lines = [a for a in quote.get("adjustments", []) if a.get("source") == "engine" and not a.get("waived")]
     doc_lines = [a for a in quote.get("adjustments", []) if a.get("source") != "engine" and not a.get("waived")]
-    engine_share = quote["total_cents"] - sum(int(a.get("amount_cents") or 0) for a in doc_lines)
+    waived_eng = [a for a in quote.get("adjustments", []) if a.get("source") == "engine" and a.get("waived")]
+    engine_share = (quote["total_cents"]
+                    - sum(int(a.get("amount_cents") or 0) for a in doc_lines)
+                    + sum(int(a.get("amount_cents_fixed") or 0) for a in waived_eng))
     if eng_total and eng_lines and engine_share != eng_total:
         gap = engine_share - eng_total
         sys.exit(

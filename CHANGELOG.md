@@ -3,6 +3,23 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.8
+
+Found by testing whether sourcing.7's stricter money check had started refusing things it
+should allow. It had not — but the check was already refusing one thing it should always
+have allowed.
+
+- **`--waive` was unusable.** Waiving an engine line is the documented, only way to drop
+  one (the discount, fuel, special handling), and it records that the booking needs the
+  same waiver in Savoya. But Core's aggregate still contains the waived amount, so the
+  document total is legitimately short by exactly that much — and nothing added it back,
+  so C4 refused to render on any waiver at all. On the Irvine quote, waiving the fuel
+  surcharge produced a "$58.50 gap" that was the waiver itself. This predates the
+  document-line change in sourcing.7; it had **no guard on it whatsoever**, which is why
+  it went unnoticed. Waived engine amounts are now added back before the comparison, and a
+  genuine gap is still caught with a waiver in play — verified across six combinations of
+  waiver, document line and transcription slip.
+
 ## 0.25.0-sourcing.7
 
 Two changes from reviewing the Irvine test more closely, after Ayush asked why the Drive

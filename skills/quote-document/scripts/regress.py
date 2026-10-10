@@ -759,6 +759,33 @@ def lint_money_ownership():
                             "ENGINE share of the total — a CSM reading it would think "
                             "their own added line was the discrepancy")
 
+        # A WAIVED engine line must still render. Core's aggregate contains the waived
+        # amount -- the waiver is ours, recorded so the booking carries it in Savoya --
+        # so the document total is legitimately short by exactly that much. Nothing added
+        # it back, so waiving ANYTHING refused to render and `--waive` was unusable:
+        # waiving the fuel surcharge on the Irvine quote produced a "$58.50 gap" that was
+        # the waiver itself. `--waive` is the documented, only way to drop an engine line,
+        # and it had no guard on it at all.
+        good = os.path.join(d, "good.json")
+        for label, extra, must_refuse in (
+                ("waive one engine line", ["--waive", "Fuel surcharge"], False),
+                ("waive one + add a flat line",
+                 ["--waive", "Fuel surcharge", "--add", "On-site|flat|200"], False),
+                ("a real gap, with a waiver in play",
+                 ["--waive", "Fuel surcharge"], True)):
+            with open(good, "w") as fh:
+                json.dump(quote2 if must_refuse else quote, fh)
+            rw = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                                 good] + extra, capture_output=True, text=True)
+            refused = "REFUSING TO RENDER" in (rw.stdout + rw.stderr)
+            if refused and not must_refuse:
+                problems.append(f"{label}: refused to render a legitimate waiver — Core's "
+                                f"aggregate still contains the waived amount, so the "
+                                f"document is short by exactly the waiver")
+            if must_refuse and not refused:
+                problems.append(f"{label}: a real gap rendered anyway — adding the waived "
+                                f"amount back must not mask a genuine mismatch")
+
     if problems:
         print("  ✗ money ownership")
         for pr in problems:

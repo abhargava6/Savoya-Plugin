@@ -58,6 +58,14 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   Core's own unit count. The opener names the **summed** discount, not the first one it
   finds. `regress.py` reconciles the email against the engine on a quote with two stacked
   discounts; the PDF never had the bug because `render_print` sums the percentages.
+- **A waived engine line has to be added back before comparing** (2026-10-10). Core's
+  aggregate still contains it — the waiver is ours, recorded so the booking carries the
+  same waiver in Savoya — so the document total is legitimately short by exactly that
+  amount. Nothing added it back, so C4 refused on any waiver and **`--waive` was
+  unusable**: waiving the fuel surcharge produced a "$58.50 gap" that was the waiver
+  itself. It is the only documented way to drop an engine line and it had **no guard on
+  it at all**, which is why this sat unnoticed. A real gap is still caught with a waiver
+  in play.
 - **A document line moves what C4 compares; it does not switch C4 off** (2026-10-10).
   The fail-closed check ran only when no document line had been added, on the reasoning
   that the total is then deliberately no longer the engine's — true of the total, not true
