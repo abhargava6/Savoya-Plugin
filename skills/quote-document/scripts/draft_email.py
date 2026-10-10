@@ -45,14 +45,44 @@ def main():
     ob = q.get("option_b")
     primaries = [l for l in q["legs"] if not l.get("alternative_of")]
     alts = [l for l in q["legs"] if l.get("alternative_of")]
-    disc = next((a for a in q.get("adjustments", []) if a["type"] == "percent" and a["value"] < 0 and not a.get("applies_to") and not a.get("waived")), None)
+    # Every negative percent adjustment, SUMMED — not multiplied. Core adds discounts in
+    # basis points (3000 + 500 -> effective 3500), so a product of factors is a different
+    # and larger number. See `net_of` below for what this cost.
+    discs = [a for a in q.get("adjustments", [])
+             if a["type"] == "percent" and a["value"] < 0
+             and not a.get("applies_to") and not a.get("waived")]
+    disc_pct = sum(a["value"] for a in discs)
+    disc = dict(discs[0], value=disc_pct) if discs else None
     fuel = next((a for a in q.get("adjustments", []) if "fuel" in a["label"].lower() and not a.get("waived")), None)
 
-    factor = 1.0
-    for ad in q.get("adjustments", []):
-        if ad["type"] == "percent" and not ad.get("applies_to") and not ad.get("waived"):
-            factor *= (1 + ad["value"] / 100.0)
-    adj = lambda cents: int(round(cents * factor))
+    def net_of(l, cents_key, units=1):
+        """Core's own net figure, divided only by Core's own unit count.
+
+        This used to build one multiplicative factor over every percent adjustment and
+        apply it to the STANDARD rate. With a single discount that happens to agree with
+        Core exactly (0.70 x 1.10 = 0.77 either way), so it looked right for months. With
+        two it does not: 0.70 x 0.95 = 0.665 against Core's additive 0.65. On a real
+        16-leg World Cup quote every one of the 16 lines came out high and the email
+        totalled $26,145.63 against the $25,556 the PDF and Savoya showed — $589.72 of
+        invented money, in the document the CSM pastes to the client.
+
+        The PDF never had the bug because render_print sums the percentages. The fix here
+        is stronger than summing: take the line total Core returned and divide by the
+        hours or vehicles Core billed. The plugin states no price Core did not return.
+        """
+        net = l.get("engine_net_line_cents")
+        if net is None:                      # pre-0.23 quote.json, no engine fields
+            return None
+        return int(round(net / units)) if units else net
+
+    def line_net(l):
+        return net_of(l, "engine_net_line_cents")
+
+    def unit_net(l):
+        """Per-vehicle (transfer) or per-hour (hourly) net, from Core's granularity."""
+        qty = (l.get("vehicle") or {}).get("quantity") or 1
+        units = qty * (l.get("engine_rate_units") or 1)
+        return net_of(l, "engine_net_line_cents", units)
 
     def block(l, n=None, prefix=""):
         p, v = l["pricing"], l["vehicle"]
@@ -66,17 +96,23 @@ def main():
         cx = p.get("cancellation_hours")
         if cx:
             lines.append(f"Cancellation policy*: {cx} hours" + (" (1 week)" if cx == 168 else " (72 hours = 3 days)" if cx == 72 else ""))
+        per_unit, net_line = unit_net(l), line_net(l)
+        if per_unit is None or net_line is None:
+            sys.exit(f"{l.get('ref') or l.get('key')}: quote.json carries no engine_net_line_cents, "
+                     f"so the email cannot state a net price Core returned. Re-run normalize_quote.py.")
         if p["method"] == "hourly":
             if p.get("minimum_hours"): lines.append(f"Minimum hours: {p['minimum_hours']:g} hours")
             lines.append(f"Quoted time: {p.get('billable_hours'):g} hours" + (" per vehicle" if v["quantity"] > 1 else ""))
-            lines.append(f"Adjusted Client Hourly Rate: {money(adj(p['rate_cents']))}")
+            lines.append(f"Adjusted Client Hourly Rate: {money(per_unit)}")
         else:
-            lines.append(f"Type: Transfer – {money(adj(p['per_vehicle_cents']))}" + (" per vehicle" if v["quantity"] > 1 else ""))
-        if p.get("special_event"):
+            lines.append(f"Type: Transfer – {money(per_unit)}" + (" per vehicle" if v["quantity"] > 1 else ""))
+        if p.get("special_event") and p["special_event"].get("name"):
             lines.append(f"Special event: {p['special_event']['name']} rates are in effect on this date and availability is limited.")
+        elif p.get("special_event"):
+            lines.append("Special event rates and minimums are in effect on this date and availability is limited.")
         if v["quantity"] > 1:
-            lines.append(f"Estimated Total for 1 {v['name']}: {money(adj(p['per_vehicle_cents']))}")
-        lines.append(f"Estimated Total: {money(adj(p['line_total_cents']))}")
+            lines.append(f"Estimated Total for 1 {v['name']}: {money(per_unit * (l.get('engine_rate_units') or 1))}")
+        lines.append(f"Estimated Total: {money(net_line)}")
         return "\n".join(lines)
 
     blocks = "\n\n".join(block(l) for l in primaries)

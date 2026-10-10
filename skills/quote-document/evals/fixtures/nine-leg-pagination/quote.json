@@ -56,7 +56,11 @@
         "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
         "Three coaches staged at the Hyatt Regency from 5:30pm."
       ],
-      "ref": "A1"
+      "ref": "A1",
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "leg1",
@@ -98,7 +102,11 @@
       "client_notes": [
         "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
       ],
-      "ref": "A2"
+      "ref": "A2",
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "leg2",
@@ -143,7 +151,11 @@
         "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
         "Three coaches staged at the Hyatt Regency from 5:30pm."
       ],
-      "ref": "A3"
+      "ref": "A3",
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "leg3",
@@ -185,7 +197,11 @@
       "client_notes": [
         "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
       ],
-      "ref": "A4"
+      "ref": "A4",
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "leg4",
@@ -230,7 +246,11 @@
         "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
         "Three coaches staged at the Hyatt Regency from 5:30pm."
       ],
-      "ref": "A5"
+      "ref": "A5",
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "leg5",
@@ -272,7 +292,11 @@
       "client_notes": [
         "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
       ],
-      "ref": "A6"
+      "ref": "A6",
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "leg6",
@@ -317,7 +341,11 @@
         "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
         "Three coaches staged at the Hyatt Regency from 5:30pm."
       ],
-      "ref": "A7"
+      "ref": "A7",
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "leg7",
@@ -359,7 +387,11 @@
       "client_notes": [
         "Load-and-go from hotel porte-coch\u00e8re. ~4 mi / 15 min to Logan."
       ],
-      "ref": "A8"
+      "ref": "A8",
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "leg8",
@@ -404,7 +436,11 @@
         "Covers 5:45pm outbound and 8:00pm return. Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks.",
         "Three coaches staged at the Hyatt Regency from 5:30pm."
       ],
-      "ref": "A9"
+      "ref": "A9",
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     }
   ],
   "engine_subtotal_cents": 4303392,

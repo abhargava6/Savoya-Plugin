@@ -63,7 +63,11 @@
       "route": {
         "drive_min": 20,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L1",
@@ -111,7 +115,11 @@
       "route": {
         "drive_min": 21,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L2",
@@ -163,7 +171,11 @@
       "route": {
         "drive_min": 22,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L3",
@@ -211,7 +223,11 @@
       "route": {
         "drive_min": 23,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L4",
@@ -263,7 +279,11 @@
       "route": {
         "drive_min": 24,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L5",
@@ -311,7 +331,11 @@
       "route": {
         "drive_min": 25,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L6",
@@ -363,7 +387,11 @@
       "route": {
         "drive_min": 26,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L7",
@@ -411,7 +439,11 @@
       "route": {
         "drive_min": 27,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L8",
@@ -463,7 +495,11 @@
       "route": {
         "drive_min": 28,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L9",
@@ -511,7 +547,11 @@
       "route": {
         "drive_min": 29,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L10",
@@ -563,7 +603,11 @@
       "route": {
         "drive_min": 30,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L11",
@@ -611,7 +655,11 @@
       "route": {
         "drive_min": 31,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L12",
@@ -663,7 +711,11 @@
       "route": {
         "drive_min": 32,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L13",
@@ -711,7 +763,11 @@
       "route": {
         "drive_min": 33,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     },
     {
       "key": "L14",
@@ -763,7 +819,11 @@
       "route": {
         "drive_min": 34,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 561312,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 561312
     },
     {
       "key": "L15",
@@ -811,7 +871,11 @@
       "route": {
         "drive_min": 35,
         "source": "engine"
-      }
+      },
+      "engine_net_line_cents": 374208,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 31184,
+      "engine_standard_line_cents": 374208
     }
   ],
   "engine_subtotal_cents": 7484160,

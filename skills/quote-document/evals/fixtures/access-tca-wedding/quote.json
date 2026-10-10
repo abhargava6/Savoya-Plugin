@@ -49,7 +49,11 @@
       },
       "client_notes": [
         "6 pax + dresses/garment bags. 3-hr hourly minimum. ~25 mi / up to 40 min."
-      ]
+      ],
+      "engine_net_line_cents": 92700,
+      "engine_rate_units": 3,
+      "engine_standard_rate_cents": 30900,
+      "engine_standard_line_cents": 92700
     },
     {
       "key": "sprinter_2",
@@ -87,7 +91,11 @@
       },
       "client_notes": [
         "6 pax. 3-hr hourly minimum. ~25 mi / up to 40 min."
-      ]
+      ],
+      "engine_net_line_cents": 92700,
+      "engine_rate_units": 3,
+      "engine_standard_rate_cents": 30900,
+      "engine_standard_line_cents": 92700
     },
     {
       "key": "minibus_waves",
@@ -131,7 +139,11 @@
       "client_notes": [
         "Covers 3:00pm & 3:15pm outbound waves (90 guests) and 11:00pm return (up to 102). 123 seats.",
         "Continuous charter \u2014 single 6-hr minimum per vehicle instead of two blocks. Cancel window 168 hrs (7 days)."
-      ]
+      ],
+      "engine_net_line_cents": 1198800,
+      "engine_rate_units": 9,
+      "engine_standard_rate_cents": 44400,
+      "engine_standard_line_cents": 1198800
     }
   ],
   "engine_subtotal_cents": 1384200,

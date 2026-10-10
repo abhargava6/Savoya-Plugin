@@ -1386,6 +1386,196 @@ _NO_OWN_MATH = {
 }
 
 
+def lint_client_safe_labels():
+    """Core's own strings are read, not published unexamined.
+
+    Three real defects on 10 Oct 2026, all from printing a Core field straight through:
+
+      * `temporary_discount_label` = "Temporary user-supplied discount" reached a client
+        PDF. "Temporary" describes pricing Core did not persist -- an internal fact about
+        the quote, not about the client's discount.
+      * `temporary_discount_label` = "Additional 5% discount" already carried the figure,
+        and the adjustment table appends it too: "Additional 5% discount (5%)".
+      * `special_event.name` = "Wimbledon 2022" was returned against July 2027 dates and
+        printed three times on a $17.9k proposal.
+
+    The event DISCLOSURE must survive the third fix -- it carries a real minimum and
+    cancellation window -- so this asserts the name is gone and the warning is not.
+    """
+    import copy
+    import json as _json
+    import subprocess
+    import tempfile
+
+    sys.path.insert(0, HERE)
+    import normalize_quote
+    import render_html
+    import render_print
+
+    problems = []
+
+    for raw, expect in [("Temporary user-supplied discount", "Additional discount"),
+                        ("Temporary rate", "Additional discount"),
+                        (None, "Additional discount"),
+                        ("Additional 5% discount", "Additional 5% discount"),
+                        ("Loyalty 12.5% off", "Loyalty 12.5% off")]:
+        got = normalize_quote.client_label(raw)
+        if got != expect:
+            problems.append(f"client_label({raw!r}) -> {got!r}, expected {expect!r}")
+
+    # A stale year withholds the name; the matching year keeps it; no year keeps it.
+    import contextlib
+    import io as _io
+    for name, date, keep in [("Wimbledon 2022", "2027-07-01T08:40:00+01:00", False),
+                             ("Wimbledon 2027", "2027-07-01T08:40:00+01:00", True),
+                             ("Ryder Cup", "2027-07-01T08:40:00+01:00", True)]:
+        # the stale-year case warns on stderr by design; swallow it here so the suite's
+        # own output cannot hide a warning that matters
+        with contextlib.redirect_stderr(_io.StringIO()):
+            got = normalize_quote.event_for_client({"name": name}, date)
+        if bool(got.get("name")) is not keep:
+            problems.append(f"event_for_client({name!r}, 2027) -> {got!r}; "
+                            f"name should {'survive' if keep else 'be withheld'}")
+
+    fx = os.path.join(SKILL, "evals", "fixtures", "access-tca-wedding", "quote.json")
+    if not os.path.exists(fx):
+        print("  ✗ client-safe labels: wedding fixture missing")
+        return False
+    with open(fx, encoding="utf-8") as fh:
+        q = copy.deepcopy(_json.load(fh))
+    q["adjustments"] = [
+        {"label": "Preferred client discount", "type": "percent", "value": -30.0,
+         "applies_to": None, "source": "engine", "amount_cents": 0, "amount_cents_fixed": 0},
+        {"label": "Additional 5% discount", "type": "percent", "value": -5.0,
+         "applies_to": None, "source": "engine", "amount_cents": 0, "amount_cents_fixed": 0},
+    ]
+    # name withheld by the stale-year rule, disclosure retained
+    q["legs"][0]["pricing"]["special_event"] = {"name": None, "stale_name": "Wimbledon 2022",
+                                                "leg_year": "2027"}
+    with tempfile.TemporaryDirectory() as d:
+        qp = os.path.join(d, "quote.json")
+        with open(qp, "w", encoding="utf-8") as fh:
+            _json.dump(q, fh)
+        mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qp],
+                              capture_output=True, text=True)
+        rendered = {"print": render_print.render_html(q),
+                    "email html": render_html.render(q),
+                    "email text": mail.stdout}
+    for fmt, text in rendered.items():
+        if not text:
+            problems.append(f"{fmt}: produced nothing, so this format is untested"
+                            + (f" ({mail.stderr.strip()[:160]})"
+                               if fmt == "email text" and mail.stderr else ""))
+            continue
+        if "Wimbledon" in text:
+            problems.append(f"{fmt}: printed a withheld special-event name")
+        if "emporar" in text or "user-supplied" in text:
+            problems.append(f"{fmt}: leaked Core's internal pricing wording")
+        if "5% discount (5%)" in text or "5% discount&nbsp;(5%)" in text:
+            problems.append(f"{fmt}: printed the discount percentage twice")
+        if fmt != "email text" and "Event pricing" not in text:
+            problems.append(f"{fmt}: dropped the event disclosure along with the name "
+                            f"— the minimum and cancellation window still apply")
+
+    if problems:
+        print("  ✗ client-safe labels")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10, normalize_quote.client_label and")
+        print("      event_for_client, render_print.pct_suffix")
+        return False
+    print("  ✓ client-safe labels (5 labels, 3 event years, 3 formats)")
+    return True
+
+
+def lint_email_reconciles():
+    """The email's own numbers must be Core's numbers.
+
+    This is the guard that did not exist on 10 Oct 2026, and its absence cost real
+    money in a real client document. `draft_email.py` built one multiplicative factor
+    over every percent adjustment -- 0.70 x 0.95 x 1.10 -- where Core adds discounts in
+    basis points and applies 3500 once. On a 16-leg World Cup quote that put EVERY line
+    high and the email total at $26,145.63 against the $25,555.91 the PDF showed on the
+    same job. The CSM pasted an email contradicting its own attachment and rebuilt it by
+    hand.
+
+    Three reasons nothing caught it:
+      * with a single discount the two models agree exactly (0.70 x 1.10 = 0.77), so it
+        was invisible until "additional discount" became a routine path;
+      * `money ownership` and `no own arithmetic` check the PDF and the prose, never the
+        email's arithmetic;
+      * no fixture carried two stacked discounts.
+
+    So this guard asserts the email against the engine, on a quote built to have two.
+    It is the arithmetic that is checked, not the wording.
+    """
+    import copy
+    import json as _json
+    import re as _re
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(SKILL, "evals", "fixtures", "access-tca-wedding", "quote.json")
+    if not os.path.exists(fx):
+        print("  ✗ email reconciles: wedding fixture missing")
+        return False
+    with open(fx, encoding="utf-8") as fh:
+        q = copy.deepcopy(_json.load(fh))
+
+    # Stack a second discount, which is the shape that breaks a multiplicative factor.
+    # The engine-net line amounts are left exactly as Core returned them: the point is
+    # that the email must report THOSE, whatever the adjustment list says.
+    if any(l.get("engine_net_line_cents") is None for l in q["legs"]):
+        print("  ✗ email reconciles: fixture carries no engine_net_line_cents to assert against")
+        return False
+    q["adjustments"] = [
+        {"label": "Preferred client discount", "type": "percent", "value": -30.0,
+         "applies_to": None, "source": "engine", "amount_cents": 0, "amount_cents_fixed": 0},
+        {"label": "Additional discount", "type": "percent", "value": -5.0,
+         "applies_to": None, "source": "engine", "amount_cents": 0, "amount_cents_fixed": 0},
+        {"label": "Fuel surcharge", "type": "percent", "value": 10.0,
+         "applies_to": None, "source": "engine", "amount_cents": 0, "amount_cents_fixed": 0},
+    ]
+
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        qp = os.path.join(d, "quote.json")
+        with open(qp, "w", encoding="utf-8") as fh:
+            _json.dump(q, fh)
+        mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qp],
+                              capture_output=True, text=True)
+        if not mail.stdout:
+            print("  ✗ email reconciles: draft_email produced nothing "
+                  f"({mail.stderr.strip()[:200]})")
+            return False
+        stated = [int(round(float(x.replace(",", "")) * 100))
+                  for x in _re.findall(r"Estimated Total: \$([\d,]+\.\d\d)", mail.stdout)]
+        core = [l.get("engine_net_line_cents") for l in q["legs"]
+                if not l.get("alternative_of")]
+        if len(stated) != len(core):
+            problems.append(f"email states {len(stated)} line totals for {len(core)} legs")
+        for i, (s, c) in enumerate(zip(stated, core)):
+            if c is None:
+                continue
+            if s != c:
+                problems.append(f"leg {i + 1}: email says ${s / 100:,.2f}, Core returned "
+                                f"${c / 100:,.2f} (off by ${(s - c) / 100:+,.2f})")
+        if stated and all(c is not None for c in core):
+            if sum(stated) != sum(core):
+                problems.append(f"email lines sum to ${sum(stated) / 100:,.2f}, engine lines "
+                                f"to ${sum(core) / 100:,.2f}")
+
+    if problems:
+        print("  ✗ email reconciles")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      the email must state Core's line amounts, never its own arithmetic;")
+        print("      see RULES.md 2026-10-10 and draft_email.net_of()")
+        return False
+    print(f"  ✓ email reconciles ({len(core)} lines against the engine, two stacked discounts)")
+    return True
+
+
 def lint_sourced_line():
     """A vehicle sourced from another market must say so, on every format.
 
@@ -1452,12 +1642,77 @@ def lint_sourced_line():
                 problems.append(f"{fmt}: marked {text.count('Hartford partners')} lines "
                                 f"as sourced; only one leg is")
 
+    # --- said ONCE, and said for the case with no market to name -------------------
+    # Both of these are 10 Oct 2026 findings from replaying real captures.
+    sys.path.insert(0, HERE)
+    import normalize_quote
+
+    def unit(stop_area, source, primary, excess):
+        # Core's real shape for a place outside every market: the key is present and
+        # null. An ABSENT location means "unknown" and must not read as "nowhere".
+        loc = {"service_area": {"id": 1, "name": stop_area} if stop_area else None}
+        return {
+            "key": "u1", "label": "u1", "pickup_date": "2027-03-20T07:40:00-07:00",
+            "passenger_count": 4, "quantity": 1, "line_total": 100000,
+            "source_service_area": {"id": 2, "name": source} if source else None,
+            "primary_service_area": {"id": 3, "name": primary} if primary else None,
+            "excess_drive_time": excess,
+            "vehicle_type": {"id": 7, "name": "Mini Bus", "capacity": 41},
+            "stops": [{"display_name": "A", "name": "A", "travel_time": 0, "location": dict(loc),
+                       "position": {"latitude": 33.6, "longitude": -117.8}},
+                      {"display_name": "B", "name": "B", "travel_time": 14, "location": dict(loc),
+                       "position": {"latitude": 33.7, "longitude": -117.7}}],
+            "pricing_summary": {"status": "priced", "pricing_method": "transfer",
+                                "total_amount": 100000, "per_vehicle_total_amount": 100000,
+                                "rate": {"base_rate_amount": 100000,
+                                         "effective_rate_amount": 100000,
+                                         "billing_unit": "trip"},
+                                "calculation": {"quantity": 1, "passenger_count": 4},
+                                "adjustments": {}, "cancellation_hours": 2},
+            "value_option": None,
+        }
+
+    # (a) sourced AND excess_drive_time -> the marker, and NOT the legacy line note.
+    leg, _ = normalize_quote.normalize_unit(
+        unit("Orange County, CA", "San Diego, CA", "Orange County, CA", True), None)
+    if leg is None:
+        problems.append("normalize_unit rejected the sourced+excess test unit")
+    else:
+        notes = [n for n in leg.get("client_notes") or [] if "positioned from" in n]
+        if not leg.get("sourced_from_other_market"):
+            problems.append("a unit sourced from another market is not flagged")
+        if notes:
+            problems.append(f"sourced leg ALSO carries {len(notes)} 'positioned from' line "
+                            f"note(s) — the client is told twice")
+
+    # (b) no stop in any service area -> still sourced, with the money in the internals.
+    leg, internal = normalize_quote.normalize_unit(
+        unit(None, "Naples, Italy", "Naples, Italy", True), None)
+    if leg is None:
+        problems.append("normalize_unit rejected the no-service-area test unit")
+    else:
+        if not leg.get("no_local_service_area"):
+            problems.append("a unit whose stops have no service area is not flagged as such")
+        if not leg.get("sourced_from_other_market"):
+            problems.append("a unit priced from a distant market because no stop has a "
+                            "service area is not marked as sourced — this is the case "
+                            "that billed 14.75 h for a 36-minute transfer")
+        if not any("NO SAVOYA SERVICE AREA" in p for p in internal.get("placeholders", [])):
+            problems.append("the no-service-area case raises no internal flag for the CSM")
+
+    # (c) ordinary single-market unit -> neither.
+    leg, _ = normalize_quote.normalize_unit(
+        unit("Boston, MA", "Boston, MA", "Boston, MA", False), None)
+    if leg and leg.get("sourced_from_other_market"):
+        problems.append("an ordinary single-market unit was marked as sourced")
+
     if problems:
         print("  \u2717 sourced line")
         for b in problems:
             print(f"      - {b}")
         return False
-    print("  \u2713 sourced line (marked on the sourced leg only)")
+    print("  \u2713 sourced line (one marker per sourced leg, said once, incl. the "
+          "no-service-area case)")
     return True
 
 
@@ -1737,6 +1992,8 @@ def main():
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_sourced_line() and lint_ok
+    lint_ok = lint_email_reconciles() and lint_ok
+    lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_core_coordinates() and lint_ok
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok

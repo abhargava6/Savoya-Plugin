@@ -102,7 +102,8 @@ def leg_card(leg):
     if p.get("special_event"):
         callout = (f"<tr><td style='padding:10px 0 0;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"
                    f"<td style='background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 12px;"
-                   f"font-family:{SANS};font-size:12px;color:{AMBER};'>&#9888;&nbsp; Event pricing in effect for {e(p['special_event']['name'])}"
+                   f"font-family:{SANS};font-size:12px;color:{AMBER};'>&#9888;&nbsp; Event pricing in effect"""
+                   + (f" for {e(p['special_event']['name'])}" if (p.get('special_event') or {}).get('name') else "")
                    + (f": {p['minimum_hours']:g}-hour minimum" if p.get("minimum_hours") else "")
                    + (f", {p['cancellation_hours']}-hour cancellation" if p.get("cancellation_hours") else "")
                    + ".</td></tr></table></td></tr>")

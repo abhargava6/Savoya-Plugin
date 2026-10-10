@@ -76,7 +76,7 @@ def stop_label(stop, presentation_stop):
     if is_airport(stop):
         return "Airport (label needed)", True
     if stop.get("as_directed"):
-        city = (stop.get("service_area") or {}).get("name", "").split("/")[0].split(",")[0].strip()
+        city = (stop_service_area(stop) or "").split("/")[0].split(",")[0].strip()
         return f"As directed — {city}" if city else "As directed", False
     return "Stop (label needed)", True
 
@@ -99,6 +99,103 @@ def is_airport(stop):
         return True
     return ((stop.get("location") or {}).get("type") == "airport"
             or stop.get("stop_type") == "airport")
+
+
+_TEMP_WORDS = re.compile(r"temporar|user-supplied|unsaved", re.I)
+
+
+def stop_service_area(stop):
+    """A stop's service-area name, in EITHER response shape.
+
+    This moved, like the airport flag and the sourcing warning before it. It used to be
+    a top-level `service_area` on the stop; current responses carry it only at
+    `location.service_area`. NO stop in any of the three captures taken on 10 Oct 2026
+    has the top-level key, so the old reader returned None every time -- which silently
+    made `pickup_service_area` (the fallback behind every service-area field) dead, and
+    printed "As directed" with no city on every as-directed leg.
+
+    Both shapes are read, and the new one is preferred.
+    """
+    if not isinstance(stop, dict):
+        return None
+    for holder in ((stop.get("location") or {}), stop):
+        area = holder.get("service_area")
+        if isinstance(area, dict) and area.get("name"):
+            return area["name"]
+        if isinstance(area, str) and area:
+            return area
+    return None
+
+
+def stop_has_no_service_area(stop):
+    """Core said this place is in NO service area -- as distinct from not saying.
+
+    The difference decides whether a leg is treated as sourced, so conflating them is
+    expensive in both directions. Current responses carry `location.service_area: null`
+    for a place outside every market (Catania, and the Sicily hotel). An older or
+    trimmed response may carry no `location` at all, which means "unknown" and must not
+    be read as "nowhere" -- doing so marked three single-market fixtures as sourced and
+    the suite caught it.
+    """
+    loc = stop.get("location") if isinstance(stop, dict) else None
+    if not isinstance(loc, dict) or "service_area" not in loc:
+        return False
+    return not loc.get("service_area")
+
+
+def event_for_client(special_event, pickup_date):
+    """The special-event disclosure, with a stale event NAME withheld.
+
+    Core returned `special_event.name = "Wimbledon 2022"` against July **2027** London
+    dates (rate_id 1264, SpecialEventTransferRate). It printed in three places on a
+    $17.9k client proposal: both London line notes and the rate card.
+
+    The disclosure itself must survive -- a special-event rate carries real minimums and
+    a different cancellation window, and suppressing it would understate what the client
+    is agreeing to. It is only the NAME that is unsafe, and only when it carries a year
+    that is not the year of travel. Then the leg says event pricing is in effect and says
+    nothing about which event, and the mismatch goes to the internal placeholders so the
+    weekly pass sees it and Savoya can fix the record.
+
+    A name with no year (most of them) is published unchanged.
+    """
+    if not special_event or not special_event.get("name"):
+        return {"name": None} if special_event else None
+    name = str(special_event["name"])
+    years = re.findall(r"\b(19|20)(\d{2})\b", name)
+    if not years or not pickup_date:
+        return {"name": name}
+    leg_year = str(pickup_date)[:4]
+    if any(a + b == leg_year for a, b in years):
+        return {"name": name}
+    print(f"WARNING: special event {name!r} names a year other than {leg_year}; "
+          f"the event name is withheld from the client document and the rate-bearing "
+          f"disclosure is kept. Core's special-event record looks stale.", file=sys.stderr)
+    return {"name": None, "stale_name": name, "leg_year": leg_year}
+
+
+def client_label(raw):
+    """Core's discount label, made safe to print to a client.
+
+    Two real defects, both on 10 Oct 2026, both from publishing this string as-is:
+
+      * Core sent "Temporary user-supplied discount" and it printed in a client PDF.
+        "Temporary" is Core's word for pricing it did not persist -- an internal fact
+        about the quote's storage, not a fact about the client's discount. RULES.md
+        forbids showing it; the session relabelled it by hand mid-flow.
+      * Core sent "Additional 5% discount", and the renderer appends the percentage to
+        every percent line, so the PDF read "Additional 5% discount (5%)".
+
+    Only the first is fixed here: anything leaking the internal nature of the pricing
+    becomes the neutral truth. The double percentage is NOT fixed by editing the label
+    -- an earlier attempt stripped any percentage it found and turned "Loyalty 12.5%
+    off" into "Loyalty off". The renderer owns the percentage it appends, so that is
+    where it is suppressed; see `pct_suffix` in render_print.py.
+    """
+    label = (raw or "").strip()
+    if not label or _TEMP_WORDS.search(label):
+        return "Additional discount"
+    return label
 
 
 def coordinates_of(stop):
@@ -205,7 +302,20 @@ def normalize_unit(unit, presentation_unit):
         engine_discount_pct = bps / 100.0
     engine_fuel_pct = (adj.get("fuel_surcharge_basis_points") or 0) / 100.0 or None
     engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
-    pickup_service_area = next((s.get("service_area", {}).get("name") for s in unit.get("stops", []) if s.get("service_area")), None)
+    stop_areas = [stop_service_area(s) for s in unit.get("stops", [])]
+    pickup_service_area = next((n for n in stop_areas if n), None)
+    # No stop in this unit sits in a Savoya service area at all. Core still prices it,
+    # from whichever market owns the nearest fleet, and bills the positioning -- which
+    # is the EXPENSIVE sourcing case, not an edge case. On 10 Oct 2026 a Catania airport
+    # transfer of 36 minutes came back as 14.75 hours hourly from Naples: $9,233.50 for
+    # one leg, and with its return $18,623 of a $23,259 quote.
+    #
+    # Core reports primary == source for it, because Naples genuinely is both the primary
+    # and the source market of that unit. So `source != primary` -- the test for an
+    # ordinary cross-market override -- is FALSE here, and the costly case was the one
+    # case the sourcing marker missed.
+    orphan_stops = bool(unit.get("stops")) and all(
+        stop_has_no_service_area(s) for s in unit["stops"])
     # Cross-market sourcing (PRD R48-R51). Core carries ONE source per unit, not an
     # array per leg: a mixed-market package is several units, each with its own
     # source_service_area, which is exactly how calculate_sourced_quote_units takes
@@ -218,8 +328,10 @@ def normalize_unit(unit, presentation_unit):
         "key": unit.get("key"),
         "service_area": service_area,
         "primary_service_area": primary_service_area,
-        "sourced_from_other_market": bool(source_service_area
-                                          and source_service_area != primary_service_area),
+        "sourced_from_other_market": bool(service_area and (
+            orphan_stops
+            or (source_service_area and source_service_area != primary_service_area))),
+        "no_local_service_area": orphan_stops,
         "label": unit.get("label") or unit.get("key"),
         "date": unit.get("pickup_date") or (presentation_unit or {}).get("date"),
         "passenger_count": unit.get("passenger_count") or ps.get("calculation", {}).get("passenger_count"),
@@ -235,7 +347,9 @@ def normalize_unit(unit, presentation_unit):
             "billable_hours": opt.get("billable_hours") or ps.get("calculation", {}).get("billable_hours"),
             "minimum_hours": rate.get("minimum_hours") or opt.get("minimum"),
             "cancellation_hours": opt.get("cancellation_hours") or ps.get("cancellation_hours"),
-            "special_event": ({"name": ps["special_event"]["name"]} if ps.get("special_event") else None),
+            "special_event": event_for_client(
+                ps.get("special_event"),
+                unit.get("pickup_date") or (presentation_unit or {}).get("date")),
             "per_vehicle_cents": opt.get("unit_total") or ps.get("per_vehicle_total_amount"),
             "line_total_cents": opt.get("line_total") or ps.get("total_amount"),
         },
@@ -296,10 +410,10 @@ def normalize_unit(unit, presentation_unit):
         leg["engine_discount_pct"] = engine_discount_pct
         if temp_bps:
             leg["engine_temp_discount_pct"] = temp_bps / 100.0
-            # Core's own words for it reach the client document, so they are read, not
-            # invented. Absent, "Additional discount" is the neutral truth.
-            leg["engine_temp_discount_label"] = (
-                adj.get("temporary_discount_label") or "Additional discount")
+            # Core's own words for it reach the client document, so they are read rather
+            # than invented -- but they are NOT published unexamined. See client_label().
+            leg["engine_temp_discount_label"] = client_label(
+                adj.get("temporary_discount_label"))
     # "No local providers" is client-relevant: surface it as a line note automatically.
     #
     # Two triggers, because the signal moved. The warning text now appears only on
@@ -320,7 +434,18 @@ def normalize_unit(unit, presentation_unit):
             break
     if note is None and unit.get("excess_drive_time"):
         note = service_area or ""
-    if note is not None:
+    # Say it ONCE. The renderers draw a marker under any leg flagged
+    # `sourced_from_other_market`, placed next to the line it explains, which is where
+    # R51 wants it. This note predates that marker and says the same thing in LINE
+    # NOTES. On the real Irvine quote both fired: every leg was `excess_drive_time` AND
+    # sourced, so the client PDF said "positioned from our San Diego, CA partners"
+    # twice per leg. Caught by replaying the capture before the build shipped.
+    #
+    # The two cover complementary halves and both are needed: the marker handles a named
+    # source market, the note handles positioning with no market to name -- Whistler out
+    # of Vancouver, Catania out of Naples -- where there is no second line for a reader
+    # to be confused by.
+    if note is not None and not leg.get("sourced_from_other_market"):
         where = f"our {note} partners" if note else "a neighbouring market"
         leg["client_notes"].append(
             f"Vehicles for this service are positioned from {where}; additional drive time "
@@ -339,6 +464,20 @@ def normalize_unit(unit, presentation_unit):
         if s.get("kind") == "airport" and s.get("flight", {}).get("tbd"):
             internal["placeholders"].append(
                 f"{leg['key']}: flight time {s['flight'].get('scheduled_time')} is a placeholder (TBD flight)")
+    # The costly sourcing case, stated in money so it cannot be skimmed past. A 36-minute
+    # Catania transfer billed 14.75 hours out of Naples -- $9,233.50, and $18,623 with its
+    # return, against a $23,259 quote. The client-facing marker says where the vehicle
+    # came from; this says what it cost, to the CSM, before anything is sent.
+    if leg.get("no_local_service_area"):
+        hrs = leg["pricing"].get("billable_hours")
+        amount = leg.get("engine_net_line_cents")
+        internal["placeholders"].append(
+            f"{leg['key']}: NO SAVOYA SERVICE AREA at any stop. Core priced it from "
+            f"{leg.get('service_area') or 'the nearest market'}"
+            + (f" and billed {hrs:g} hours" if hrs else "")
+            + (f" = ${amount / 100:,.2f}" if amount else "")
+            + ". Positioning drive time is inside that figure. Confirm with the CSM "
+              "before this goes to a client.")
     return leg, internal
 
 
@@ -548,7 +687,14 @@ def main():
             "title": args.title,
             "reference": None,
             "travel_coordinator": None,
-            "service_area": next((l.get("service_area") for l in legs if l.get("service_area")), None),
+            # Where the WORK is, not where the vehicles came from. Since sourcing,
+            # `service_area` on a leg means the source market, so reading it here put
+            # "San Diego, CA" on the header of an Orange County event whose Mini Buses
+            # happened to be positioned from San Diego. The session caught it by hand.
+            "service_area": next((l.get("primary_service_area") for l in legs
+                                  if l.get("primary_service_area")),
+                                 next((l.get("service_area") for l in legs
+                                       if l.get("service_area")), None)),
         },
         "legs": legs,
         "engine_total_cents": raw.get("aggregate_total") or (raw.get("pricing_summary") or {}).get("total_amount"),

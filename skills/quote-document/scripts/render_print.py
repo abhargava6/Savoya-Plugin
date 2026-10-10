@@ -72,6 +72,21 @@ def global_pct(q, negative):
     return tot
 
 
+def pct_suffix(a):
+    """The " (35%)" the adjustment table appends -- unless the label already says it.
+
+    Core's own discount labels sometimes carry the figure ("Additional 5% discount"),
+    and appending unconditionally printed "Additional 5% discount (5%)" in a client
+    PDF on 10 Oct 2026. The label is left untouched (normalize_quote.client_label
+    explains why mangling it is worse); the suffix is what gives way.
+    """
+    if a.get("type") != "percent":
+        return ""
+    if "%" in (a.get("label") or ""):
+        return ""
+    return " (" + format(abs(a["value"]), "g") + "%)"
+
+
 def net_rate(rate_cents, disc_pct, sur_pct):
     v = rate_cents * (1 + disc_pct / 100.0)
     v = v * (1 + sur_pct / 100.0)
@@ -211,7 +226,11 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             route = " → ".join(e(s["label"]) for s in l["stops"])
             when = time_of(l.get("date"))
             basis = "Hourly" if p["method"] == "hourly" else "Transfer"
-            ev = f"<div class='ev'>&#9888; Event pricing — {e(p['special_event']['name'])}</div>" if p.get("special_event") else ""
+            _ev = p.get("special_event") or {}
+            ev = ("<div class='ev'>&#9888; Event pricing &mdash; "
+                  f"{e(_ev['name'])}</div>" if _ev.get("name")
+                  else "<div class='ev'>&#9888; Event pricing in effect</div>" if _ev
+                  else "")
             rt = l.get("route")
             if rt:
                 bits = []
@@ -353,7 +372,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
 
     if option is None:
         adj_rows = "".join(
-            f"<tr><td>{e(a['label'])}{(' ('+format(abs(a['value']),'g')+'%)') if a['type']=='percent' else ''}"
+            f"<tr><td>{e(a['label'])}{pct_suffix(a)}"
             f"{(' — '+e(next((l.get('ref') for l in q['legs'] if l['key']==a.get('applies_to')),''))) if a.get('applies_to') else ''}</td>"
             f"<td class='num'>{'−' if a['amount_cents']<0 else ''}{money(abs(a['amount_cents']))}</td></tr>"
             for a in q.get("adjustments", []) if not a.get("waived"))
@@ -369,7 +388,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
                 continue
             amt = round(run * a["value"] / 100.0) if a["type"] == "percent" else round(a["value"] * 100)
             run += amt
-            adj_rows += (f"<tr><td>{e(a['label'])}{(' ('+format(abs(a['value']),'g')+'%)') if a['type']=='percent' else ''}</td>"
+            adj_rows += (f"<tr><td>{e(a['label'])}{pct_suffix(a)}</td>"
                          f"<td class='num'>{'−' if amt<0 else ''}{money(abs(amt))}</td></tr>")
         sub_cents, tot_cents, tot_label = option["subtotal_cents"], option["total_cents"], "Option B program total"
 
@@ -541,7 +560,10 @@ def ratecard_page(q):
         minimum = p.get("minimum_hours") if p["method"] == "hourly" else None
         min_total = rate * minimum if minimum else rate
         net_min = net_rate(min_total, disc, sur)
-        tag = f" <span class='cap'>· {e(p['special_event']['name'])} event rate</span>" if p.get("special_event") else ""
+        _ev = p.get("special_event") or {}
+        tag = (f" <span class='cap'>&middot; {e(_ev['name'])} event rate</span>"
+               if _ev.get("name") else
+               " <span class='cap'>&middot; event rate</span>" if _ev else "")
         rows.append(f"""<tr><td><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>{tag}</td>
           <td class='num'>{'Hourly' if p['method']=='hourly' else 'Transfer'}</td>
           <td class='num'><div>{money(rate)}</div><div class='net'>{money(net)}</div></td>

@@ -14,6 +14,18 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   contracted field leaves the extra discount inside Core's net with no line of its own, and
   the fuel remainder then prints it as a **negative** "Fuel surcharge" — with the total
   still exact, so nothing fails.
+- **The email states Core's line amounts, not its own** (2026-10-10). `draft_email.py`
+  built one multiplicative factor over every percent adjustment — 0.70 × 0.95 × 1.10 —
+  where Core adds discounts in basis points and applies 3500 once. With a single discount
+  the two agree exactly (0.77 either way), so it was invisible for months; with two it is
+  not, and on a 16-leg World Cup quote **every one of the 16 lines came out high and the
+  email totalled $26,145.63 against the $25,555.91 the PDF showed on the same job**. The
+  CSM pasted an email contradicting its own attachment. Line totals now come from
+  `engine_net_line_cents` and the per-unit figure from
+  `engine_net_line_cents / (quantity × engine_rate_units)` — Core's number divided only by
+  Core's own unit count. The opener names the **summed** discount, not the first one it
+  finds. `regress.py` reconciles the email against the engine on a quote with two stacked
+  discounts; the PDF never had the bug because `render_print` sums the percentages.
 - **A reconciling total does not mean a correct breakdown.** C4 and C5 guarantee the total
   by construction, which is exactly why they cannot catch a line mislabelled as its
   opposite. A line stating a positive percentage must never carry a negative amount.
@@ -26,6 +38,32 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - An internal question (missing year, unresolved headcount, ambiguous location) must **never** appear as a client-facing "please confirm". It was settled during intake; if one reaches here, stop and ask the user.
 - Airport stops label themselves from `display_name`. Never ship "Stop 2".
 - A leg can never lose its date — the renderer falls back to "Date to be confirmed" and the handoff writer refuses units without `pickup_date`.
+
+- **Core's own strings are read, not published unexamined** (2026-10-10). Three defects in
+  one day from printing a Core field straight through. `temporary_discount_label` arrived
+  as "Temporary user-supplied discount" and printed in a client PDF — "temporary" is
+  Core's word for pricing it did not persist, an internal fact about the quote, and
+  `normalize_quote.client_label()` now maps anything of that shape to "Additional
+  discount". The same field arrived as "Additional 5% discount", and the adjustment table
+  appends the percentage to every percent line, so the PDF read "Additional 5% discount
+  (5%)" — `render_print.pct_suffix()` now withholds the suffix when the label already
+  carries one. **The label itself is never edited to fix this**: an attempt that stripped
+  any percentage it found turned "Loyalty 12.5% off" into "Loyalty off".
+- **A special-event name with the wrong year is withheld; the disclosure is not**
+  (2026-10-10). Core returned `special_event.name = "Wimbledon 2022"` against July **2027**
+  London dates and it printed three times on a $17.9k proposal — both line notes and the
+  rate card. The disclosure has to survive, because a special-event rate carries a real
+  minimum and a different cancellation window; only the name is unsafe, and only when its
+  year is not the year of travel. The leg then says event pricing is in effect and names no
+  event, and the mismatch goes to the internal placeholders so the stale Core record gets
+  fixed. A name with no year is published unchanged.
+- **Out-of-market positioning is said once, and said for the case with no market to name**
+  (2026-10-10). The sourced-line marker and the `excess_drive_time` line note describe the
+  same fact in two places; on the real Irvine quote every leg was both, so the client PDF
+  said "positioned from our San Diego, CA partners" **twice per leg**. The note is now
+  emitted only when the marker will not fire. They cover complementary halves and both are
+  needed: the marker handles a named source market, the note handles positioning with no
+  market to name.
 
 ## Client questions (three kinds)
 - **Boilerplate** (tax, gratuity, cancellation) — the terms block already answers it.
@@ -131,3 +169,22 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   that sourcing exists to pay for. Flagging it as "my arithmetic, not a Savoya quote" did
   not help: it was still a number a CSM could repeat to a client. Price the candidates, or
   say a quote is needed.
+- **"No service area" and "no service area reported" are different facts** (2026-10-10).
+  A stop outside every Savoya market arrives as `location.service_area: null` — the key
+  present, the value empty. An older or trimmed response carries no `location` at all,
+  which means *unknown* and must never be read as *nowhere*: doing so marked three
+  single-market fixtures as cross-market sourced, and the suite caught it. The same
+  distinction decides whether a leg is treated as sourced at all, which is why
+  `stop_has_no_service_area()` tests for the key before the value.
+- **The expensive sourcing case reports `primary == source`** (2026-10-10). When no stop
+  sits in a service area, Core prices the unit from whichever market owns the nearest
+  fleet and that market is genuinely both its primary and its source — so
+  `source != primary`, the test for a cross-market override, is **false** for it. It is
+  also the costly case: a 36-minute Catania transfer came back as **14.75 hours** hourly
+  out of Naples, $9,233.50, and $18,623 with its return against a $23,259 quote. It now
+  earns the client-facing marker and an internal flag that states the hours and the money,
+  so the CSM sees the number before anything is sent.
+- **`service_area` on a leg means where the vehicle came from** (2026-10-10). Since
+  sourcing, reading it for the document header put "San Diego, CA" on an Orange County
+  event whose Mini Buses happened to be positioned from San Diego. `meta.service_area`
+  reads `primary_service_area` — where the work is.

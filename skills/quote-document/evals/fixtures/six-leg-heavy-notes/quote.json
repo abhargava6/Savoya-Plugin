@@ -62,7 +62,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A1"
+      "ref": "A1",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     },
     {
       "key": "E1",
@@ -115,7 +119,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A2"
+      "ref": "A2",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     },
     {
       "key": "E2",
@@ -168,7 +176,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A3"
+      "ref": "A3",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     },
     {
       "key": "E3",
@@ -221,7 +233,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A4"
+      "ref": "A4",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     },
     {
       "key": "E4",
@@ -272,7 +288,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A5"
+      "ref": "A5",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     },
     {
       "key": "E5",
@@ -323,7 +343,11 @@
         "source": "engine"
       },
       "engine_discount_pct": 30.0,
-      "ref": "A6"
+      "ref": "A6",
+      "engine_net_line_cents": 729000,
+      "engine_rate_units": 6,
+      "engine_standard_rate_cents": 40500,
+      "engine_standard_line_cents": 729000
     }
   ],
   "engine_subtotal_cents": 4374000,
