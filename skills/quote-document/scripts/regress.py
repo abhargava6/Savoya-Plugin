@@ -1375,6 +1375,55 @@ def lint_paired_docs():
     return True
 
 
+# Phrases that must appear somewhere in each file. Matched loosely on a distinctive
+# fragment rather than a whole sentence, so the prose can be edited without breaking
+# the guard — but the *rule* cannot be deleted without it going red.
+_NO_OWN_MATH = {
+    "CLAUDE.md": ("covers comparisons too", "707.18"),
+    "skills/quote-document/RULES.md": ("Never state a price Core did not return", "707.18"),
+    "skills/quote-intake/references/decision-tree.md": (
+        "is a quote, not a sum", "comes from a tool response"),
+}
+
+
+def lint_no_own_arithmetic():
+    """The prohibition on the plugin computing its own prices must stay written down.
+
+    A session answered "which is cheapest?" from rate-sheet arithmetic, said sourcing
+    would save about $80, and was wrong by $707.18 in the opposite direction, because
+    rate cards cannot see positioning drive time. The CSM had the number before the
+    correction came.
+
+    **This guard proves the instruction exists, not that a session obeyed it.** Nothing
+    in a static check can watch a model do mental arithmetic. The real detector is
+    reading captures, and that is a human job on the weekly pass. What this stops is
+    the rule being quietly dropped in an edit — which is how instruction prose drifted
+    from the code in 0.23.1.
+    """
+    root = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+    missing = []
+    for rel, fragments in _NO_OWN_MATH.items():
+        path = os.path.join(root, rel)
+        if not os.path.exists(path):
+            missing.append(f"{rel}: file not found")
+            continue
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for frag in fragments:
+            if frag not in text:
+                missing.append(f"{rel}: lost \"{frag}\"")
+    if missing:
+        print("  \u2717 no own arithmetic")
+        for m in missing:
+            print(f"      - {m}")
+        print("      the rule that the plugin never states a price Core did not return")
+        print("      must stay written in all three files; see RULES.md 2026-10-09")
+        return False
+    print(f"  \u2713 no own arithmetic (stated in {len(_NO_OWN_MATH)} files; "
+          f"instruction only \u2014 captures are the real detector)")
+    return True
+
+
 def lint_passenger_count():
     """The document's passenger figure must count a split party once, and in full.
 
@@ -1550,6 +1599,7 @@ def main():
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
+    lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
     bad = 0

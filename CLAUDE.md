@@ -67,6 +67,13 @@ guard to make a change pass.
   it put a 5-vehicle Boston job 30 cents above Savoya's quote. Document **percentage** lines
   are refused outright; flat lines are fine. Whatever arithmetic remains lives in Python, is
   deterministic and is tested.
+  **This covers comparisons too.** Asked which option is cheapest, price the candidates
+  through Core or say a quote is needed — never answer from a rate sheet. A live session
+  did rate-sheet arithmetic and said sourcing a Mini Bus from Austin would save about $80;
+  the real quote came back **$707.18 more expensive**, because the arithmetic had missed
+  the positioning drive time that sourcing exists to pay for. It corrected itself, but only
+  after the CSM had been given a number to relay. Choosing which candidates to price is
+  fine; stating a price for one you have not priced is not, however it is hedged.
 - **Hours are Core's too.** `duration` is the lever, not the answer: an as-directed stop
   sent `duration: 4` bills **5.25** hours, a constant +1.25 h of positioning. Send what the
   user asked for, show what Core billed, name the difference. Never back-solve the duration.

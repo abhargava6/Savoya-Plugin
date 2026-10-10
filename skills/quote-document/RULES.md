@@ -124,3 +124,10 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   eligible passenger is the expected path. Everything else Core sends surfaces, including a
   warning we don't recognise. Suppressing warnings wholesale, or only printing the shapes we
   recognise, is how a real one gets hidden. `regress.py` asserts all of this.
+- **Never state a price Core did not return — including a comparison** (2026-10-09). Asked
+  for the cheapest package with sourcing allowed, a session did rate-sheet arithmetic and
+  answered "about $32,133, roughly $80 less". The exact quote was **$32,920.26**, or
+  $707.18 *more*, because the estimate ignored the 5.25 hours of positioning drive time
+  that sourcing exists to pay for. Flagging it as "my arithmetic, not a Savoya quote" did
+  not help: it was still a number a CSM could repeat to a client. Price the candidates, or
+  say a quote is needed.
