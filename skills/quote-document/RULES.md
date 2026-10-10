@@ -81,16 +81,28 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - **Data-answered** (pickup times, drive times, vehicle counts, how long the vehicle is held) — the quote holds the answer implicitly. Surface it as an explicit callout at the top of the PDF **and** the email. Never make a client decode sixteen timestamps.
 
 ## Two copies of this plugin is a silent fork
-- **One installed copy, or sessions disagree about the flow** (2026-10-10). The account
-  had two uploads both named `savoya-quoting` — 0.19.1 from September and
-  0.25.0-sourcing.1 — so the newer one unpacked beside the old as `savoya-quoting~g2`. A
-  session resolving the plugin by name hits the older directory, whose decision tree
-  contains no cross-market sourcing nodes and asks a different set of questions. Two live
-  sessions reported the intake references "failing to load" and improvised the order from
-  memory; one skipped the three mandatory questions and the user noticed. Nothing in the
-  plugin can choose the right copy, so `setup_check.py` reports the duplicate and names
-  the stale version to remove. **Uploading a new build does not replace the old one if
-  the name collides.**
+- **A path lookup by name finds the OLDEST copy** (2026-10-10). The account had two
+  uploads both named `savoya-quoting` — 0.19.1 from September and 0.25.0-sourcing.1 — so
+  the newer one unpacked beside the old as `savoya-quoting~g2`. Every older copy stays on
+  disk, which makes the un-suffixed directory permanently the first one ever installed,
+  and a glob on the plain name matches it and nothing else.
+
+  **The skills themselves loaded from the current copy** — confirmed from the skill
+  description a session was given — so the flow looked right and the duplicate was
+  invisible. The damage was narrower and worse for being quiet: a session that located a
+  *script* by name ran September's. That `capture_session.py` has no `--auto` flag at all
+  and requires `--request`, so a capture call built for the current contract was rejected
+  with bare argparse usage and the session recorded nothing — which is exactly the "first
+  capture call used wrong args and failed silently" that was reported.
+
+  So the count of installed copies was never the useful signal; **which copy the bare name
+  reaches** is. Both `SKILL.md` files now give the positive instruction — match
+  `savoya-quoting*` and take the highest version, numerically, because as strings "0.9"
+  sorts above "0.25" and this repo has passed through both — and `setup_check.py` reports
+  `stale_copy_shadows_path_lookup` alongside the version actually in use. Prefer the Base
+  directory header over any of it; that is already correct. **Uploading a new build does
+  not replace the old one when the name collides**, and only one of the two shows as
+  installed, so the other has to be removed from the uploads list.
 
 ## Flow
 - Every enumerable question uses `ask_user_input_v0`, **one per turn**, never bare prose. Labels: `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`.

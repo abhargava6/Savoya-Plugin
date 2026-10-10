@@ -3,7 +3,7 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
-## 0.25.0-sourcing.3
+## 0.25.0-sourcing.4
 
 Eleven defects from three live Yerdle quotes run on `0.25.0-sourcing.1` — a 16-leg World
 Cup shuttle programme, a 6-leg London/Sicily/Milan itinerary, and a 2-leg Irvine shuttle
@@ -92,16 +92,26 @@ sourcing work. **Every guard in the suite passed while all eleven were live.**
   recognise. `source_tool`, `persisted`, `aggregate_total` and `temporary_pricing` were
   likewise patched into `intake.json` by hand "since handoff.py write has no flags for
   them" — all four are in Core's response, so the handoff derives them now.
-- **Two copies of this plugin are installed, and they are a silent fork.** The account
-  has two uploads both named `savoya-quoting`, 0.19.1 from September and
-  0.25.0-sourcing.1, so the newer one unpacked beside the old as `savoya-quoting~g2`. A
-  session resolving the plugin by name gets the September copy, whose decision tree has
-  no cross-market sourcing nodes and a different question set — the best explanation for
-  two sessions reporting the intake references "failed to load", improvising the order
-  from memory, and skipping the three mandatory questions. Uploading a new build does not
-  replace the old one when the name collides. `setup_check.py` now reports the duplicate
-  in plain language and names the version to remove; nothing in the plugin can choose the
-  right copy.
+- **A path lookup by name finds the oldest installed copy.** The account has two uploads
+  both named `savoya-quoting`, 0.19.1 from September and 0.25.0-sourcing.1, so the newer
+  one unpacked beside the old as `savoya-quoting~g2`. Every older copy stays on disk, so
+  the un-suffixed directory is permanently the first one ever installed and a bare-name
+  glob matches it alone.
+
+  The skills themselves load from the current copy — confirmed from the skill description
+  a live session was given — so the flow looked right and the duplicate was invisible.
+  **The damage was narrower and quieter:** a session that located a *script* by name ran
+  September's, and that `capture_session.py` has no `--auto` flag at all and requires
+  `--request`, so a capture call built for the current contract was rejected with bare
+  argparse usage and the session recorded nothing. That is the reported "first capture
+  call used wrong args and failed silently".
+
+  Both `SKILL.md` files now say to match `savoya-quoting*` and take the highest version,
+  compared numerically — as strings "0.9" sorts above "0.25", and this repo has passed
+  through both. `setup_check.py` reports `stale_copy_shadows_path_lookup` and the version
+  actually in use, because the count of copies was never the actionable part. Only one of
+  two same-named uploads shows as installed, so the other has to be removed from the
+  uploads list; uploading a new build does not replace it.
 
 Four new guards — email reconciliation, client-safe labels, no-hand-editing, and six more
 assertions on capture resilience — plus the sourcing and passenger guards extended. Each

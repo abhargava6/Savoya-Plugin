@@ -24,6 +24,39 @@ Every `scripts/`, `references/` and `assets/` path below is written out in full.
 
 **Never guess a path.** `/mnt/skills/plugins/savoya-quoting:quote-document` and anything else built from the skill's display name does not exist. The Base directory header is the only path you need.
 
+**If you must find this folder by hand, take the newest copy — never a bare name match.**
+More than one build of this plugin can be installed at once: an upload whose name collides
+is unpacked beside the old one as `savoya-quoting~g2`, `~g3`, and so on, and **every older
+copy stays on disk**. So a glob on the plain name matches the *oldest* directory and
+nothing else:
+
+```bash
+# WRONG — matches only the oldest copy, whatever its version
+ls ~/.claude/plugins/synced/*/savoya-quoting/skills
+
+# RIGHT — the highest version wins
+python3 - <<'PY'
+import glob, json, os, re
+def key(p):
+    # numeric, not lexical: "0.9" sorts above "0.25" as a string
+    v = json.load(open(p)).get("version", "")
+    return [int(n) for n in re.findall(r"\d+", v)]
+best = max((p for p in glob.glob(os.path.expanduser(
+               "~/.claude/plugins/synced/*/savoya-quoting*/.claude-plugin/plugin.json"))
+            if ".trash" not in p), key=key, default=None)
+print(os.path.dirname(os.path.dirname(best)) if best else "not found")
+PY
+```
+
+This is not hypothetical. On 10 Oct 2026 two uploads were installed — 0.19.1 from
+September and 0.25.0-sourcing.1 — and the bare-name glob reached the September one. The
+instructions still came from the current copy, so the flow looked right, but a session
+that located a *script* that way ran September's: its `capture_session.py` has no `--auto`
+flag at all and requires `--request`, so the capture call was rejected with bare argparse
+usage and the session recorded nothing. Prefer the Base directory header over any of
+this; it is already correct.
+
+
 Never work around a missing script by hand-building the document or inventing the question sequence — that produces a plausible-looking document with invented numbers. The seven question keys are listed inline in Stage 2 so the flow still holds if a reference fails to load.
 
 ## Stage 0 — Machine check (once per conversation, before the first render)

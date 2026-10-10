@@ -1503,6 +1503,77 @@ _NO_OWN_MATH = {
 }
 
 
+def lint_path_resolution():
+    """Finding this plugin by hand must land on the NEWEST copy.
+
+    An upload whose name collides is unpacked beside the old one as `savoya-quoting~g2`,
+    `~g3`, and every older copy stays on disk. So the un-suffixed directory is always the
+    first one ever installed, and a glob on the plain name matches it and nothing else.
+
+    On 10 Oct 2026 two uploads were installed, 0.19.1 from September and
+    0.25.0-sourcing.1. The skills loaded from the current copy -- so the flow looked
+    right, and the duplicate was invisible -- while a session that located a *script* by
+    name ran September's: that `capture_session.py` has no `--auto` flag at all and
+    requires `--request`, so the capture call was rejected with bare argparse usage and
+    the session recorded nothing. The count of copies never showed this; which copy the
+    bare name reaches is the part that bites.
+
+    Version comparison is numeric here on purpose. As strings "0.9" sorts above "0.25",
+    and this repo has already passed through both.
+    """
+    problems = []
+
+    for skill in ("quote-intake", "quote-document"):
+        path = os.path.join(SKILL, "..", skill, "SKILL.md")
+        if not os.path.exists(path):
+            problems.append(f"{skill}/SKILL.md is missing")
+            continue
+        text = open(path, encoding="utf-8").read()
+        if "savoya-quoting*" not in text:
+            problems.append(f"{skill}/SKILL.md does not tell a session to match "
+                            f"savoya-quoting* — a bare-name glob finds the oldest copy")
+        if "never a bare name match" not in text.lower():
+            problems.append(f"{skill}/SKILL.md lost the instruction to prefer the newest "
+                            f"copy over a bare name match")
+        if "sorts above" not in text and "not lexical" not in text:
+            problems.append(f"{skill}/SKILL.md's resolver does not warn that a string "
+                            f"comparison mis-orders 0.9 against 0.25")
+
+    sys.path.insert(0, HERE)
+    import setup_check
+
+    if not hasattr(setup_check, "version_key"):
+        problems.append("setup_check has no version_key(), so it cannot say which copy "
+                        "is actually newest")
+    else:
+        k = setup_check.version_key
+        for older, newer in (("0.9.0", "0.25.0"), ("0.19.1", "0.25.0-sourcing.1"),
+                             ("0.25.0-sourcing.1", "0.25.0-sourcing.3"),
+                             ("0.25.0", "1.0.0")):
+            if not k(newer) > k(older):
+                problems.append(f"version_key puts {newer} at or below {older}")
+
+    src = open(os.path.join(HERE, "setup_check.py"), encoding="utf-8").read()
+    for marker, why in (
+            ("bare_name", "setup_check does not mark which copy a bare-name lookup reaches"),
+            ("stale_copy_shadows_path_lookup",
+             "the machine-readable report does not say whether the STALE copy is the one "
+             "found by name — the count alone is not actionable"),
+            ("version_in_use", "the report does not say which version is actually in use")):
+        if marker not in src:
+            problems.append(why)
+
+    if problems:
+        print("  \u2717 path resolution")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10: two copies of this plugin is a silent fork")
+        return False
+    print("  \u2713 path resolution (both skills prefer the newest copy; 4 version "
+          "orderings; setup check names the shadowed lookup)")
+    return True
+
+
 def lint_no_hand_editing():
     """The flow must have a way to set what it asks about, and derive what Core sent.
 
@@ -2239,6 +2310,7 @@ def main():
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
+    lint_ok = lint_path_resolution() and lint_ok
     lint_ok = lint_core_coordinates() and lint_ok
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok

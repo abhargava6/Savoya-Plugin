@@ -19,6 +19,7 @@ Always exits 0: this is a status report, not a gate.
 import datetime as dt
 import glob
 import json
+import re
 import os
 import sys
 
@@ -132,8 +133,15 @@ def installed_copies():
             seen.add(d)
             found.append({"dir": d, "name": os.path.basename(d),
                           "version": load_json(man, {}).get("version"),
+                          # exact name, no suffix: this is what a bare-name glob reaches
+                          "bare_name": os.path.basename(d) == "savoya-quoting",
                           "mtime": os.path.getmtime(man)})
     return found
+
+
+def version_key(v):
+    """Numeric, not lexical — "0.9" sorts above "0.25" as a string."""
+    return [int(n) for n in re.findall(r"\d+", str(v or ""))]
 
 
 def main():
@@ -166,22 +174,37 @@ def main():
     lines, actions = [], []
 
     copies = installed_copies()
+    # What a path lookup by the plain name reaches. An upload whose name collides is
+    # unpacked as `savoya-quoting~g2`, `~g3`, … and every older copy stays on disk, so
+    # the un-suffixed directory is always the FIRST one ever installed — and a glob on
+    # the bare name matches it and nothing else. The count alone never showed that: on
+    # 10 Oct 2026 the skills loaded from the current copy, so the flow looked right,
+    # while a session that located a *script* by name ran September's, whose capture
+    # script has no --auto flag and silently recorded nothing.
+    bare = next((c for c in copies if c.get("bare_name")), None)
+    newest = max(copies, key=lambda c: version_key(c["version"])) if copies else None
+    trap = bool(bare and newest and bare is not newest)
     if len(copies) > 1:
-        newest = max(copies, key=lambda c: c["mtime"])
-        stale = [c for c in copies if c is not newest]
         lines.append(
             f"There are {len(copies)} copies of the quoting tool installed, and they are "
             f"different versions ("
-            + ", ".join(sorted(str(c["version"]) for c in copies))
-            + "). That is the one thing here that quietly changes how quotes get built: "
-              "whichever copy a session happens to pick decides which questions it asks "
-              "and whether it knows about sourcing from a nearby market at all."
+            + ", ".join(sorted((str(c["version"]) for c in copies),
+                               key=version_key))
+            + f"). Version {newest['version']} is the one in use."
         )
+        if trap:
+            lines.append(
+                f"The older copy is still the one found by name, so anything that looks "
+                f"the tool up that way gets version {bare['version']} instead of "
+                f"{newest['version']} — which is how a quote can be built with the right "
+                f"instructions and the wrong scripts."
+            )
         actions.append(
             "Remove the older upload"
-            + (f" (version {stale[0]['version']})" if stale and stale[0]["version"] else "")
-            + " from your plugin list, keeping version "
-            + f"{newest['version']}. Two uploads with the same name is what causes it."
+            + (f" (version {bare['version'] if trap else sorted((str(c['version']) for c in copies), key=version_key)[0]})")
+            + f" from your uploads, keeping {newest['version']}. Both are named "
+              "savoya-quoting, so only one shows as installed — the other is a separate "
+              "upload, identifiable by its older version."
         )
 
     if user:
@@ -240,8 +263,14 @@ def main():
         "local_sessions": len(set(os.path.basename(p).split(".")[0]
                                   for p in (captures + feedback))),
         "failed_captures": len(failed),
-        "installed_copies": [{"name": c["name"], "version": c["version"]} for c in copies],
+        "installed_copies": [{"name": c["name"], "version": c["version"],
+                              "reached_by_bare_name": c.get("bare_name", False)}
+                             for c in copies],
         "duplicate_install": len(copies) > 1,
+        # the actionable half: a duplicate only misleads when the OLD copy is the one a
+        # bare-name path lookup reaches
+        "stale_copy_shadows_path_lookup": trap,
+        "version_in_use": (newest or {}).get("version"),
         "never_uploaded": len(pending),
         "never_uploaded_oldest": (ago(min(os.path.getmtime(p) for p in pending))
                                   if pending else None),
