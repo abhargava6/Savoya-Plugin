@@ -59,6 +59,10 @@ def main():
         when = day(l.get("date"), "%A, %B %-d")
         hdr = f"{prefix}{l.get('ref','')} – {when} – {v['quantity']} × {v['name']}" + (f" ({l['label']})" if l.get("label") and len(l["label"]) < 60 else "")
         lines = [hdr, f"Vehicle type: {v['name']} (max capacity: {v.get('capacity')} passengers)"]
+        # R51: say why the same vehicle type appears as two separate lines.
+        if l.get("sourced_from_other_market") and l.get("service_area"):
+            lines.append(f"Positioned from our {l['service_area']} partners — "
+                         f"additional drive time included in the rate")
         cx = p.get("cancellation_hours")
         if cx:
             lines.append(f"Cancellation policy*: {cx} hours" + (" (1 week)" if cx == 168 else " (72 hours = 3 days)" if cx == 72 else ""))

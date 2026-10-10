@@ -81,6 +81,11 @@ def leg_card(leg):
 
     veh = f"{v['quantity']} × {e(v['name'])}" + (f" ({v['capacity']} passengers each)" if v.get("capacity") else "")
     pax = f"{leg['passenger_count']} passengers" if leg.get("passenger_count") else ""
+    # R51: a sourced vehicle is already its own line, because Core returns one source
+    # market per unit. The marker says why the same vehicle type appears twice.
+    sourced = (f"Positioned from our {e(leg['service_area'])} partners — additional "
+               f"drive time included in the rate"
+               if leg.get("sourced_from_other_market") and leg.get("service_area") else "")
 
     if p["method"] == "hourly":
         basis = f"{hours_txt(p['billable_hours'])} × {money(p['rate_cents'])}/hr"
@@ -120,6 +125,7 @@ def leg_card(leg):
     <tr><td style="font-family:{SERIF};font-size:20px;color:{WHITE};padding-bottom:12px;">{e(leg['label'])}</td></tr>
     {stops_html}
     <tr><td style="padding-top:12px;font-family:{SANS};font-size:13px;color:{GRAY};">{e(pax)}{' · ' if pax else ''}{veh}</td></tr>
+    {f'<tr><td style="padding-top:4px;font-family:{SANS};font-size:12px;color:{COPPER};">{sourced}</td></tr>' if sourced else ''}
     <tr><td style="padding-top:4px;font-family:{SANS};font-size:13px;color:{GRAY};">{basis}</td></tr>
     <tr><td style="padding-top:4px;font-family:{SANS};font-size:12px;color:{MUTED};">{e(cancel)}</td></tr>
     {callout}

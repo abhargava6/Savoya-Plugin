@@ -40,8 +40,18 @@ included, each carrying the temporary input.
 
 Three things to know that are not in any schema:
 
-- **A `market_ref` is valid for 24 hours.** Core returns `sourcing_reference_expired`
-  past that; look the markets up again and retry with the new ref for the same market.
+- **A `market_ref` is valid for 24 hours, and is scoped to the market it came from.**
+  Core returns `sourcing_reference_expired` past the window; look the markets up again
+  and retry with the new ref for the same market. Scope is the sharper trap: a ref for
+  Houston obtained by looking up from *Austin* is rejected for a Dallas trip. Look up
+  from the market you are sourcing *into*.
+- **Nearby is not sourceable.** Dallas offers only Shreveport, Austin and Oklahoma City,
+  even though Houston appears in Austin's own nearby list. The sourceable set is
+  per-market and is not the same as the three nearest.
+- **Sourced vehicles bill the PRIMARY market's rate**, with the positioning drive time
+  inside the line total. Verified live: an Austin Mini Bus sourced into Dallas billed
+  Dallas's $314.92/hr, not Austin's $244.09/hr. The nearby market supplies the vehicle,
+  not the price — which is why there is no sourcing rate sheet to fetch.
 - **Core can return `market_inventory_shortfall`.** Markets returned together share
   vendors, so their *combined distinct* vehicles can fall short even when each market
   alone looks sufficient. Never show a price on a shortfall.

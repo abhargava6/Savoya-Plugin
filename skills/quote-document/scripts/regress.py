@@ -1386,6 +1386,81 @@ _NO_OWN_MATH = {
 }
 
 
+def lint_sourced_line():
+    """A vehicle sourced from another market must say so, on every format.
+
+    Core returns one source market per unit, so a mixed-market package is several
+    units and the renderer already draws each as its own line with its own rate,
+    minimum, billable time and total — R51 is satisfied by construction. What is NOT
+    automatic is the reader understanding it: the same vehicle type appears twice at
+    two different totals, which without a marker reads as a duplicate or a mistake.
+
+    Wording is deliberately soft. A client is told where the car comes from, not that
+    their own market ran short.
+    """
+    import copy
+    import json as _json
+    import subprocess
+    import tempfile
+
+    fx = os.path.join(SKILL, "evals", "fixtures", "access-tca-wedding", "quote.json")
+    if not os.path.exists(fx):
+        print("  \u25cb sourced line: wedding fixture missing, skipped")
+        return True
+    with open(fx, encoding="utf-8") as fh:
+        base = _json.load(fh)
+
+    q = copy.deepcopy(base)
+    q["legs"][0]["primary_service_area"] = "Boston"
+    q["legs"][0]["sourced_from_other_market"] = False
+    q["legs"][1]["service_area"] = "Hartford"
+    q["legs"][1]["primary_service_area"] = "Boston"
+    q["legs"][1]["sourced_from_other_market"] = True
+
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        qp = os.path.join(d, "quote.json")
+        with open(qp, "w", encoding="utf-8") as fh:
+            _json.dump(q, fh)
+        sys.path.insert(0, HERE)
+        import render_html
+        import render_print
+        # draft_email has no importable entry point, only a CLI — so it is run as one.
+        # The first version of this guard called a draft_email.build() that does not
+        # exist, caught the AttributeError with hasattr, and skipped that format while
+        # reporting success for three. A guard that silently covers two of the three
+        # things it names is the decoration this repo keeps warning about, so a format
+        # that cannot be exercised is now a FAILURE, never a skip.
+        mail = subprocess.run(
+            [sys.executable, os.path.join(HERE, "draft_email.py"), qp],
+            capture_output=True, text=True)
+        rendered = {
+            "print": render_print.render_html(q),
+            "email html": render_html.render(q),
+            "email text": mail.stdout,
+        }
+        for fmt, text in rendered.items():
+            if not text:
+                problems.append(f"{fmt}: produced nothing, so this format is untested"
+                                + (f" ({mail.stderr.strip()[:120]})"
+                                   if fmt == "email text" and mail.stderr else ""))
+                continue
+            if "Hartford partners" not in text:
+                problems.append(f"{fmt}: the sourced line does not say where the "
+                                f"vehicle came from")
+            if text.count("Hartford partners") > 1:
+                problems.append(f"{fmt}: marked {text.count('Hartford partners')} lines "
+                                f"as sourced; only one leg is")
+
+    if problems:
+        print("  \u2717 sourced line")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 sourced line (marked on the sourced leg only)")
+    return True
+
+
 def lint_core_coordinates():
     """Core's own coordinates must reach quote.json, and must stop any geocoding.
 
@@ -1661,6 +1736,7 @@ def main():
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
+    lint_ok = lint_sourced_line() and lint_ok
     lint_ok = lint_core_coordinates() and lint_ok
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok

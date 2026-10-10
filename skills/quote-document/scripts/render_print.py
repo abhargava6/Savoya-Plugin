@@ -223,10 +223,21 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             else:
                 drive = ""
             tbd = "<div class='tbd'>Flight details to be confirmed</div>" if any(s.get("kind") == "airport" and s.get("flight", {}).get("tbd") for s in l["stops"]) else ""
+            # Cross-market sourcing (R51). The separate line already exists, because
+            # Core returns one source market per unit and each unit is its own leg —
+            # so the same vehicle type legitimately appears twice, at two different
+            # line totals. Without a marker that reads as a duplicate or a mistake.
+            # Soft wording on purpose: a client is told where the car comes from, not
+            # that their own market ran short.
+            src = ""
+            if l.get("sourced_from_other_market") and l.get("service_area"):
+                src = (f"<div class='sourced'>Positioned from our "
+                       f"{e(l['service_area'])} partners &middot; additional drive time "
+                       f"included in the rate</div>")
             return f"""<tr>
   <td class='ref'>{e(l.get('ref'))}</td>
   <td class='svc'><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>
-      <div class='route'>{when}{' · ' if when else ''}{route}{drive}</div>{ev}{tbd}</td>
+      <div class='route'>{when}{' · ' if when else ''}{route}{drive}</div>{ev}{src}{tbd}</td>
   <td class='num'>{e(basis)}</td>
   <td class='num'>{hrs(p.get('minimum_hours')) if p['method']=='hourly' else '—'}</td>
   <td class='num'>{v['quantity']}</td>
@@ -630,6 +641,7 @@ table.lines tr.gsub td {{ font-weight:600; background:#FBF8F5; }}
 table.lines .route {{ color:{GRAY}; font-size:9pt; margin-top:3pt; }}
 table.lines .ev {{ color:{AMBER}; font-size:8.5pt; margin-top:3pt; }}
 table.lines .tbd {{ color:{MUTED}; font-size:8.5pt; font-style:italic; margin-top:2pt; }}
+table.lines .sourced {{ color:{COPPER}; font-size:8.5pt; margin-top:2pt; }}
 table.lines.small td, table.lines.small th {{ padding:5pt 6pt; font-size:9.5pt; }}
 table.lines.rc .net {{ color:{COPPER}; font-weight:600; }}
 .split {{ display:grid; grid-template-columns:1.2fr 1fr; gap:24pt; margin-top:6pt; }}

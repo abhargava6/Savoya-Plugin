@@ -134,6 +134,29 @@ def main():
              f"{' …' if len(missing) > 6 else ''} — a half-filled distance column reads as a "
              f"broken document. Re-run the route map, or drop distance from every leg.")
 
+    # ---- cross-market sourcing (R51)
+    # A sourced vehicle is already its own line because Core returns one source market
+    # per unit. That means the same vehicle type can appear twice at two different
+    # totals, which without a marker reads as a duplicate. The line must also carry its
+    # own terms rather than inheriting the primary market's.
+    checks += 1
+    for l in q["legs"]:
+        if not l.get("sourced_from_other_market"):
+            continue
+        if not l.get("service_area"):
+            fail(f"{l.get('ref')}: marked as sourced from another market but has no "
+                 f"service area to name — the line would say where it came from blank")
+        if l.get("service_area") == l.get("primary_service_area"):
+            fail(f"{l.get('ref')}: marked as sourced but its market and the primary "
+                 f"market are both {l.get('service_area')!r} — one of them is wrong")
+        p_ = l.get("pricing") or {}
+        for field, why in (("rate_cents", "rate"),
+                           ("line_total_cents", "line total"),
+                           ("cancellation_hours", "cancellation window")):
+            if p_.get(field) is None:
+                fail(f"{l.get('ref')}: sourced line has no {why}. Each service area's "
+                     f"vehicles carry their own terms; an inherited one is a guess")
+
     rm = (q.get("route_map") or {}).get("png")
     if rm and rm != "ROUTE_MAP_PNG":
         checks += 1
