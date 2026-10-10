@@ -112,25 +112,55 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs sixteen guards beyond the fixtures: instruction paths, **the tool
-contract**, **warning surfacing**, **presentation render**, **airport shape**,
-**positioned-from**, **money ownership**, **discount attribution**, **page fit**,
-**capture resilience**, **map honesty**, **paired docs**, **the question set**,
-**greeter leg**, **handoff contract**, route guards (blank map, collapsed drive time,
-question gating across the formats), and `client_notes` shape. With `--pdf` it also
-**measures every printed page** and fails on content crossing the footer. **A guard that cannot fail is decoration.** If
+`regress.py` runs **28 guards** beyond the ten fixtures — 38 checks in all. Run it; the
+list below is for orientation, not for counting:
+
+| Group | Guards |
+|---|---|
+| Contracts | instruction paths · **the tool contract** · handoff contract · paired docs · path resolution |
+| Money | money ownership · discount attribution · email reconciles · Option B is Core's · commission · no own arithmetic |
+| Client-safe | client-safe labels · sourced line · positioned-from · warning surfacing · airport shape · core coordinates · passenger count |
+| Flow | the question set · greeter leg · email headings · instructions match the code · no hand editing |
+| Output | page fit · map honesty · route guards · presentation render · capture resilience |
+
+With `--pdf` it also **measures every printed page** and fails on content crossing the
+footer. **A guard that cannot fail is decoration.** If
 you add or change one, break it on purpose first and confirm the suite goes red — the map
 stub was for months a flat fill in exactly the colour a failed tile fetch produces, so the
 suite could never have caught a blank map.
 
 **The tool contract guard** fails if any instruction file or script names an MCP tool
-outside the current nine. `MCP_TOOLS` in `regress.py` *is* the contract — when the server
-changes, edit that set and let the suite tell you what else has to move. It matches a
+outside the current **twelve**. `skills/quote-intake/references/mcp-contract.md`'s fenced
+` ```tools ` block *is* the contract, and a second ` ```tools-removed ` block records what
+left it — when the server changes, edit those and let the suite tell you what else has to
+move. The guard **raises rather than defaulting** if the block is missing or empty: a guard
+that silently allows everything when its input disappears is worse than no guard, because
+it still prints a tick. It matches a
 pattern rather than a list of tools known to be gone, so it catches the next removal as
 well as the last one. `feedback-archive.md`, `CHANGELOG.md` and `regress.py` itself are
 exempt, each for a reason stated in the code: the first two are dated history and
 rewriting them to satisfy a guard would falsify the record; the third holds the contract
 and issues no tool calls.
+
+## Documentation comes before implementation
+
+**Decided 2026-10-10.** The three project documents are the base the work runs off, not a
+record written after it:
+
+- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R70) — what the product must do. A new
+  requirement is written here *first*, with a status, before anything is built.
+- `PRD_TDD_Quoting_MCP.md` (the **TDD**) — how it is built. Updated in the same pass as the
+  code, not later.
+- `ENGINEERING.md` — what Savoya engineering still owes. The only list of that.
+
+So: write the requirement, then the design, then the code. When a change lands, the doc
+update is part of the change rather than a follow-up — the follow-up is the thing that
+doesn't happen. The cost of getting this wrong is already measured twice in this repo: a
+`SKILL.md` that contradicted the code for three days and sent sessions into a hard refusal
+mid-money-handling, and a `handoff-contract.md` that documented a `fuel` key for three days
+after the code stopped writing one. **An instruction the code refuses is worse than a wrong
+default**, because the session doesn't get a wrong answer — it gets a dead end, and then it
+improvises.
 
 ## Two kinds of finding — keep them separate
 
@@ -176,6 +206,11 @@ promoted fixtures come in.
   `generate_quote_options` accepts no temporary pricing fields.
 - Word and Excel output has never been exercised in a real session.
 - No airline resolver, so flights always go as `commercial_tbd: true` — see
-  `ENGINEERING.md` item B7, and B7b for the FBO sibling.
-- `ENGINEERING.md` **is now in this repo**, started on 8 Oct with items G1–G4. It needs
-  reconciling with the copy that holds the original B7 entry.
+  `ENGINEERING.md` item B7 (PRD R14), and B7b for the FBO sibling (PRD R52).
+- **The three Claude diagram artifacts** (decision tree, flow, architecture) are the last
+  item from the original build plan.
+- A coverage audit has never been done: roughly 40 documented flags (`--remove`,
+  `--cover-file`, `--no-map`, `--final`, `--rate-sheet-shown`, the personalization setters)
+  are exercised by nothing in the suite. Two axes worth checking — operations nothing
+  exercises, and instructions nothing validates. The second is what the three-day
+  `SKILL.md` drift was.

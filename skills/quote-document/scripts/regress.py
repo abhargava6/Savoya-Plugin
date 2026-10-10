@@ -957,12 +957,55 @@ def document_question_keys():
     return frozenset(base), frozenset(extra) - frozenset(base)
 
 
+# The `decisions` block in handoff-contract.md is the same invariant lint_question_set
+# checks in prose, in a shape that guard cannot see: it matches NUMBERED lists, and this is
+# a jsonc key block. That is precisely how a `"fuel"` key survived there for three days
+# after decide.py stopped writing one -- the fuel question was removed on 7 Oct and four
+# files were updated, and this was not one of them, because nothing was looking at it.
+_HANDOFF_DOC = os.path.join(
+    SKILL, "..", "quote-intake", "references", "handoff-contract.md")
+
+
+def handoff_decision_keys():
+    """The top-level keys of the `decisions` object documented in handoff-contract.md."""
+    with open(os.path.normpath(_HANDOFF_DOC)) as fh:
+        lines = fh.readlines()
+    start = next((i for i, l in enumerate(lines) if re.search(r'"decisions"\s*:\s*\{', l)), None)
+    if start is None:
+        raise RuntimeError('no `"decisions": {` block in handoff-contract.md')
+    keys, depth = [], 0
+    for line in lines[start:]:
+        code = re.sub(r"//.*$", "", line)
+        if depth == 1:
+            m = re.match(r'\s*"([a-z_]+)"\s*:', code)
+            if m:
+                keys.append(m.group(1))
+        depth += code.count("{") - code.count("}")
+        if depth <= 0:
+            break
+    if not keys:
+        raise RuntimeError("`decisions` block in handoff-contract.md documents no keys")
+    return keys
+
+
+def document_question_order():
+    """BASE_ORDER as a list -- the order decide.py actually asks in, not just the set."""
+    src = os.path.join(HERE, "decide.py")
+    with open(src) as fh:
+        text = fh.read()
+    m = re.search(r"^BASE_ORDER\s*=\s*\[(.*?)\]", text, re.M | re.S)
+    if not m:
+        raise RuntimeError(f"no BASE_ORDER in {src}")
+    return re.findall(r"[\"\']([a-z_]+)[\"\']", m.group(1))
+
+
 def lint_question_set():
     """Instruction prose must name the questions decide.py asks — no more, no fewer —
     and must never tell a session to apply a discount without going back to Core."""
     skills = os.path.normpath(os.path.join(HERE, "..", ".."))
     try:
         base, extra = document_question_keys()
+        base_order = document_question_order()
     except RuntimeError as e:
         print(f"  ✗ question set: {e}")
         return False
@@ -1009,12 +1052,35 @@ def lint_question_set():
                     problems.append(
                         f"{rel}: omits '{k}', which decide.py does ask.")
 
+    # The handoff contract documents the same keys as a jsonc block, which the numbered-
+    # list pattern above cannot see. Checked by name rather than by shape.
+    try:
+        documented = handoff_decision_keys()
+    except (OSError, RuntimeError) as e:
+        problems.append(f"handoff-contract.md: cannot read the decisions block: {e}")
+        documented = None
+    if documented is not None:
+        seen = set(documented)
+        for k in sorted(seen - allowed):
+            problems.append(
+                f"handoff-contract.md: documents decision key '{k}', "
+                "but decide.py does not ask it.")
+        for k in sorted(allowed - seen):
+            problems.append(
+                f"handoff-contract.md: omits decision key '{k}', which decide.py does ask.")
+        ordered = [k for k in documented if k in base]
+        if ordered != [k for k in base_order if k in set(ordered)]:
+            problems.append(
+                "handoff-contract.md: lists the decision keys in a different order than "
+                f"decide.py asks them ({ordered} vs BASE_ORDER).")
+
     if problems:
         print("  ✗ question set")
         for b in problems:
             print(f"      - {b}")
         return False
-    print(f"  ✓ question set ({len(base)} asked, {len(extra)} conditional)")
+    print(f"  ✓ question set ({len(base)} asked, {len(extra)} conditional, "
+          f"handoff contract agrees)")
     return True
 
 

@@ -67,7 +67,7 @@ ap.add_argument("--next", action="store_true"); ap.add_argument("--dir", default
 a = ap.parse_args()
 p = os.path.join(a.dir, "intake.json")
 if not os.path.exists(p):
-    sys.exit(f"No {p} — fallback path; ask the five questions in order without persistence.")
+    sys.exit(f"No {p} — fallback path; ask the questions in BASE_ORDER without persistence.")
 d = json.load(open(p, encoding="utf-8"))
 if a.key and a.value is not None:
     try: val = json.loads(a.value)

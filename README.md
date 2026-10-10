@@ -40,14 +40,24 @@ Run `python3 skills/quote-document/scripts/preflight.py --admin` on their machin
 3. Each CSM installs the plugin and connects Google Drive in Cowork. That's it.
 
 ## Improving it
-Every session ends with a two-question check-in and a one-command capture to `~/.savoya-quoting/captures/`.
-See `CONTRIBUTING.md` for the daily/weekly loop, and run `skills/quote-document/scripts/regress.py --pdf` before repackaging.
+Every session ends with a feedback exchange and one capture, compressed and uploaded to the
+shared Drive folder. **Drive is the only durable destination** — `~` is a cloud container or
+an isolated VM depending on where the session runs, so a capture written there is reported
+as non-durable and the upload is not optional. See `CONTRIBUTING.md` for the daily/weekly
+loop, and run `skills/quote-document/scripts/regress.py --pdf` before repackaging.
 
 ## Flow
 `quote-intake` runs when a request is pasted; it ends with "want the client PDF or email?" — no is a valid end (quote-only capture). Yes hands `handoff/intake.json` to `quote-document`, which asks nothing about the quote. Contract: `skills/quote-intake/references/handoff-contract.md`.
 
 ## Roadmap
-- When the MCP gains a composite quote tool or compact responses, `quote-intake`'s call plan shrinks; nothing else changes.
+- A **compact response mode** is the top open engineering ask (`ENGINEERING.md` G6). It is
+  not a performance wish: a 16-vehicle package returns responses too large to read in one
+  call, and the workaround — hand-transcribing the engine response — defeats the document's
+  fail-closed total check, because both sides of that comparison then come from the same
+  typing.
+- Airline and FBO resolvers (`ENGINEERING.md` B7 / B7b) are the top functional gap.
+- The no-client / rack-rate route (PRD R9) is unbuilt on every path and blocks the
+  standalone rate-sheet document (PRD R4) behind it.
 
 ---
 
@@ -62,21 +72,33 @@ installed from this folder directly.
 # 2. the suite must be green before any repackage — it renders real PDFs
 python3 skills/quote-document/scripts/regress.py --pdf
 
-# 3. bump the version in .claude-plugin/plugin.json, then build
-python3 skills/quote-document/scripts/rebuild_plugin.py skills/quote-document /tmp/build
+# 3. build AND bump in one step -- never hand-edit a version number
+python3 skills/quote-document/scripts/rebuild_plugin.py \
+    skills/quote-document /tmp/build --bump patch \
+    --package /tmp/savoya-quoting.plugin
 ```
+
+**Never bump a version by hand.** The build reads
+`skills/quote-document/assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the
+standard manifest location, so it is the obvious file to edit, and it is the one the build
+never reads. Edit the obvious file and the package comes out labelled with the new version
+carrying the old content. `--bump major|minor|patch` or `PLUGIN_VERSION=x.y.z` writes every
+copy. The paired-docs guard catches the mismatch now; the habit is the real control.
 
 Zip the contents of the build folder as `savoya-quoting.plugin` and upload it over the
 existing plugin. **Plugin content is read into a session's container when that session
 starts**, so test in a brand-new chat — an open one keeps the old copy.
 
 ### What the regression suite checks
-Beyond the ten fixtures, `regress.py` runs nine guards. Each exists because the thing it
-checks either reached a CSM once, or was found shipping during the 0.23 migration:
+Beyond the ten fixtures, `regress.py` runs **28 guards** -- 38 checks in all. Each exists
+because the thing it checks either reached a CSM once, or was found shipping during a
+migration. A sample of them:
 
 - **instruction paths** — every `scripts/` / `references/` path is anchored and resolves.
-- **tool contract** — no instruction file or script names an MCP tool outside the nine in
-  `mcp-contract.md`, which is the contract the suite enforces.
+- **tool contract** — no instruction file or script names an MCP tool outside the twelve
+  in `mcp-contract.md`, which is the contract the suite enforces. It matches a *pattern*
+  for tool-shaped names rather than a list of known-removed tools, so it catches the next
+  removal as well as the last.
 - **warning surfacing** — one Core warning is suppressed, by name, and an *unrecognised*
   warning still reaches the CSM.
 - **presentation render** — Core's `presentation` block renders from real captures, falls
@@ -110,7 +132,8 @@ they are the regression suite.
 
 - `CLAUDE.md` — working conventions, read automatically by Claude Code in this folder
 
-`ENGINEERING.md` (open items for Savoya engineering) **is** in this repo as of 0.23.0,
-holding items G1–G4 raised during the MCP migration plus a stub for the pre-existing B7. It
-is not part of the packaged plugin. It still needs reconciling with the copy that holds the
-original B7 entry — the item ids there are provisional.
+`ENGINEERING.md` (open items for Savoya engineering) lives in this repo and is **the single
+canonical list** as of 2026-10-10, when the repo copy and a separate vault copy were merged
+— they had carried colliding item ids. It is not part of the packaged plugin. It opens with
+a "what to pick up first" ordering, because what engineering still owes is the point of the
+file and 26 open items in filing order is not that.

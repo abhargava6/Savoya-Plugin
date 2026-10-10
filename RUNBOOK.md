@@ -52,7 +52,7 @@ Claude will:
 2. List `*.capture.json` in the Drive folder (`assets/capture.json` → `drive_folder_id`) via the Google Drive connector, download the new ones, and run `scripts/unpack_capture.py` + `scripts/regress.py --pdf` against them.
 3. Report: which captures rebuild cleanly, which don't, and what the feedback/placeholder fields say. It stops here and waits for you.
 
-Then you say what to fix. Claude edits scripts / `feedback.md` / SKILL.md, promotes any capture that covers a new shape into `evals/fixtures/`, runs `regress.py --pdf` until green, and hands you a versioned `.plugin` file. You install it in Cowork.
+Then you say what to fix. Claude edits scripts / `RULES.md` / SKILL.md, promotes any capture that covers a new shape into `evals/fixtures/`, runs `regress.py --pdf` until green, and hands you a versioned `.plugin` file. You install it in Cowork.
 
 ## If there are many captures
 The Drive connector returns each file through the chat, which is fine for a handful. Past ~15, zip the folder and attach it to the chat instead — Claude unzips it from uploads.

@@ -40,11 +40,21 @@ Run `python3 skills/quote-document/scripts/preflight.py --admin` on their machin
 3. Each CSM installs the plugin and connects Google Drive in Cowork. That's it.
 
 ## Improving it
-Every session ends with a two-question check-in and a one-command capture to `~/.savoya-quoting/captures/`.
-See `CONTRIBUTING.md` for the daily/weekly loop, and run `skills/quote-document/scripts/regress.py --pdf` before repackaging.
+Every session ends with a feedback exchange and one capture, compressed and uploaded to the
+shared Drive folder. **Drive is the only durable destination** — `~` is a cloud container or
+an isolated VM depending on where the session runs, so a capture written there is reported
+as non-durable and the upload is not optional. See `CONTRIBUTING.md` for the daily/weekly
+loop, and run `skills/quote-document/scripts/regress.py --pdf` before repackaging.
 
 ## Flow
 `quote-intake` runs when a request is pasted; it ends with "want the client PDF or email?" — no is a valid end (quote-only capture). Yes hands `handoff/intake.json` to `quote-document`, which asks nothing about the quote. Contract: `skills/quote-intake/references/handoff-contract.md`.
 
 ## Roadmap
-- When the MCP gains a composite quote tool or compact responses, `quote-intake`'s call plan shrinks; nothing else changes.
+- A **compact response mode** is the top open engineering ask (`ENGINEERING.md` G6). It is
+  not a performance wish: a 16-vehicle package returns responses too large to read in one
+  call, and the workaround — hand-transcribing the engine response — defeats the document's
+  fail-closed total check, because both sides of that comparison then come from the same
+  typing.
+- Airline and FBO resolvers (`ENGINEERING.md` B7 / B7b) are the top functional gap.
+- The no-client / rack-rate route (PRD R9) is unbuilt on every path and blocks the
+  standalone rate-sheet document (PRD R4) behind it.

@@ -3,6 +3,42 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.26.1
+
+A documentation pass, because the docs are now the thing the work runs off rather than a
+record written after it (`CLAUDE.md`, "Documentation comes before implementation"). Twenty
+findings; two of them were actively telling the next person to do the wrong thing.
+
+**`README.md` instructed the version-bump trap, and `CONTRIBUTING.md` contradicted
+itself.** Both said to bump `.claude-plugin/plugin.json` — the standard manifest location,
+the obvious file to edit, and the one `rebuild_plugin.py` never reads. Doing that ships a
+package labelled with the new version carrying the old content. `CONTRIBUTING.md` said it
+at step 6 and then said the opposite, correctly, forty lines later under *Why some files
+exist twice*. Both now route through the build.
+
+**`handoff-contract.md` had documented a `fuel` decision key for three days** after the
+code stopped writing one, and omitted `commission_pct` and `greeter_cost`. The question-set
+guard existed the whole time and could not see it: it matches numbered prose lists, and the
+contract states its keys as a jsonc block. It now parses that block too and checks the keys
+**and their order** against `BASE_ORDER` — broken four ways first, including by restoring
+the literal stale key.
+
+Also corrected, all of it drift from a real change that didn't reach a doc:
+
+- Five files still said **nine MCP tools**; there are twelve. `CLAUDE.md` additionally
+  pointed the reader at an `MCP_TOOLS` set in `regress.py` that no longer exists — the
+  contract moved into `mcp-contract.md`'s fenced block.
+- `CLAUDE.md` said **sixteen guards**; there are 28, and its list named fifteen of them.
+  Replaced with a grouped table and an instruction to run the suite rather than count.
+- The manifest description said **five fixed questions** and never mentioned sourcing.
+- `questions.md` offered *"no discount, add fuel, PDF"* as the example of a user answering
+  several questions at once — one of which no longer exists.
+- `RUNBOOK.md` told a session to edit `feedback.md`, which is not a file; it is `RULES.md`.
+- `CONTRIBUTING.md` described the capture as a ~30 KB `.capture.json` with `-v2` revisions,
+  predating compression, the two upload passes and the durability report.
+- `README.md`'s roadmap listed compact responses as a someday-nicety. It is the top open
+  engineering ask, and the reason is correctness, not speed.
+
 ## 0.26.0
 
 **New: a commission question in the document flow.** *"Does this client get a commission on

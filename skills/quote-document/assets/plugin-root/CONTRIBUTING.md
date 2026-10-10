@@ -22,17 +22,23 @@ Two loops. Don't mix them.
 | **Automated?** | fully | semi — you grade |
 
 ## Daily: CSMs use it in Cowork — nothing to do
-Every deliverable the skill renders is captured automatically as one `<slug>.capture.json` (~30 KB: request, engine JSON, final quote, pre-filled assertions, who ran it, any feedback) and uploaded to the shared Drive folder set in `skills/quote-document/assets/capture.json`. Revisions version as `-v2`, `-v3`. If Drive isn't connected the file stays in `~/.savoya-quoting/captures/`; `scripts/export_captures.py` zips it for hand-off.
+Every deliverable the skill renders is captured once per conversation — request, engine JSON, final quote, pre-filled assertions, who ran it, any feedback, and any workaround the session had to improvise — and uploaded to the shared Drive folder set in `skills/quote-document/assets/capture.json`.
+
+Three things about the capture that are easy to get wrong:
+
+- **It is always compressed** (`gzip+base64`, declared in the envelope; ~15× on real captures). There is no size at which a capture stays behind — the old 25 KB ceiling meant the richest sessions were exactly the ones that never arrived.
+- **It goes up on two passes**, under different titles (`.capture.snapshot.json.gz.b64` on the render pass, `.capture.json.gz.b64` after the feedback exchange), because Drive's `create_file` always creates and because a session that ends at delivery must still leave a record.
+- **`~` is not the user's disk.** On claude.ai the home directory is a cloud container reclaimed with the session; on a linked desktop the shell's home is an isolated VM. The capture reports whether its local copy is durable, and when it isn't, Drive is the only destination — so a failed upload **asks** the user to switch the connector on rather than mentioning it afterwards.
 
 CSM setup is: install the plugin, connect Google Drive in Cowork, answer the one-time "what name should I record you as?" question.
 
 ## Weekly: improve in Claude Code
-1. Download the week's `*.capture.json` files from the Drive folder (Drive connector or the web UI) into a scratch dir.
+1. Download the week's `*.capture*.json.gz.b64` files from the Drive folder (Drive connector or the web UI) into a scratch dir. `unpack_capture.py` reverses the envelope and prefers the post-feedback copy of a session that has both.
 2. `python3 skills/quote-document/scripts/unpack_capture.py <scratch> --fixtures /tmp/week` — it lists each capture with who/what and flags the ones carrying feedback. Then `regress.py --fixtures /tmp/week` to see which of last week's real quotes the *current* renderer still reproduces.
 3. Read the flagged ones. Look for the *pattern*, not the incidents. For each, decide: renderer bug or skill behavior?
 4. **Renderer bugs**: promote the fixture into `evals/fixtures/`, tighten its `expected.json` so it would have caught the bug, fix the script, run `regress.py --pdf` until green.
 5. **Skill behavior**: add the prompt to `evals/evals.json` if it's a new shape, then run the skill-creator eval loop (with-skill vs without, grade in the viewer). The pattern becomes **one** dated entry in `RULES.md` and **one** edit to `SKILL.md`. Resist adding five.
-6. Bump `version` in `.claude-plugin/plugin.json`, repackage, reinstall in Cowork.
+6. Repackage **through the build** (`--bump patch`, or `PLUGIN_VERSION=x.y.z`) and reinstall in Cowork. Never hand-edit a version — see *Why some files exist twice* below, which this step used to contradict.
 
 ## Promoting a capture to a permanent fixture
 Only if it adds a shape `evals/README.md` doesn't list, or it caught a real bug. Otherwise leave it in captures — the regression suite should stay fast enough to run without thinking.

@@ -188,8 +188,8 @@ an hourly temporary rate.**
 | Form | Needs | Reachable? |
 |---|---|---|
 | Commercial TBD | `commercial_tbd: true`, `flight_type`, timezone-aware `scheduled_time` | **Yes — the only one we send** |
-| Known commercial | `flight_type`, `flight_number`, `scheduled_time`, **`airline` as a resolved object with an id** | No — no airline resolver among the nine |
-| Private | `private: true`, `flight_type`, `scheduled_time`, **`fbo` as a resolved object with an id** | No — no FBO resolver among the nine |
+| Known commercial | `flight_type`, `flight_number`, `scheduled_time`, **`airline` as a resolved object with an id** | No — no airline resolver in the contract |
+| Private | `private: true`, `flight_type`, `scheduled_time`, **`fbo` as a resolved object with an id** | No — no FBO resolver in the contract |
 
 An FBO id does appear inside `resolve_itinerary_stops` results, under
 `nearby_airport.fbo` (e.g. `{"id": 111845, "name": "ACI Jet South"}`), so the ids exist and

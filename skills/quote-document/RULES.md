@@ -176,6 +176,17 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   following it hits a hard refusal in the middle of handling money and then improvises,
   which is the failure this repo keeps paying for. `regress.py` now fails on any
   instruction file showing an `--add …|percent|…` example, because C2 admits no exceptions.
+- **A guard that reads one file shape cannot see the same drift in another**
+  (2026-10-10). The fuel question was removed on 7 Oct and four files were updated.
+  `handoff-contract.md` was not, and went on documenting a `"fuel": "keep|waive|add|none"`
+  decision key for three days — while also omitting `commission_pct` and `greeter_cost`,
+  which had been added. The question-set guard existed the whole time and could not see it:
+  it matches **numbered prose lists**, and this is a jsonc key block. So the file that *is*
+  the contract between the two skills was the one file nothing checked. The guard now also
+  parses that block and compares its keys **and their order** against `BASE_ORDER`. Broken
+  four ways first, including by restoring the literal stale `fuel` key, which it catches.
+  *When a guard protects an invariant, ask which file shapes state that invariant — not
+  just which files you were thinking of.*
 - **Fuel is never removed here; it is removed in Savoya** (7 Oct, restated 2026-10-10).
   There is no fuel question. A CSM who needs it waived does that in Savoya first and the
   quote is rebuilt. `--waive "Fuel surcharge"` still exists as an escape hatch and records

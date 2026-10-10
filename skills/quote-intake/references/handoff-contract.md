@@ -30,8 +30,9 @@ handoff/
   "final": true,                               // user said the quote is final (node I)
   "selection": {"select": ["offsite_9_16"], "alternatives": {"jun9_s2": "jun9_s1"}},
   "decisions": {                               // filled by the DOCUMENT flow, one key per question
-    "discount_bps": 0,
-    "fuel": "keep|waive|add|none",
+    "discount_pct": 0,
+    "greeter_cost": null,                      // only asked when a client question mentions a greeter
+    "commission_pct": 5,                       // or absent/none — stated on the document, changes no number
     "cover": "event-planners|custom|<uploaded-path>",
     "personalization": {"event_name": "...", "intro_note": "...", "contact": true, "client_logo_url": null, "leg_notes": {}, "closing_note": null},
     "map": false,
@@ -57,6 +58,13 @@ handoff/
 | 1 | ≤ 0.22.0 | original |
 | 2 | 0.22.x | `tool`, `estimate_type`, `rate_sheet_shown` |
 | **3** | **0.23.0** | the fields below. **A handoff with a lower `contract` is rejected, not interpreted.** |
+
+**`decisions` keys are `decide.py`'s `BASE_ORDER`, in that order, plus the conditional
+`greeter_cost`.** They are listed above for shape only — `decide.py` is the authority, and
+the question-set guard checks this file against it. There is **no `fuel` key**: the fuel
+question was removed on 7 Oct (fuel is market-scoped and engine-applied, and nothing in the
+contract subtracts it). This block carried one until 10 Oct, three days after the code
+stopped writing it.
 
 **Why reject rather than read what you can.** A v1 or v2 handoff was written against the
 previous MCP contract, where `estimate_type` could be `approximate`, a passenger id was
