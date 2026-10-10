@@ -126,19 +126,16 @@ Two kinds of change, and they're handled differently because they *are* differen
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/apply_adjustments.py quote.json \
-  --add "Fuel surcharge|percent|5" \
   --add "Special handling — event coordinator on site|flat|150|9/16 offsite"
 ```
 
-Format is `label|percent or flat|amount|optional applies-to leg key`. Negative values are discounts. Adjustments apply **in list order on the running total** — a 25% group discount followed by a 5% fuel surcharge computes the surcharge on the *discounted* amount. That's how Savoya bills (the CSM-built reference quote does exactly this), so always add the discount before the surcharge.
+Format is `label|flat|amount|optional applies-to leg key`. **Flat only** — a `percent` line here is refused (C2), whatever it is for, so do not write one and do not expect one to work. Flat lines apply in list order on the running total.
 
-Two discounts can coexist: the profile's contracted discount lives in the engine rate (you'll see `effective_rate_amount` already reduced), and a deal-specific group discount is a document-level percent line. Don't collapse them — the rate card shows the standard rate and the net rate, and the client should be able to see the group discount as its own line.
+Two discounts can coexist, but **neither of them is a document line**: the profile's contracted discount lives in the engine rate (`effective_rate_amount` arrives already reduced), and a deal-specific one is a **Core re-quote** through `calculate_temporary_quote_units` with `temporary_discount.basis_points`. Both then come back as engine lines carrying Core's own amounts, and the rate card shows standard and net. Don't collapse them, and don't recreate either as a percentage here.
 
-**Fuel surcharge specifically.** Three states, all handled by the scripts:
-- *Engine applied it* → the normalizer surfaces it as an engine-sourced line. If the user wants it off the client document, `apply_adjustments.py --waive "Fuel surcharge"` — the line disappears, the terms bullet disappears, and a note is recorded that the engine total still includes it and the booking needs the waiver applied in Savoya. Tell the user that last part; it's the one that bites at invoicing.
-- *Engine didn't, user wants it* → `--add "Fuel surcharge|percent|5"` (after any discount line, since it compounds on the discounted amount).
-- *Neither* → no line, and the terms bullet about the 5% surcharge is omitted automatically. The terms adapt; you don't edit them.
-Ask about it in the post-rate-sheet question above; never add or omit it silently.
+**Fuel surcharge.** Market-scoped and engine-applied — 5% in most markets, 10% in London and others — so read it from the quote and never hardcode it. **There is no fuel question**: it was removed on 7 Oct (C3), because nothing in the contract subtracts a surcharge and `temporary_discount` is additive rather than a way to remove one. The `[if:fuel_surcharge]` terms bullet appears only when a live fuel line exists and states the engine's percentage; the terms adapt and you don't edit them.
+
+If a CSM wants it off a client document, the answer is that **they waive it in Savoya first and you re-quote** — it was never ours to give, and waiving it only here leaves the booking still charging it. `--waive "Fuel surcharge"` exists for that case and records the discrepancy, but **don't offer it.** Use it only if they ask directly after hearing the Savoya route, and tell them the engine total still includes it; that is the part that bites at invoicing.
 
 **Cover page** — the PDF opens with one of Savoya's audience covers (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/covers/catalog.json`): general, executive-assistants, event-planners, high-demand-events, security-teams, flight-departments, athletic-recruiters, or `custom` (generated, for a hosted hero image). Ask which fits the buyer — in one line, with your recommendation first: *"This reads like an events planner — go with the Meetings & Events cover, or would you rather General?"* Infer from the request (an EA booking one exec → executive-assistants; a 120-person offsite → event-planners; FBO pickup → flight-departments). Default to general only if they don't care. Set `personalization.cover` to the key.
 

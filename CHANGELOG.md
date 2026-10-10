@@ -3,6 +3,43 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.9
+
+Ayush challenged the `--waive` fix in sourcing.8: the waiver was only ever for the fuel
+surcharge, and that flow was removed earlier. He was right, and validating it found
+something worse.
+
+The removal is real and recorded in three places — `questions.md` ("The `fuel` question is
+gone… it was never really ours to give"), `decision-tree.md` ("There is no fuel question",
+C3, 7 Oct) and `decide.py`'s own docstring — and `BASE_ORDER` carries no fuel key. Nothing
+in the live flow reaches `--waive`.
+
+**But `SKILL.md` was never updated, and it had been contradicting the code for three
+days.** It still told sessions to run `--add "Fuel surcharge|percent|5"` — in the worked
+example *and* in a "three states" block — and described a deal-specific group discount as
+"a document-level percent line". **C2 refuses every document percentage line outright**, so
+both instructions produce a hard refusal; tested, both do. It also said to "ask about it in
+the post-rate-sheet question above", a question that no longer exists. The paragraph
+immediately above all of it correctly stated that document percentages are refused, so the
+file disagreed with itself on one page.
+
+That is a worse class of drift than a wrong default: the session does not get a wrong
+answer, it gets a dead end mid-money-handling, and then improvises.
+
+- The fuel block now says what the 7 Oct decision was: no fuel question, read the
+  percentage from the quote, and a CSM who wants it off waives it **in Savoya** and the
+  quote is rebuilt. `--waive` stays as an escape hatch, recorded but **never offered**.
+- The two-discount paragraph now says what actually happens: neither discount is a
+  document line — the contracted one is in the engine rate, a deal-specific one is a Core
+  re-quote through `calculate_temporary_quote_units`.
+- The worked example drops its percentage line.
+- New guard: **no instruction file may show an `--add …|percent|…` example.** C2 admits no
+  exceptions, so that shape is always wrong. Broken on purpose by restoring the exact stale
+  line, which it catches at `SKILL.md:129`.
+
+sourcing.8's waive fix is kept — not because the flow needs it, but because the flag is
+reachable if a user asks directly, and without it they hit a refusal with no way forward.
+
 ## 0.25.0-sourcing.8
 
 Found by testing whether sourcing.7's stricter money check had started refusing things it

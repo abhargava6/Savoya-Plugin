@@ -1867,6 +1867,66 @@ def lint_client_safe_labels():
     return True
 
 
+def lint_instructions_match_the_code():
+    """No instruction file may tell a session to do something the code refuses.
+
+    `SKILL.md` carried this for three days after the fuel question was removed on 7 Oct:
+
+      * `--add "Fuel surcharge|percent|5"` in the worked example AND in a "three states"
+        block, when C2 refuses every document percentage line outright;
+      * "a deal-specific group discount is a document-level percent line", same refusal;
+      * "Ask about it in the post-rate-sheet question above", a question that no longer
+        existed.
+
+    The paragraph immediately above all of that correctly said document percentages are
+    refused. So the file contradicted itself, and a session reading it would hit a hard
+    refusal in the middle of handling money and then improvise -- which is the failure
+    this repo keeps paying for. Documentation drift about a REFUSAL is worse than drift
+    about a default: the session does not get a wrong answer, it gets a dead end.
+
+    This checks the one shape that is now always wrong, because C2 admits no exceptions.
+    """
+    import re as _re
+
+    root = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+    targets = []
+    for sub in ("quote-document", "quote-intake"):
+        base = os.path.join(root, "skills", sub)
+        targets.append(os.path.join(base, "SKILL.md"))
+        for d in ("references",):
+            p_ = os.path.join(base, d)
+            if os.path.isdir(p_):
+                targets += [os.path.join(p_, f) for f in sorted(os.listdir(p_))
+                            if f.endswith(".md")]
+    targets.append(os.path.join(root, "skills", "quote-document", "RULES.md"))
+
+    # dated history is exempt for the usual reason: rewriting it to satisfy a guard
+    # would falsify the record of what the instruction used to say
+    exempt = {"feedback-archive.md", "CHANGELOG.md"}
+    problems = []
+    pat = _re.compile(r'--add\s+"[^"]*\|\s*percent\s*\|')
+    for t in targets:
+        if not os.path.exists(t) or os.path.basename(t) in exempt:
+            continue
+        with open(t, encoding="utf-8") as fh:
+            for i, line in enumerate(fh, 1):
+                if pat.search(line):
+                    rel = os.path.relpath(t, root)
+                    problems.append(f"{rel}:{i} shows `--add \u2026|percent|\u2026`, "
+                                    f"which apply_adjustments refuses outright (C2)")
+
+    if problems:
+        print("  \u2717 instructions match the code")
+        for b in problems[:8]:
+            print(f"      - {b}")
+        print("      percentages are Core's: an additional discount is a re-quote through")
+        print("      calculate_temporary_quote_units, and fuel is engine-applied")
+        return False
+    print(f"  \u2713 instructions match the code ({len(targets)} files, no refused "
+          f"example documented)")
+    return True
+
+
 def lint_email_headings():
     """The email's own headings must carry what a CSM would otherwise type in.
 
@@ -2609,6 +2669,7 @@ def main():
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok
+    lint_ok = lint_instructions_match_the_code() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_path_resolution() and lint_ok

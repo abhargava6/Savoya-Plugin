@@ -145,6 +145,26 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   not replace the old one when the name collides**, and only one of the two shows as
   installed, so the other has to be removed from the uploads list.
 
+## An instruction that the code refuses is worse than a wrong default
+- **Documentation drift about a refusal gives a session a dead end, not a wrong answer**
+  (2026-10-10). When the fuel question was removed on 7 Oct, `questions.md`,
+  `decision-tree.md` and `decide.py` were all updated and `SKILL.md` was not. For three
+  days it told sessions to add the fuel surcharge as a document *percentage* line, and
+  described "a deal-specific group discount" the same way — **both refused outright by
+  C2** — and to "ask about it in the post-rate-sheet question above", a question that no
+  longer existed. (The literal flag is not reproduced here: the guard below cannot tell a
+  cautionary example from a real instruction, and that is the right trade.) The paragraph immediately above all of it correctly said document
+  percentages are refused, so the file contradicted itself on the same page. A session
+  following it hits a hard refusal in the middle of handling money and then improvises,
+  which is the failure this repo keeps paying for. `regress.py` now fails on any
+  instruction file showing an `--add …|percent|…` example, because C2 admits no exceptions.
+- **Fuel is never removed here; it is removed in Savoya** (7 Oct, restated 2026-10-10).
+  There is no fuel question. A CSM who needs it waived does that in Savoya first and the
+  quote is rebuilt. `--waive "Fuel surcharge"` still exists as an escape hatch and records
+  that the engine total keeps it, but it is **never offered** — only used if the user asks
+  directly after hearing the Savoya route, and always with the invoicing consequence
+  stated.
+
 ## Flow
 - Every enumerable question uses `ask_user_input_v0`, **one per turn**, never bare prose. Labels: `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`.
 - **What the flow asks about, the flow writes** (2026-10-10). `decide.py` recorded the
