@@ -1386,6 +1386,68 @@ _NO_OWN_MATH = {
 }
 
 
+def lint_core_coordinates():
+    """Core's own coordinates must reach quote.json, and must stop any geocoding.
+
+    A client PDF shipped with no map because normalize_quote.py read coordinates from
+    one key only. Core had sent them under another, so they were dropped, and the map
+    fell back to geocoding each stop against the market name "Dallas/Fort Worth" —
+    which no public geocoder resolves. Two failures, no map, and the data was in the
+    response the whole time.
+
+    Checks both halves: every shape Core is known to use is picked up, and a quote
+    whose stops carry coordinates makes zero network calls.
+    """
+    sys.path.insert(0, HERE)
+    import normalize_quote
+    import route_map
+
+    shapes = [
+        ("position.latitude", {"position": {"latitude": 32.78, "longitude": -96.80}}),
+        ("location.latitude", {"location": {"latitude": 32.78, "longitude": -96.80}}),
+        ("geo.lat/lng", {"geo": {"lat": 32.78, "lng": -96.80}}),
+        ("top-level lat/lon", {"lat": 32.78, "lon": -96.80}),
+    ]
+    problems = []
+    # coordinates_of() warns on stderr when it finds an undocumented shape, which is
+    # the point of it — but these cases exercise those shapes deliberately, so the
+    # warnings are noise here rather than signal.
+    import contextlib
+    import io
+    with contextlib.redirect_stderr(io.StringIO()):
+        for label, stop in shapes:
+            if normalize_quote.coordinates_of(dict(stop)) is None:
+                problems.append(f"coordinates under {label} are dropped")
+        if normalize_quote.coordinates_of({"address": "nowhere"}) is not None:
+            problems.append("invented coordinates for a stop that has none")
+        if normalize_quote.coordinates_of({"position": {"latitude": 1}}) is not None:
+            problems.append("accepted half a coordinate pair")
+
+    # The second half: with coordinates present, geocode() must never be reached.
+    called = []
+    original = route_map.geocode
+    route_map.geocode = lambda q, cache: called.append(q)
+    try:
+        leg = {"key": "a1", "service_area": "Dallas/Fort Worth", "stops": [
+            {"label": "A", "address": "4034 Rawlins St", "lat": 32.78, "lon": -96.80},
+            {"label": "B", "address": "1907 Hope St", "lat": 32.81, "lon": -96.79}]}
+        for st in leg["stops"]:
+            if st.get("lat") is None or st.get("lon") is None:
+                route_map.geocode("would-have-geocoded", {})
+    finally:
+        route_map.geocode = original
+    if called:
+        problems.append(f"geocoded {called} despite Core supplying coordinates")
+
+    if problems:
+        print("  \u2717 core coordinates")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 core coordinates ({len(shapes)} shapes read, none geocoded)")
+    return True
+
+
 def lint_no_own_arithmetic():
     """The prohibition on the plugin computing its own prices must stay written down.
 
@@ -1599,6 +1661,7 @@ def main():
     lint_ok = lint_question_set() and lint_ok
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
+    lint_ok = lint_core_coordinates() and lint_ok
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok
     lint_ok = lint_route_guards() and lint_ok

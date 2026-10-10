@@ -17,6 +17,7 @@ import io
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -256,6 +257,19 @@ def main():
                 ll = geocode(query, cache)
                 if not ll and s.get("label"):
                     ll = geocode(", ".join([s["label"], area]), cache)
+                # `area` is Core's service-area name, and those are markets, not
+                # places: no public geocoder resolves "Dallas/Fort Worth". Both
+                # attempts above carry it, so a perfectly good street address can
+                # fail purely because of the qualifier. Retry bare — but only when
+                # the address has a street number in it. Qualifying exists so that
+                # "Hilton" does not land in the wrong city, and a bare landmark
+                # would reintroduce exactly that.
+                if not ll and re.search(r"\d", base) and area:
+                    ll = geocode(base, cache)
+                    if ll:
+                        print(f"WARNING: {base!r} only resolved without the market "
+                              f"qualifier {area!r} — market names are not geocodable",
+                              file=sys.stderr)
             if ll:
                 s["lat"], s["lon"] = ll
                 coords.append(ll)

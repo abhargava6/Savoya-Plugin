@@ -101,6 +101,50 @@ def is_airport(stop):
             or stop.get("stop_type") == "airport")
 
 
+def coordinates_of(stop):
+    """Core's own coordinates for a stop, from whichever shape it sent them in.
+
+    This read only `position.latitude/longitude`. A real quote came back with the
+    coordinates somewhere else, so they were dropped, and the map fell back to
+    geocoding the stop against the market name "Dallas/Fort Worth" — which no public
+    geocoder knows. Both stops failed, and the client PDF shipped with no map at all,
+    while Core had the exact coordinates the whole time.
+
+    Same shape as the airport and sourcing-warning incidents: the signal moved and the
+    plugin kept reading the old place. So read every shape, and when one is found that
+    is not the documented path, say so on stderr — that is how the real key gets into
+    a capture and then into this list, instead of being rediscovered next quarter.
+    """
+    def pair(d):
+        if not isinstance(d, dict):
+            return None
+        for a, b in (("latitude", "longitude"), ("lat", "lon"), ("lat", "lng"),
+                     ("y", "x")):
+            if d.get(a) is not None and d.get(b) is not None:
+                try:
+                    return float(d[a]), float(d[b])
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    known = pair(stop.get("position") or {})
+    if known:
+        return known
+    for key in ("location", "coordinates", "geo", "point", "place", "address_details"):
+        found = pair(stop.get(key) or {})
+        if found:
+            print(f"WARNING: stop coordinates found under {key!r}, not 'position' — "
+                  f"add it to coordinates_of()'s documented path list and tell "
+                  f"engineering which shape Core is sending", file=sys.stderr)
+            return found
+    found = pair(stop)
+    if found:
+        print("WARNING: stop coordinates found at the top level of the stop, not under "
+              "'position' — add it to coordinates_of()'s documented path list",
+              file=sys.stderr)
+    return found
+
+
 def normalize_stop(stop, presentation_stop):
     label, needs_label = stop_label(stop, presentation_stop)
     out = {"label": label}
@@ -116,9 +160,9 @@ def normalize_stop(stop, presentation_stop):
         }
     else:
         out["kind"] = "address"
-    pos = stop.get("position") or {}
-    if pos.get("latitude") is not None and pos.get("longitude") is not None:
-        out["lat"], out["lon"] = pos["latitude"], pos["longitude"]
+    ll = coordinates_of(stop)
+    if ll:
+        out["lat"], out["lon"] = ll
     if stop.get("as_directed"):
         out["kind"] = "as_directed"
         out["as_directed"] = True
