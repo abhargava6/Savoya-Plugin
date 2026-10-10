@@ -1284,6 +1284,49 @@ def lint_capture_resilience():
                             "DID happen still reads as outstanding and the backlog "
                             "count shown to the user is wrong")
 
+        # The full capture must go up on the RENDER pass too, under its own title.
+        #
+        # It used to be held back for the post-feedback run, which made the richest
+        # artifact depend on a conversational step. On 10 Oct 2026 that step was skipped:
+        # a live quote delivered its PDF, uploaded the snapshot, never asked "Anything
+        # you'd like changed?", and the full capture reached the folder only because the
+        # user asked for it by name.
+        snap = subprocess.run(
+            [sys.executable, os.path.join(HERE, "capture_session.py"),
+             "--slug", "guard-snap", "--client", "Guard", "--deliverable", "pdf",
+             "--quote", big_fx, "--dir", d, "--auto"], capture_output=True, text=True)
+        try:
+            snap_out = _json.loads(snap.stdout)
+        except ValueError:
+            problems.append("the render pass printed no JSON report")
+            snap_out = {}
+        snap_titles = [u.get("title", "") for u in snap_out.get("upload", [])]
+        if not any(t.endswith(".gz.b64") for t in snap_titles):
+            problems.append("the render pass does not offer the full capture — a session "
+                            "that never reaches the feedback question then loses it")
+        # and the two passes must not collide: Drive's create_file always creates, so one
+        # title uploaded twice leaves two files with one name, on every quote
+        full = subprocess.run(
+            [sys.executable, os.path.join(HERE, "capture_session.py"),
+             "--slug", "guard-snap", "--client", "Guard", "--deliverable", "pdf",
+             "--quote", big_fx, "--dir", d, "--worked", "ok"],
+            capture_output=True, text=True)
+        try:
+            full_titles = [u.get("title", "")
+                           for u in _json.loads(full.stdout).get("upload", [])]
+        except ValueError:
+            full_titles = []
+            problems.append("the post-feedback pass printed no JSON report")
+        snap_caps = {t for t in snap_titles if t.endswith(".gz.b64")}
+        full_caps = {t for t in full_titles if t.endswith(".gz.b64")}
+        if snap_caps and full_caps and snap_caps == full_caps:
+            problems.append(f"both passes upload the capture as {sorted(snap_caps)[0]} — "
+                            f"Drive always creates, so that is two files with one name "
+                            f"on every quote")
+        if snap_caps and not any("snapshot" in t for t in snap_caps):
+            problems.append("the render pass's capture is not marked as the snapshot, so "
+                            "the weekly pass cannot tell which copy superseded the other")
+
         # a malformed call must leave a trace; it used to print usage and vanish
         before = set(glob.glob(os.path.expanduser(
             "~/.savoya-quoting/captures/capture-refused-*.json")))
@@ -1773,6 +1816,78 @@ def lint_client_safe_labels():
     return True
 
 
+def lint_option_b_is_cores():
+    """Option B's total must be Core's amounts summed, never percentages re-applied.
+
+    `option_total` added each percent adjustment to a RUNNING total, so two discounts
+    compounded: 30% then 5% gives 0.665 where Core's additive 35% gives 0.65, and
+    Option B came out about 2.3% high. A live London/Sicily/Milan quote on 10 Oct 2026
+    hit it and the session pinned the figure to Core's aggregate by hand.
+
+    It is the defect C2 was written about, surviving in the one total with no
+    fail-closed check behind it: Option A sums Core's pinned per-leg amounts and C4
+    refuses to render if the result misses Core's aggregate, while Core never priced the
+    Option B combination as a package, so there was nothing to compare against. That is
+    the lesson worth keeping -- the total nobody could check was the one still doing its
+    own arithmetic.
+    """
+    sys.path.insert(0, HERE)
+    import apply_adjustments
+
+    problems = []
+    adjs = [{"label": "Preferred client discount", "type": "percent", "value": -30.0,
+             "source": "engine", "amount_cents_fixed": 0},
+            {"label": "Additional discount", "type": "percent", "value": -5.0,
+             "source": "engine", "amount_cents_fixed": 0},
+            {"label": "Fuel surcharge", "type": "percent", "value": 10.0,
+             "source": "engine", "amount_cents_fixed": 0}]
+    # Core's own net amounts for these legs: 1,000,000 standard -> 650,000 -> 715,000
+    legs = [{"key": "a", "pricing": {"line_total_cents": 600000},
+             "engine_net_line_cents": 429000},
+            {"key": "b", "pricing": {"line_total_cents": 400000},
+             "engine_net_line_cents": 286000}]
+    want = 429000 + 286000
+
+    sub, tot = apply_adjustments.option_total({"adjustments": adjs}, legs)
+    if tot != want:
+        problems.append(f"Option B total is {tot} ({tot / 100:,.2f}), not Core's "
+                        f"{want} ({want / 100:,.2f})"
+                        + (" — the two discounts compounded" if tot > want else ""))
+    if sub != 1000000:
+        problems.append(f"Option B subtotal is {sub}, expected the sum of line totals")
+
+    # no engine figures: the percentages must be summed and applied ONCE
+    bare = [{"key": "a", "pricing": {"line_total_cents": 600000}},
+            {"key": "b", "pricing": {"line_total_cents": 400000}}]
+    _, fb = apply_adjustments.option_total({"adjustments": adjs}, bare)
+    if fb != want:
+        problems.append(f"the no-engine-figures fallback gives {fb}, not {want} — "
+                        f"percentages must be summed, not applied one after another")
+
+    # a document flat line still applies; one scoped to another leg does not
+    _, with_flat = apply_adjustments.option_total(
+        {"adjustments": adjs + [{"label": "On-site", "type": "flat", "value": 250.0,
+                                 "source": "document"}]}, legs)
+    if with_flat != want + 25000:
+        problems.append(f"a document flat line did not apply to Option B "
+                        f"({with_flat} vs {want + 25000})")
+    _, scoped = apply_adjustments.option_total(
+        {"adjustments": adjs + [{"label": "Elsewhere", "type": "flat", "value": 100.0,
+                                 "source": "document", "applies_to": "zzz"}]}, legs)
+    if scoped != want:
+        problems.append("a flat line scoped to a leg outside this option was applied "
+                        "to it anyway")
+
+    if problems:
+        print("  \u2717 option B is Core's")
+        for b in problems[:6]:
+            print(f"      - {b}")
+        print("      see RULES.md 2026-10-10 and apply_adjustments.option_total()")
+        return False
+    print("  \u2713 option B is Core's (summed net amounts, flats scoped, no compounding)")
+    return True
+
+
 def lint_email_reconciles():
     """The email's own numbers must be Core's numbers.
 
@@ -1990,6 +2105,50 @@ def lint_sourced_line():
         unit("Boston, MA", "Boston, MA", "Boston, MA", False), None)
     if leg and leg.get("sourced_from_other_market"):
         problems.append("an ordinary single-market unit was marked as sourced")
+
+    # (d) the VERIFIER must accept what normalize produces.
+    #
+    # This is the check that was missing on 10 Oct 2026 and it cost a live quote. The
+    # guard above tests normalize, which SETS `sourced_from_other_market`;
+    # verify_document READS it, and its rule was "a sourced leg's market must differ
+    # from its primary market" -- true for a cross-market override, false by
+    # construction for a stop in no service area, where Core reports the same market as
+    # both. The feature and the check contradicted each other and the suite could not
+    # see it, because testing a producer says nothing about its consumers.
+    import json as _json2
+    import subprocess as _sp
+    import tempfile as _tmp
+    wedding = os.path.join(SKILL, "evals", "fixtures", "access-tca-wedding", "quote.json")
+    with open(wedding, encoding="utf-8") as fh:
+        vq = copy.deepcopy(_json2.load(fh))
+    # a stop outside every market: Core prices it from the nearest fleet, so source and
+    # primary are the same market and the leg is still sourced
+    vq["legs"][0].update({"service_area": "Naples, Italy",
+                          "primary_service_area": "Naples, Italy",
+                          "sourced_from_other_market": True,
+                          "no_local_service_area": True})
+    # and the genuine contradiction must still be caught
+    vq["legs"][1].update({"service_area": "Boston, MA",
+                          "primary_service_area": "Boston, MA",
+                          "sourced_from_other_market": True,
+                          "no_local_service_area": False})
+    with _tmp.TemporaryDirectory() as vd:
+        vp = os.path.join(vd, "quote.json")
+        with open(vp, "w", encoding="utf-8") as fh:
+            _json2.dump(vq, fh)
+        r = _sp.run([sys.executable, os.path.join(HERE, "verify_document.py"), vp],
+                    capture_output=True, text=True)
+        out = (r.stdout or "") + (r.stderr or "")
+    ref0 = vq["legs"][0].get("ref") or "A1"
+    ref1 = vq["legs"][1].get("ref") or "A2"
+    if f"{ref0}: marked as sourced but its market and the primary" in out:
+        problems.append("verify_document REJECTS a leg whose stops are in no service "
+                        "area — Core reports one market as both source and primary "
+                        "there, so this is the case the marker exists for")
+    if f"{ref1}: marked as sourced but its market and the primary" not in out:
+        problems.append("verify_document no longer catches a leg marked sourced whose "
+                        "markets match with no stop outside a service area — that one "
+                        "really is a contradiction")
 
     if problems:
         print("  \u2717 sourced line")
@@ -2308,6 +2467,7 @@ def main():
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_sourced_line() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
+    lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_path_resolution() and lint_ok

@@ -72,15 +72,59 @@ def parse_add(spec):
 
 
 def option_total(quote, legs_subset):
-    """Total for a set of legs under the quote's global adjustments (used for Option B)."""
+    """Total for a set of legs (used for Option B) — from Core's amounts, not ours.
+
+    This applied each percentage to a RUNNING total, so two discounts compounded:
+    30% then 5% gives 0.665 where Core's additive 35% gives 0.65, and Option B came out
+    about 2.3% high. A live London/Sicily/Milan quote on 10 Oct 2026 hit it and the
+    session pinned the figure to Core's aggregate by hand.
+
+    It is the same defect C2 was written about — "percentages compounded against a
+    running subtotal" — and it survived in here for a structural reason worth keeping in
+    mind. Option A never computes a percentage: normalize pins each engine line's amount
+    at Core's own granularity (C5), the lines are summed, and C4 then refuses to render
+    if the result misses Core's aggregate. Option B has no Core aggregate to be checked
+    against, because Core never priced that leg combination as a package. So the one
+    total with no fail-closed check behind it was also the only one still doing its own
+    arithmetic.
+
+    The fix is the same as everywhere else: each leg already carries
+    `engine_net_line_cents`, which is Core's net for that leg with every engine
+    percentage already in it. Summing those is Core's number, not a reconstruction of it.
+    Document FLAT lines still apply on top — a real amount a CSM was told — and a
+    leg-scoped one only when its leg is in this option.
+    """
     sub = sum((l["pricing"]["line_total_cents"] or 0) for l in legs_subset)
-    total = sub
+    keys = {l.get("key") for l in legs_subset}
+    nets = [l.get("engine_net_line_cents") for l in legs_subset]
+
+    if nets and all(n is not None for n in nets):
+        total = sum(int(n) for n in nets)
+    else:
+        # No engine figures (a pre-0.23 quote.json, or one assembled by hand). Sum the
+        # global percentages and apply them ONCE, the way Core does and the way
+        # render_print's rate card does — never one after another.
+        disc = sum(a["value"] for a in quote.get("adjustments", [])
+                   if a["type"] == "percent" and not a.get("applies_to")
+                   and not a.get("waived") and a["value"] < 0)
+        sur = sum(a["value"] for a in quote.get("adjustments", [])
+                  if a["type"] == "percent" and not a.get("applies_to")
+                  and not a.get("waived") and a["value"] > 0)
+        total = round(round(sub * (1 + disc / 100.0)) * (1 + sur / 100.0))
+        print(f"WARNING: Option B has no per-leg engine amounts, so its total is derived "
+              f"from the summed percentages ({disc:g}% then {sur:g}%) rather than taken "
+              f"from Core. Re-normalize from a fresh response to pin it.", file=sys.stderr)
+
     for adj in quote.get("adjustments", []):
-        if adj.get("applies_to"):
+        if adj.get("waived") or adj["type"] == "percent":
             continue
-        if adj.get("waived"):
+        # engine percentages are already inside engine_net_line_cents; only a document
+        # flat line is added here, and a leg-scoped one only for legs in this option
+        if adj.get("source") == "engine":
             continue
-        total += round(total * adj["value"] / 100.0) if adj["type"] == "percent" else round(adj["value"] * 100)
+        if adj.get("applies_to") and adj["applies_to"] not in keys:
+            continue
+        total += round(adj["value"] * 100)
     return sub, int(total)
 
 

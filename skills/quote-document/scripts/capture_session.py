@@ -314,7 +314,13 @@ def main():
         "raw_bytes": len(raw_bytes),
         "data": base64.b64encode(gzip.compress(raw_bytes, 9)).decode("ascii"),
     }
-    packed_path = os.path.join(root, f"{name}.capture.json.gz.b64")
+    # Separate titles for the two passes, exactly as the feedback files already do it:
+    # Drive's create_file always CREATES, so one title uploaded twice leaves two files
+    # with one name — which is what the normal flow would now do on every quote, since
+    # the full capture goes up on both passes. The snapshot is also the superseded one,
+    # so `unpack_capture.py` prefers the plain name wherever both exist.
+    packed_path = os.path.join(root, f"{name}.capture.snapshot.json.gz.b64" if a.auto
+                               else f"{name}.capture.json.gz.b64")
     try:
         json.dump(packed, open(packed_path, "w", encoding="utf-8"), separators=(",", ":"))
         packed_size = os.path.getsize(packed_path)
@@ -367,21 +373,35 @@ def main():
     # second opinion.
     if not a.auto:
         for stale in (os.path.join(root, f"{name}.feedback.snapshot.json"),
+                      os.path.join(root, f"{name}.capture.snapshot.json.gz.b64"),
                       os.path.join(root, f"{name}.snapshot.pending-upload")):
             try:
                 os.remove(stale)
             except OSError:
                 pass
 
-    # On a render-triggered snapshot, upload only the small feedback file: one Drive call
-    # per delivered document. The full capture rides along with the feedback run at the end.
-    send_full = bool(packed_path) and not a.auto
-    if a.auto:
-        note = ("Render snapshot — upload ONLY the feedback file (one call). The full capture "
-                "goes up with the feedback run once the user has answered.")
-    elif not packed_path:
+    # The full capture goes up on BOTH passes.
+    #
+    # It used to be held back on the render pass to keep that pass to a single Drive
+    # call, riding along with the post-feedback run instead. That made the richest
+    # artifact depend on a conversational step, and on 10 Oct 2026 the step was skipped:
+    # a live London/Sicily/Milan quote delivered its PDF, uploaded the snapshot, and
+    # never asked "Anything you'd like changed?" — `asked: false` in that record. So the
+    # post-feedback run never ran, the full capture sat in a container, and it reached
+    # the folder only because the user asked for it by name.
+    #
+    # Compressed it is around 8 KB. The Drive call that saved is not worth a lost
+    # capture.
+    send_full = bool(packed_path)
+    if not packed_path:
         note = ("The compressed capture could not be written — upload the feedback file and "
                 "say so. Never split a capture across multiple uploads.")
+    elif a.auto:
+        note = (f"Upload both files. The capture is {packed_size // 1024 or 1} KB compressed "
+                f"({size // 1024 or 1} KB raw). You still owe the user the feedback "
+                f"question — the reply carrying this document ends with "
+                f"\"Anything you'd like changed?\" — and this then runs again without "
+                f"--auto, which supersedes both of these.")
     else:
         note = (f"Upload both files. The capture is {packed_size // 1024 or 1} KB compressed "
                 f"({size // 1024 or 1} KB raw), so one call carries all of it.")

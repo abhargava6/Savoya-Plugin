@@ -12,17 +12,35 @@ a = ap.parse_args()
 files, fb_only = [], []
 for p in a.paths:
     if os.path.isdir(p):
-        files += sorted(glob.glob(os.path.join(p, "*.capture.json")))
-        # Since 0.25 the full capture is uploaded compressed, so the Drive folder holds
-        # `<slug>.capture.json.gz.b64` and usually no plain `.capture.json` at all. A
-        # glob that misses it would silently fall back to the small feedback file and
-        # drop the raw engine response -- the whole reason a capture exists.
-        plain = {os.path.basename(f)[:-len(".capture.json")] for f in files}
-        for f in sorted(glob.glob(os.path.join(p, "*.capture.json.gz.b64"))):
-            if os.path.basename(f)[:-len(".capture.json.gz.b64")] not in plain:
-                files.append(f)
-        caps = {re.sub(r"\.capture\.json(\.gz\.b64)?$", "", os.path.basename(f))
-                for f in files}
+        # Since 0.25 the full capture is uploaded compressed, and on BOTH passes, so one
+        # quote can leave three shapes in the folder. Richest first:
+        #
+        #   <slug>.capture.json                  a local, uncompressed capture
+        #   <slug>.capture.json.gz.b64           the post-feedback upload
+        #   <slug>.capture.snapshot.json.gz.b64  the delivery-time upload
+        #
+        # Take the best one per slug. The snapshot must be *considered* rather than
+        # skipped: it is uploaded for every delivered document, so a quote whose session
+        # never came back for feedback exists in the folder only as a snapshot -- which
+        # is exactly what happened on 10 Oct 2026 when the feedback question was never
+        # asked. But where the post-feedback copy exists it supersedes the snapshot, and
+        # reading both would double-count the quote.
+        cap_rank = {".capture.json": 3,
+                    ".capture.json.gz.b64": 2,
+                    ".capture.snapshot.json.gz.b64": 1}
+        best_cap = {}
+        for f in sorted(glob.glob(os.path.join(p, "*.capture*json*"))):
+            b = os.path.basename(f)
+            suffix = next((sfx for sfx in (".capture.snapshot.json.gz.b64",
+                                           ".capture.json.gz.b64",
+                                           ".capture.json") if b.endswith(sfx)), None)
+            if not suffix:
+                continue
+            slug, rank = b[:-len(suffix)], cap_rank[suffix]
+            if rank > best_cap.get(slug, (0, None))[0]:
+                best_cap[slug] = (rank, f)
+        files += [f for _, f in sorted(best_cap.values(), key=lambda t: t[1])]
+        caps = set(best_cap)
         # Three kinds of record can be in the folder for one quote, in decreasing
         # richness: the full capture, the post-feedback `<slug>.feedback.json`, and the
         # delivery-time `<slug>.feedback.snapshot.json`. Take the best one per slug and

@@ -24,6 +24,28 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   (calendar date, one-way or round trip, where it goes), with the origin dropped and the
   turnaround standing in as the destination of a round trip. `regress.py` pins all three
   rejected rules — `max()`, `sum()` and the exact sequence — as failures.
+- **Option B's total is Core's amounts summed, never percentages re-applied**
+  (2026-10-10). `option_total()` added each percent adjustment to a *running* total, so
+  two discounts compounded: 30% then 5% gives 0.665 where Core's additive 35% gives 0.65,
+  and Option B came out about **2.3% high** — on a live London/Sicily/Milan quote it
+  overstated the *cheaper* option, understating the saving being offered. It is the defect
+  C2 was written about, and it survived in the one total with no fail-closed check behind
+  it: Option A never computes a percentage (C5 pins each engine line at Core's
+  granularity, C4 refuses to render if the sum misses Core's aggregate), while Core never
+  priced the Option B combination as a package, so there was nothing to check against.
+  **The only total nobody could verify was the only one still doing its own arithmetic.**
+  It now sums `engine_net_line_cents` over the option's legs; where those are absent the
+  percentages are summed and applied once, with a warning. Document flat lines still
+  apply, and a leg-scoped one only when its leg is in that option.
+- **A check must be tested against what the code actually produces** (2026-10-10).
+  `verify_document` rejected any sourced leg whose market matched its primary market —
+  correct for a cross-market override, and false by construction for a stop in no service
+  area, where Core reports one market as both. The feature and its own validator
+  contradicted each other, and the real Sicily legs failed verification on a live quote.
+  The guard tested `normalize_unit`, which *sets* the flag; nothing ran the verifier, which
+  *reads* it. **Testing a producer says nothing about its consumers** — and the suite had
+  flagged three fixtures on this very check hours earlier, which was resolved by
+  correcting normalize without re-examining the verifier.
 - **The email states Core's line amounts, not its own** (2026-10-10). `draft_email.py`
   built one multiplicative factor over every percent adjustment — 0.70 × 0.95 × 1.10 —
   where Core adds discounts in basis points and applies 3500 once. With a single discount
@@ -154,6 +176,16 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   extracts the cut text, so every text-based check passes while the client sees nothing.
 - **Prefer a wasted page to a possible clip.** The failure modes are not equal.
 
+- **The full capture goes up on the render pass, not only after the feedback exchange**
+  (2026-10-10). Holding it back kept that pass to one Drive call and made the richest
+  artifact depend on a conversational step. On a live London/Sicily/Milan quote the step
+  was skipped — the PDF was delivered, the snapshot uploaded, the feedback question never
+  asked (`asked: false` in the record) — so the full capture sat in a container and
+  reached the folder only because the user asked for it by name. Compressed it is ~8 KB.
+  The two passes carry **different titles** (`.capture.snapshot.json.gz.b64` against
+  `.capture.json.gz.b64`) because Drive's `create_file` always creates, and
+  `unpack_capture.py` prefers the post-feedback copy while still reading a snapshot-only
+  quote — which is the only record a session that ends at delivery leaves.
 - **`~` is not the user's computer** (2026-10-10). On claude.ai the home directory is a
   cloud container reclaimed with the session; on a linked desktop the shell's home is an
   isolated VM and only a *connected folder* is really the user's disk. Two real captures —

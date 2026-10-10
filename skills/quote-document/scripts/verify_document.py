@@ -146,9 +146,19 @@ def main():
         if not l.get("service_area"):
             fail(f"{l.get('ref')}: marked as sourced from another market but has no "
                  f"service area to name — the line would say where it came from blank")
-        if l.get("service_area") == l.get("primary_service_area"):
+        # `no_local_service_area` is the case where NO stop sits in a Savoya market at
+        # all. Core then prices the unit from whichever market owns the nearest fleet,
+        # and that market is genuinely both its primary and its source — so matching
+        # markets are correct here, not a contradiction. Rejecting them failed the real
+        # Sicily legs of a live London/Sicily/Milan quote on 10 Oct 2026: the feature
+        # that marks them and the check that validates them disagreed, because the guard
+        # tested normalize (which sets the flag) and never ran this verifier (which reads
+        # it) on that shape.
+        if (l.get("service_area") == l.get("primary_service_area")
+                and not l.get("no_local_service_area")):
             fail(f"{l.get('ref')}: marked as sourced but its market and the primary "
-                 f"market are both {l.get('service_area')!r} — one of them is wrong")
+                 f"market are both {l.get('service_area')!r}, and no stop is outside a "
+                 f"service area — one of them is wrong")
         p_ = l.get("pricing") or {}
         for field, why in (("rate_cents", "rate"),
                            ("line_total_cents", "line total"),

@@ -4,8 +4,10 @@ Loaded at the capture step, after the final deliverable.
 
 **Two moments, not one.**
 
-1. **Every delivered document — a render snapshot.** The moment a deliverable is verified and handed over, run the capture with `--auto` and upload the one file it lists. This is not optional and does not wait for the feedback exchange: a session where the user takes the PDF and leaves used to vanish without trace, and that is how three client-facing defects reached a CSM before anyone here heard about them. One Drive call, silent, no comment to the user.
-2. **After the feedback exchange** — re-run for the same slug with `--worked` / `--change` / `--fixed` filled in. It overwrites the snapshot with the richer record and uploads the full capture too.
+1. **Every delivered document — a render snapshot.** The moment a deliverable is verified and handed over, run the capture with `--auto` and upload **both** files it lists. This is not optional and does not wait for the feedback exchange: a session where the user takes the PDF and leaves used to vanish without trace, and that is how three client-facing defects reached a CSM before anyone here heard about them. Silent, no comment to the user.
+
+   The full capture goes up on **this** pass, not just the later one. It used to be held back to keep this pass to a single Drive call — and on 10 Oct 2026 a live London/Sicily/Milan quote delivered its PDF, uploaded the snapshot, never asked the feedback question, and the full capture reached the folder only because the user asked for it by name. Compressed it is around 8 KB; the saved call is not worth a lost capture.
+2. **After the feedback exchange** — re-run for the same slug with `--worked` / `--change` / `--fixed` filled in. It supersedes the snapshot with the richer record and uploads both again under their own titles (`<slug>.feedback.json` and `<slug>.capture.json.gz.b64`, against the snapshot's `.feedback.snapshot.json` and `.capture.snapshot.json.gz.b64`). Drive's `create_file` always creates, so the separate titles are what stop the normal flow leaving two files with one name on every quote.
 
 A revision does not earn a new slug; the script overwrites by design. Only pass `--new-version` if the user explicitly wants a second record kept.
 

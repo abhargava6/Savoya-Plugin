@@ -3,6 +3,55 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.25.0-sourcing.5
+
+Three defects a live quote on sourcing.4 found — two of them introduced by the fixes in
+sourcing.3 and sourcing.4. The capture was read back out of the Drive folder, and the
+session's own `workaround` field had already named the first two and patched around them.
+
+- **Option B compounded two discounts.** `option_total()` added each percent adjustment
+  to a *running* total, so 30% then 5% gave 0.665 where Core's additive 35% gives 0.65 —
+  **Option B about 2.3% high**, and on this quote it was the cheaper option, so the
+  saving being offered was understated. This is the same defect as the email arithmetic
+  fixed in sourcing.3, in a third place that audit missed. It survived for a structural
+  reason worth recording: Option A never computes a percentage — C5 pins each engine
+  line at Core's granularity and C4 refuses to render if the sum misses Core's aggregate
+  — while Core never priced the Option B combination as a package, so there was nothing
+  to check it against. **The only total nobody could verify was the only one still doing
+  its own arithmetic.** It now sums `engine_net_line_cents` over the option's legs;
+  without those the percentages are summed and applied once, with a warning. Document
+  flat lines still apply, leg-scoped ones only to legs in that option.
+- **The verifier rejected the case sourcing.4 was built to mark.** `verify_document`
+  failed any sourced leg whose market equalled its primary market — correct for a
+  cross-market override, false by construction for a stop in no service area, where Core
+  reports one market as both. So the real Sicily legs failed verification on a live
+  quote: *"A3: marked as sourced but its market and the primary market are both 'Naples,
+  Italy'"*. The guard tested `normalize_unit`, which **sets** the flag, and nothing ran
+  the verifier, which **reads** it. Worse, the suite had flagged three fixtures on this
+  same check hours earlier and it was resolved by correcting normalize without
+  re-examining the verifier. The sourcing guard now runs `verify_document` as a
+  subprocess on that shape, and asserts it still catches a genuine contradiction.
+- **The full capture only arrived if the feedback question got asked.** It was held back
+  on the render pass to keep that pass to one Drive call, riding with the post-feedback
+  run instead — which made the richest artifact depend on a conversational step. On this
+  quote the step was skipped: PDF delivered, snapshot uploaded at 18:18, `asked: false`,
+  and the capture reached the folder at 18:20 only because the user asked for it by name.
+  It now goes up on both passes, under different titles
+  (`.capture.snapshot.json.gz.b64` against `.capture.json.gz.b64`) because Drive's
+  `create_file` always creates and the normal flow would otherwise leave two files with
+  one name on every quote. `unpack_capture.py` prefers the post-feedback copy and still
+  reads a snapshot-only quote, which is the only record a session ending at delivery
+  leaves.
+
+Two new guard assertions on capture resilience and one on sourcing, each broken on
+purpose first. Also fixed in passing: `unpack_capture.py` double-counted a quote that had
+both a snapshot and a post-feedback capture in the folder.
+
+What this test confirmed working: `pdf_pages_measured: 6` rather than the old hardcoded
+3, the capture compressed to 8.2 KB on Drive, and the no-service-area flag firing with
+the money in it — *"Sicily legs: no Savoya service area, priced from Naples at 14.75 hrs
+($2,879.05 each)"*.
+
 ## 0.25.0-sourcing.4
 
 Eleven defects from three live Yerdle quotes run on `0.25.0-sourcing.1` — a 16-leg World
