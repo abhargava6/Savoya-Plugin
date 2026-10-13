@@ -73,10 +73,14 @@ installed from this folder directly.
 python3 skills/quote-document/scripts/regress.py --pdf
 
 # 3. build AND bump in one step -- never hand-edit a version number
-python3 skills/quote-document/scripts/rebuild_plugin.py \
-    skills/quote-document /tmp/build --bump patch \
-    --package /tmp/savoya-quoting.plugin
+python3 build.py --bump patch
 ```
+
+`build.py` packages for the MCP named by `SAVOYA_MCP_URL` in `.env` (copy `.env.example`).
+Leave it empty for an acceptance build. Set it to a public HTTPS tunnel for a local test
+build, labelled `<version>-local.<timestamp>`; a local build never changes a version in the
+repo, so it refuses `--bump`. The package lands in `build/` and is checked before its path
+is printed.
 
 **Never bump a version by hand.** The build reads
 `skills/quote-document/assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the
