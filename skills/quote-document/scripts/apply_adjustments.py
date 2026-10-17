@@ -33,6 +33,103 @@ def has_fuel_surcharge(quote):
     return fuel_pct(quote) is not None
 
 
+def _discounted_base_cents(quote, legs_subset):
+    """Cents after EVERY discount and before the fuel surcharge, for one set of legs.
+
+    This is the basis for the commission amount (PRD R59, amended 2026-10-16): the quoted
+    subtotal after discounts, before fuel. It is built from Core's own per-leg figures --
+    the standard line, less each discount at the granularity Core rounds at (per hour,
+    then x hours x vehicles) -- which is exactly how normalize_quote pins the discount
+    lines (C5). For Option A that equals the engine subtotal plus the pinned discount
+    lines; for Option B, which has no discount lines of its own, it is the same sum over
+    that option's legs. Returns None when any leg lacks Core's figures (a pre-0.23
+    quote.json, or one assembled by hand): an amount is then NOT stated, rather than
+    guessed.
+
+    Negative FLAT document lines (a courtesy credit a CSM was told) are discounts too, and
+    apply only to the legs in this option when they are leg-scoped.
+    """
+    if not legs_subset:
+        return None
+    std_sum, disc = 0, {"contract": 0.0, "extra": 0.0}
+    for l in legs_subset:
+        std_line = l.get("engine_standard_line_cents")
+        std_rate = l.get("engine_standard_rate_cents")
+        if std_line is None or std_rate is None:
+            return None
+        units = l.get("engine_rate_units") or 0
+        qty = (l.get("vehicle") or {}).get("quantity") or 1
+        std_sum += std_line
+        for key, bucket in (("engine_discount_pct", "contract"), ("engine_temp_discount_pct", "extra")):
+            pct = l.get(key)
+            if pct:
+                disc[bucket] += round(std_rate * pct / 100.0) * units * qty
+    base = std_sum - int(disc["contract"]) - int(disc["extra"])
+    keys = {l.get("key") for l in legs_subset}
+    for adj in quote.get("adjustments", []):
+        if adj.get("waived") or adj.get("source") == "engine" or adj["type"] != "flat" or adj["value"] >= 0:
+            continue
+        if adj.get("applies_to") and adj["applies_to"] not in keys:
+            continue
+        base += round(adj["value"] * 100)
+    return int(base)
+
+
+def commission_amounts(quote):
+    """The commission amount per option, or None when no rate is recorded or no amount can
+    be stated.
+
+    Computed here, in code, never by the session: (subtotal after every discount) x (rate),
+    before the fuel surcharge, rounded HALF-UP to the cent. It is a memo figure. It never
+    enters `adjustments` and never moves `total_cents`, so C2 and C4 stay meaningful.
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+    pct = quote.get("commission_pct")
+    if not pct:
+        return None
+    legs = quote.get("legs", [])
+    primaries = [l for l in legs if not l.get("alternative_of")]
+    alts = [l for l in legs if l.get("alternative_of")]
+
+    def amount(subset):
+        base = _discounted_base_cents(quote, subset)
+        if base is None:
+            return None
+        return int((Decimal(base) * Decimal(str(pct)) / Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    a = amount(primaries)
+    if a is None:
+        return None
+    out = {"a": a, "b": None}
+    if alts:
+        replaced = {l["alternative_of"] for l in alts}
+        carried = [l for l in primaries if l["key"] not in replaced]
+        b = amount(alts + carried)
+        if b is None:
+            return None
+        out["b"] = b
+    return out
+
+
+def commission_clause(quote):
+    """', calculated after discounts and before the fuel surcharge: $X on Option A, $Y on
+    Option B' -- or '' when no amount can be stated, in which case the rate stands alone."""
+    amts = quote.get("commission_amounts")
+    if not amts or amts.get("a") is None:
+        return ""
+    basis = " after discounts and before the fuel surcharge" if has_fuel_surcharge(quote) else " after discounts"
+    if amts.get("b") is not None:
+        figs = f"${amts['a']/100:,.2f} on Option A, ${amts['b']/100:,.2f} on Option B"
+    else:
+        figs = f"${amts['a']/100:,.2f}"
+    return f", calculated{basis}: {figs}"
+
+
+def commission_line(quote):
+    pct = quote.get("commission_pct")
+    return f"A {float(pct):g}% commission applies to this program{commission_clause(quote)}." if pct else None
+
+
 def build_terms(quote):
     """Terms from assets/terms.md; `[if:fuel_surcharge]` bullets only when a live fuel line exists."""
     out = []
@@ -52,11 +149,13 @@ def build_terms(quote):
             if m.group(1) == "fuel_surcharge" and fuel:
                 pct = fuel_pct(quote)
                 out.append(m.group(2).replace("{pct}", f"{pct:g}") if pct else m.group(2).replace("{pct}", "5"))
-            # A recorded commission rate, stated and never calculated. It names no
-            # beneficiary: the commission may be earned by the client or by an agency
-            # acting for them, and a client document should not assert which.
+            # A recorded commission rate and, since 0.27.0, the amount per option
+            # (computed above, in code, on a fixed basis). It names no beneficiary: the
+            # commission may be earned by the client or by an agency acting for them, and
+            # a client document should not assert which.
             elif m.group(1) == "commission" and commission:
-                out.append(m.group(2).replace("{pct}", f"{float(commission):g}"))
+                out.append(m.group(2).replace("{pct}", f"{float(commission):g}")
+                           .replace("{amounts}", commission_clause(quote)))
             continue
         out.append(body)
     return out
@@ -237,7 +336,17 @@ def recompute(quote):
             "from the fresh response. If it happens again on the same quote, that is a\n"
             "Savoya-side report, not a plugin one — send the quote reference to engineering.")
 
+    amts = commission_amounts(quote)
+    if amts:
+        quote["commission_amounts"] = amts
+    else:
+        quote.pop("commission_amounts", None)
     quote["terms"] = build_terms(quote)
+    line = commission_line(quote)
+    if line:
+        quote["commission_line"] = line
+    else:
+        quote.pop("commission_line", None)
     alts = [l for l in quote["legs"] if l.get("alternative_of")]
     if alts:
         replaced = {l["alternative_of"] for l in alts}
@@ -262,7 +371,7 @@ def main():
     ap.add_argument("--commission-pct", dest="commission_pct", default=None,
                     help="commission rate recorded for this quote, from the "
                          "commission_pct question: a percentage, or 'none'. It is STATED "
-                         "on the documents and changes no arithmetic — it is set here "
+                         "on the documents with its amount per option, and changes no total — it is set here "
                          "rather than in a setter because this script owns the terms "
                          "block, so the rate and the terms bullet land in one call and "
                          "cannot get out of order.")
@@ -277,6 +386,8 @@ def main():
         raw = str(args.commission_pct).strip().lower().rstrip("%").strip()
         if raw in ("none", "no", "0", ""):
             quote.pop("commission_pct", None)
+            quote.pop("commission_amounts", None)
+            quote.pop("commission_line", None)
         else:
             try:
                 pct = float(raw)

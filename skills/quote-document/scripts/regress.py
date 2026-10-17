@@ -133,6 +133,8 @@ def check_fixture(fx, want_pdf, html_out=None):
         cmd = [sys.executable, os.path.join(HERE, "apply_adjustments.py"), qpath, "--clear"]
         for a in exp.get("adjustments", []):
             cmd += ["--add", a]
+        if exp.get("commission_pct") is not None:
+            cmd += ["--commission-pct", str(exp["commission_pct"])]
         rc, out = run(cmd, work)
         if rc:
             return name, False, [f"apply_adjustments failed:\n{out}"]
@@ -143,6 +145,8 @@ def check_fixture(fx, want_pdf, html_out=None):
                 fails.append(f"{k}: expected {exp[k]} got {q.get(k)}")
         if "option_b_total_cents" in exp and (q.get("option_b") or {}).get("total_cents") != exp["option_b_total_cents"]:
             fails.append(f"option_b_total_cents: expected {exp['option_b_total_cents']} got {(q.get('option_b') or {}).get('total_cents')}")
+        if "commission_amounts" in exp and q.get("commission_amounts") != exp["commission_amounts"]:
+            fails.append(f"commission_amounts: expected {exp['commission_amounts']} got {q.get('commission_amounts')}")
         if "leg_count" in exp and len(q["legs"]) != exp["leg_count"]:
             fails.append(f"leg_count: expected {exp['leg_count']} got {len(q['legs'])}")
 
@@ -181,7 +185,16 @@ def check_fixture(fx, want_pdf, html_out=None):
         # Match the CLASS, not a quote after it: the cover is class="page blank", so
         # '<section class="page"' silently misses it and every count comes out one short.
         # That cost an hour of arguing with a correct bug report.
-        if "pdf_pages" in exp and os.path.exists(print_html):
+        # A fixture whose layout is only right after the browser has measured it (the
+        # renderer moves a clipped totals block onto its own page) can only be page-counted
+        # where a browser exists. Elsewhere the estimate stands alone and says 4, not 5.
+        try:
+            import playwright.sync_api  # noqa: F401
+            _have_browser = True
+        except Exception:
+            _have_browser = False
+        _skip_pages = bool(exp.get("needs_browser_layout")) and not (_have_browser and want_pdf)
+        if "pdf_pages" in exp and os.path.exists(print_html) and not _skip_pages:
             with open(print_html, encoding="utf-8") as fh:
                 sections = len(re.findall(r'<section class="page\b', fh.read()))
             if sections != exp["pdf_pages"]:
@@ -189,7 +202,7 @@ def check_fixture(fx, want_pdf, html_out=None):
                              f"(counted from the print HTML; no PDF engine needed)")
         if want_pdf and os.path.exists(pdf_path) and shutil.which("pdftotext"):
             corpus += subprocess.run(["pdftotext", pdf_path, "-"], capture_output=True, text=True).stdout
-            if "pdf_pages" in exp and shutil.which("pdfinfo"):
+            if "pdf_pages" in exp and shutil.which("pdfinfo") and not _skip_pages:
                 info = subprocess.run(["pdfinfo", pdf_path], capture_output=True, text=True).stdout
                 pages = next((int(l.split()[-1]) for l in info.splitlines() if l.startswith("Pages:")), None)
                 if pages != exp["pdf_pages"]:
@@ -198,6 +211,8 @@ def check_fixture(fx, want_pdf, html_out=None):
             rc, out = run([sys.executable, os.path.join(HERE, "verify_document.py"), qpath, "--pdf", pdf_path], work)
             if rc:
                 fails.append("verify_document failed:\n" + out.strip())
+        import html as _htmlmod
+        corpus = _htmlmod.unescape(corpus)         # the print HTML carries &middot; and &amp;
         for s in exp.get("contains", []):
             if s not in corpus:
                 fails.append(f"missing: {s!r}")
@@ -1934,19 +1949,29 @@ def lint_client_safe_labels():
 
 
 def lint_commission():
-    """A commission is STATED on every format, and changes no arithmetic anywhere.
+    """A commission is STATED on every format, with an amount computed in CODE, and it
+    changes no total anywhere.
 
-    Added 10 Oct 2026. It is the first question whose answer is purely presentational, so
-    the two things worth pinning are the two that would be easy to get wrong later:
+    Added 10 Oct 2026 as rate-only; amended 16 Oct 2026 (PRD R59). A live Yerdle session
+    needed the amount on both options, computed it by hand and edited it into the terms --
+    a figure with nothing checking it, which is the outcome the rate-only rule existed to
+    prevent. The basis is now FIXED (the subtotal after every discount, before the fuel
+    surcharge), so the figure is deterministic and this guard can recompute it:
 
+      * Option A is recomputed from a DIFFERENT path than the one under test: the engine
+        subtotal plus the discount lines normalize_quote pinned, not the per-leg sum
+        apply_adjustments uses;
+      * Option B has no discount lines of its own, so it is recomputed from Core's net
+        per leg divided by the fuel factor, within a cent per leg of rounding;
+      * both must equal the known-good Yerdle figures ($600.50, $728.61);
       * the total must be byte-identical with the commission and without it -- it is not
         an adjustment, it never enters `adjustments`, and C4 must stay meaningful;
-      * no commission AMOUNT is ever computed. The basis is not ours to assume (the
-        quoted total? before discount? excluding fuel?) and a figure nobody returned is a
-        figure nothing can check.
+      * with no per-leg Core figures (a hand-assembled quote.json) the RATE stands alone
+        and no amount is guessed;
+      * declining leaves no trace -- no amount either.
 
-    It also names no beneficiary, because the commission may be earned by the client or
-    by an agency acting for them, and a client-facing document should not assert which.
+    It names no beneficiary, because the commission may be earned by the client or by an
+    agency acting for them, and a client-facing document should not assert which.
     """
     import copy
     import json as _json
@@ -1958,95 +1983,703 @@ def lint_commission():
     import render_html
     import render_print
 
-    fx = os.path.join(DEFAULT_FIXTURES, "access-tca-wedding", "quote.json")
+    wedding = os.path.join(DEFAULT_FIXTURES, "access-tca-wedding", "quote.json")
+    handoff = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
     problems = []
+
+    def adjust(path, *extra):
+        return subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
+                               path, *extra], capture_output=True, text=True)
+
+    def surfaces_of(q, path):
+        mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), path],
+                              capture_output=True, text=True)
+        return {
+            "PDF": _re.sub(r"<[^>]+>", " ", render_print.render_html(q)),
+            "HTML email": _re.sub(r"<[^>]+>", " ", render_html.render(q)),
+            "email copy": mail.stdout or "",
+        }
+
     with tempfile.TemporaryDirectory() as d:
-        plain = os.path.join(d, "plain.json")
-        comm = os.path.join(d, "comm.json")
-        with open(fx, encoding="utf-8") as fh:
-            base = _json.load(fh)
-        for path in (plain, comm):
-            with open(path, "w", encoding="utf-8") as fh:
-                _json.dump(copy.deepcopy(base), fh)
-
-        r = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
-                            comm, "--commission-pct", "5"], capture_output=True, text=True)
+        # ---- 1. a quote WITH Core's per-leg figures: the amount is stated and correct
+        base = os.path.join(d, "base.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                            "--from-handoff", handoff, base, "--prepared-by", "Regress",
+                            "--title", "Regression quote"], capture_output=True, text=True)
         if r.returncode:
-            print(f"  \u2717 commission: recording a rate failed ({(r.stderr or '')[:160]})")
+            print(f"  ✗ commission: could not normalize the Yerdle fixture ({(r.stderr or '')[:160]})")
             return False
-        subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), plain],
-                       capture_output=True, text=True)
-
+        plain, comm = os.path.join(d, "plain.json"), os.path.join(d, "comm.json")
+        for path in (plain, comm):
+            with open(base, encoding="utf-8") as fh:
+                data = _json.load(fh)
+            with open(path, "w", encoding="utf-8") as fh:
+                _json.dump(data, fh)
+        if adjust(comm, "--clear", "--commission-pct", "5").returncode:
+            print("  ✗ commission: recording a rate failed")
+            return False
+        adjust(plain, "--clear")
         with open(plain, encoding="utf-8") as fh:
             qp = _json.load(fh)
         with open(comm, encoding="utf-8") as fh:
             qc = _json.load(fh)
 
-        # 1. the money must not move
+        # the money must not move, and the amount is not an adjustment
         if qp["total_cents"] != qc["total_cents"]:
             problems.append(f"the total changed when a commission was recorded: "
-                            f"{qp['total_cents']} -> {qc['total_cents']} — a commission is "
+                            f"{qp['total_cents']} -> {qc['total_cents']} -- a commission is "
                             f"stated, not charged")
+        if (qp.get("option_b") or {}).get("total_cents") != (qc.get("option_b") or {}).get("total_cents"):
+            problems.append("Option B's total changed when a commission was recorded")
         if len(qp.get("adjustments", [])) != len(qc.get("adjustments", [])):
-            problems.append("recording a commission added an adjustment line — it must "
+            problems.append("recording a commission added an adjustment line -- it must "
                             "never enter `adjustments`")
-        if any("commission" in (a.get("label") or "").lower()
-               for a in qc.get("adjustments", [])):
+        if any("commission" in (a.get("label") or "").lower() for a in qc.get("adjustments", [])):
             problems.append("a commission appeared as an adjustment label")
 
-        # 2. it must be stated on every format, and never as an amount
-        mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), comm],
-                              capture_output=True, text=True)
-        surfaces = {
-            "PDF": _re.sub(r"<[^>]+>", " ", render_print.render_html(qc)),
-            "HTML email": _re.sub(r"<[^>]+>", " ", render_html.render(qc)),
-            "email copy": mail.stdout or "",
-        }
-        for name, text in surfaces.items():
+        # the amount, recomputed along a different path
+        amts = qc.get("commission_amounts") or {}
+        if not amts:
+            problems.append("no commission_amounts were computed for a quote that carries Core's per-leg figures")
+        else:
+            from decimal import Decimal, ROUND_HALF_UP
+            def half_up(cents):
+                return int((Decimal(cents) * Decimal(5) / Decimal(100)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            eng_disc = sum(a["amount_cents_fixed"] for a in qc["adjustments"]
+                           if a.get("source") == "engine" and (a.get("value") or 0) < 0)
+            want_a = half_up(qc["engine_subtotal_cents"] + eng_disc)
+            if amts.get("a") != want_a:
+                problems.append(f"Option A commission {amts.get('a')} != {want_a} "
+                                f"(engine subtotal + discount lines, x 5%, half-up)")
+            fuel = next((a["value"] for a in qc["adjustments"] if "fuel" in a["label"].lower()), 0)
+            ob_legs = [l for l in qc["legs"] if l.get("alternative_of")]
+            replaced = {l["alternative_of"] for l in ob_legs}
+            b_legs = ob_legs + [l for l in qc["legs"] if not l.get("alternative_of") and l["key"] not in replaced]
+            b_base = sum(l["engine_net_line_cents"] for l in b_legs) / (1 + fuel / 100.0)
+            want_b = half_up(round(b_base))
+            if amts.get("b") is None or abs(amts["b"] - want_b) > len(b_legs):
+                problems.append(f"Option B commission {amts.get('b')} is not within {len(b_legs)} cents of "
+                                f"{want_b} (Core's net per leg, less fuel, x 5%)")
+            if (amts.get("a"), amts.get("b")) != (60050, 72861):
+                problems.append(f"the Yerdle quote must state $600.50 / $728.61, got "
+                                f"{amts.get('a')} / {amts.get('b')} cents")
+
+        # stated, identically, on every format
+        sent = "calculated after discounts and before the fuel surcharge: $600.50 on Option A, $728.61 on Option B."
+        for name, text in surfaces_of(qc, comm).items():
             if not text:
                 problems.append(f"{name}: produced nothing, so it is untested")
                 continue
-            if "commission" not in text.lower():
-                problems.append(f"{name}: does not state the commission at all")
-            if _re.search(r"commission[^.\n]{0,40}\$[\d,]", text, _re.I):
-                problems.append(f"{name}: states a commission AMOUNT. The basis is not "
-                                f"ours to assume and nothing can check a figure Core "
-                                f"never returned")
-        head = surfaces["PDF"]
-        if "commission" in head.lower() and not _re.search(r"Commission\s+5%", head):
-            problems.append("the PDF heading block does not show 'Commission 5%' beside "
-                            "Discount and Fuel surcharge")
-        if "commission applies to this program" not in surfaces["PDF"].lower():
-            problems.append("the terms list has no commission bullet")
+            if sent not in " ".join(text.split()):
+                problems.append(f"{name}: does not state the commission amounts as '{sent}'")
+        # R59 (placement, 16 Oct 2026): the amount sits under each option's total, quietly.
+        import html as _html
+        pdf_text = " ".join(_html.unescape(surfaces_of(qc, comm)["PDF"]).split())
+        for want in ("5% commission \u00b7 $600.50", "5% commission \u00b7 $728.61"):
+            if want not in pdf_text:
+                problems.append(f"the PDF does not show '{want}' under the option total")
+        if _re.search(r"Commission\s+5%\s", pdf_text) and "5% commission" not in pdf_text:
+            problems.append("the PDF header still carries a rate-only commission cell")
+        # R82 (17 Oct 2026): it is the figure that sells the quote, so it is a badge, and in the
+        # email it sits directly under the totals beneath its own heading.
+        raw_print = surfaces_of(qc, comm)["PDF"]
+        css = _re.search(r"\.hero-comm\s*\{([^}]*)\}", raw_print)
+        if not css or "border" not in css.group(1) or "font-weight" not in css.group(1):
+            problems.append("the PDF commission line is not styled as a badge (needs a border and weight)")
+        em = surfaces_of(qc, comm).get("email copy") or ""
+        full = em.split("=== SHORT VERSION ===")[0]
+        fp = [x.strip() for x in full.split("\n\n")]
+        idx = next((i for i, x in enumerate(fp) if x.startswith("COMMISSION")), None)
+        tot = next((i for i, x in enumerate(fp) if "full line items, rate card" in x), None)
+        if idx is None:
+            problems.append("the email carries no COMMISSION heading")
+        elif tot is None or idx != tot + 1:
+            problems.append("the email's COMMISSION block is not directly under the totals paragraph")
 
-        # 3. 'No' must leave no trace
-        for name, text in {
-                "PDF": _re.sub(r"<[^>]+>", " ", render_print.render_html(qp)),
-                "HTML email": _re.sub(r"<[^>]+>", " ", render_html.render(qp)),
-                "email copy": subprocess.run(
-                    [sys.executable, os.path.join(HERE, "draft_email.py"), plain],
-                    capture_output=True, text=True).stdout or "",
-        }.items():
+        # ---- 2. 'No' must leave no trace, amounts included
+        if adjust(comm, "--commission-pct", "none").returncode:
+            problems.append("--commission-pct none failed")
+        with open(comm, encoding="utf-8") as fh:
+            qn = _json.load(fh)
+        if qn.get("commission_amounts") or qn.get("commission_line") or qn.get("commission_pct"):
+            problems.append("declining a commission left commission fields on quote.json")
+        for name, text in surfaces_of(qn, comm).items():
             if "commission" in text.lower():
                 problems.append(f"{name}: mentions a commission when none was recorded")
 
-        # 4. a nonsense rate is refused rather than printed
+        # ---- 3. a hand-assembled quote (no per-leg Core figures): the RATE stands alone
+        hand = os.path.join(d, "hand.json")
+        with open(wedding, encoding="utf-8") as fh:
+            hq = copy.deepcopy(_json.load(fh))
+        for leg in hq["legs"]:                       # what a hand-assembled quote.json lacks
+            for k in [k for k in leg if k.startswith("engine_")]:
+                del leg[k]
+        with open(hand, "w", encoding="utf-8") as fh:
+            _json.dump(hq, fh)
+        if adjust(hand, "--commission-pct", "5").returncode:
+            problems.append("recording a rate on a hand-assembled quote failed")
+        else:
+            with open(hand, encoding="utf-8") as fh:
+                qh = _json.load(fh)
+            if qh.get("commission_amounts"):
+                problems.append("an amount was stated for a quote with no Core per-leg figures -- "
+                                "it must be left out rather than guessed")
+            # The email copy is not tested here: draft_email.py already refuses a quote
+            # with no engine_net_line_cents, so a hand-assembled quote never reaches it.
+            for name, text in surfaces_of(qh, hand).items():
+                if name == "email copy":
+                    continue
+                if "A 5% commission applies to this program." not in " ".join(text.split()):
+                    problems.append(f"{name}: a hand-assembled quote must still state the rate")
+                if _re.search(r"commission[^.\n]{0,60}\$[\d,]", text, _re.I):
+                    problems.append(f"{name}: states an amount the plugin could not derive from Core's figures")
+
+        # ---- 4. a nonsense rate is refused rather than printed
         for bad in ("150", "abc", "-4"):
-            rb = subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"),
-                                 plain, "--commission-pct", bad],
-                                capture_output=True, text=True)
+            rb = adjust(plain, "--commission-pct", bad)
             if rb.returncode == 0:
                 problems.append(f"--commission-pct {bad!r} was accepted")
 
     if problems:
-        print("  \u2717 commission")
+        print("  ✗ commission")
         for b in problems[:8]:
             print(f"      - {b}")
-        print("      see RULES.md 2026-10-10: a commission is stated on every format and")
-        print("      changes no arithmetic; no amount is ever computed")
+        print("      see RULES.md: a commission amount is computed in code, on a fixed basis")
+        print("      (after discounts, before fuel), and changes no total")
         return False
-    print("  \u2713 commission (stated on 3 formats, absent when declined, total "
-          "unchanged, no amount computed)")
+    print("  ✓ commission (rate and amount on 3 formats, amount recomputed two ways, "
+          "absent when declined, total unchanged, no guessed amount)")
+    return True
+
+
+def lint_flight_line():
+    """The email asks for flight details ONLY when a flight is outstanding (PRD R74).
+
+    Added 16 Oct 2026. `draft_email.py` printed "Send over the flight details when you
+    have them" whenever the quote carried ANY placeholder, so a 9:00 AM pickup placeholder
+    on a coach hire with no flights made the email ask a client for flight details. Both
+    directions are pinned: no airport stop with a TBD flight, no line; a TBD flight, the
+    line.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+
+    cases = [("yerdle-iol-whistler-options", False), ("boston-offsite-handoff", True)]
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        for name, want in cases:
+            fx = os.path.join(DEFAULT_FIXTURES, name, "handoff")
+            q = os.path.join(d, name + ".json")
+            r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                                "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                               capture_output=True, text=True)
+            if r.returncode:
+                problems.append(f"{name}: could not normalize ({(r.stderr or '')[:120]})")
+                continue
+            with open(q, encoding="utf-8") as fh:
+                quote = _json.load(fh)
+            tbd_flight = any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd")
+                             for l in quote["legs"] for s in (l.get("stops") or []))
+            if tbd_flight != want:
+                problems.append(f"{name}: fixture no longer {'has' if want else 'lacks'} a TBD flight, "
+                                f"so this guard tests nothing")
+                continue
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q, "--clear"],
+                           capture_output=True, text=True)
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q],
+                                  capture_output=True, text=True).stdout or ""
+            has_line = "flight details" in mail
+            has_ph = bool(quote.get("internal", {}).get("placeholders"))
+            if has_line != want:
+                problems.append(f"{name}: email {'asks' if has_line else 'does not ask'} for flight details "
+                                f"but a flight is {'outstanding' if want else 'not outstanding'}"
+                                + (" (a placeholder exists, which must not trigger it)" if has_ph and not want else ""))
+    if problems:
+        print("  \u2717 flight line")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 flight line (asked only when a flight is outstanding; both directions pinned)")
+    return True
+
+
+def lint_client_requests():
+    """Carried client requests are noted and never resolved by the session (PRD R73).
+
+    Added 16 Oct 2026. A Yerdle session wrote "PA and signage are arranged separately, not
+    included in vehicle pricing" into the client email by hand. The session did not know
+    that. The line is now built in code from intake's client_questions, names the request,
+    says it will be confirmed, and carries no inclusion or exclusion wording. Pinned: the
+    line reaches the email copy and the HTML email, it passes the forbidden-wording check,
+    a quote with no operational request prints none, and no instruction file still teaches
+    the old "arranged separately" note.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    sys.path.insert(0, HERE)
+    from client_requests import FORBIDDEN, requests_line
+
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        for name, want in (("yerdle-iol-whistler-options", True), ("boston-offsite-handoff", False)):
+            fx = os.path.join(DEFAULT_FIXTURES, name, "handoff")
+            q = os.path.join(d, name + ".json")
+            r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                                "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                               capture_output=True, text=True)
+            if r.returncode:
+                problems.append(f"{name}: could not normalize ({(r.stderr or '')[:120]})")
+                continue
+            quote = _json.load(open(q, encoding="utf-8"))
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q, "--clear"],
+                           capture_output=True, text=True)
+            quote = _json.load(open(q, encoding="utf-8"))
+            line = requests_line(quote)
+            if bool(line) != want:
+                problems.append(f"{name}: requests line {'missing' if want else 'present'}: {line!r}")
+                continue
+            if not want:
+                continue
+            if FORBIDDEN.search(line):
+                problems.append(f"{name}: line asserts an answer: {line!r}")
+            for needle in ("PA/speaker", "Signage", "will confirm"):
+                if needle not in line:
+                    problems.append(f"{name}: line lacks {needle!r}")
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q],
+                                  capture_output=True, text=True).stdout or ""
+            if line not in mail:
+                problems.append(f"{name}: email copy lacks the line")
+            html = os.path.join(d, name + ".html")
+            subprocess.run([sys.executable, os.path.join(HERE, "render_html.py"), q, html],
+                           capture_output=True, text=True)
+            if os.path.exists(html):
+                import html as _h
+                if _h.escape(line, quote=True) not in open(html, encoding="utf-8").read() \
+                        and line not in open(html, encoding="utf-8").read():
+                    problems.append(f"{name}: HTML email lacks the line")
+            else:
+                problems.append(f"{name}: HTML email did not render")
+    root = os.path.abspath(os.path.join(HERE, "..", ".."))
+    for rel in ("quote-document/RULES.md", "quote-document/SKILL.md",
+                "quote-intake/references/client-questions.md"):
+        path = os.path.join(root, rel)
+        if os.path.exists(path) and "not included in vehicle pricing" in open(path, encoding="utf-8").read():
+            problems.append(f"{rel} still teaches 'not included in vehicle pricing' (R73)")
+    if problems:
+        print("  \u2717 client requests")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 client requests (noted, never resolved; no inclusion wording; email and HTML carry it)")
+    return True
+
+
+def lint_confirm_items():
+    """Every placeholder and operational request reaches the confirm list (PRD R72).
+
+    Added 16 Oct 2026. The Yerdle quote shipped four "NO SAVOYA SERVICE AREA" legs, a
+    placeholder pickup time and unconfirmed inventory notes with no one asked. The list is
+    built in code; service-area placeholders collapse into one item, nothing is dropped,
+    and SKILL.md must tell the session to run the helper before presenting files.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
+        q = os.path.join(d, "q.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                            "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                           capture_output=True, text=True)
+        if r.returncode:
+            problems.append("could not normalize yerdle")
+        else:
+            quote = _json.load(open(q, encoding="utf-8"))
+            out = subprocess.run([sys.executable, os.path.join(HERE, "confirm_items.py"), q, "--json"],
+                                 capture_output=True, text=True).stdout
+            got = _json.loads(out or "[]")
+            phs = quote["internal"]["placeholders"]
+            n_area = sum(1 for p in phs if "NO SAVOYA SERVICE AREA" in p)
+            n_other = sum(len([x for x in p.split(";") if x.strip()]) for p in phs if "NO SAVOYA SERVICE AREA" not in p)   # ";"-joined notes are separate items
+            n_req = sum(1 for x in quote.get("client_requests", []) if x["kind"] == "operational")
+            if n_area < 2:
+                problems.append("fixture no longer has several service-area placeholders; guard tests nothing")
+            kinds = [g["kind"] for g in got]
+            if kinds.count("service_area") != 1:
+                problems.append(f"service-area placeholders not grouped into one item: {kinds}")
+            if kinds.count("placeholder") != n_other:
+                problems.append(f"{n_other} other placeholders but {kinds.count('placeholder')} items")
+            if kinds.count("client_request") != n_req:
+                problems.append(f"{n_req} operational requests but {kinds.count('client_request')} items")
+            area_item = next((g for g in got if g["kind"] == "service_area"), {"text": ""})
+            for l in quote["legs"]:
+                if any(l["key"] in p and "NO SAVOYA SERVICE AREA" in p for p in phs) and l["key"] not in area_item["text"]:
+                    problems.append(f"grouped item omits leg {l['key']}")
+    skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    if "confirm_items.py" not in skill:
+        problems.append("SKILL.md never tells the session to run confirm_items.py")
+    if problems:
+        print("  \u2717 confirm items")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 confirm items (every placeholder and operational request listed; service areas grouped; SKILL.md runs it)")
+    return True
+
+
+def lint_deliverables():
+    """Only the formats the user chose are delivered (PRD R85)."""
+    import subprocess
+    import tempfile
+    import json as _json
+    problems = []
+    fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
+    with tempfile.TemporaryDirectory() as d:
+        q = os.path.join(d, "quote.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, q,
+                            "--prepared-by", "G"], capture_output=True, text=True)
+        if r.returncode:
+            print("  \u2717 deliverables: could not normalize the Yerdle fixture")
+            return False
+        def mail(fmt, *extra):
+            hd = os.path.join(d, "handoff"); os.makedirs(hd, exist_ok=True)
+            if fmt is None:
+                if os.path.exists(os.path.join(hd, "intake.json")):
+                    os.remove(os.path.join(hd, "intake.json"))
+            else:
+                _json.dump({"decisions": {"format": fmt}}, open(os.path.join(hd, "intake.json"), "w"))
+            return subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q, *extra],
+                                  capture_output=True, text=True, cwd=d)
+        if mail("pdf").returncode == 0:
+            problems.append("an email was drafted for a PDF-only job")
+        if "R85" not in mail("pdf").stderr:
+            problems.append("the refusal does not say why (R85)")
+        if mail("pdf", "--asked").returncode:
+            problems.append("--asked did not allow an email the user asked for")
+        for fmt in ("email", "email+pdf"):
+            if mail(fmt).returncode:
+                problems.append(f"an email was refused for the format {fmt!r}")
+        if mail(None).returncode:
+            problems.append("an email was refused when no format was recorded")
+        mail("pdf")
+        v = subprocess.run([sys.executable, os.path.join(HERE, "verify_document.py"), q], capture_output=True, text=True, cwd=d)
+        if "DELIVERABLES: pdf only" not in v.stdout:
+            problems.append("verify does not print the deliverables for a PDF-only job")
+    skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    if "DELIVERABLES" not in skill or "R85" not in skill:
+        problems.append("quote-document SKILL.md does not tell the session to deliver only the chosen format")
+    if problems:
+        print("  \u2717 deliverables")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 deliverables (a PDF-only job drafts no email; --asked and email formats pass; verify prints the line)")
+    return True
+
+
+def lint_blocked_capture():
+    """A session that produced no document still leaves a record (PRD R80)."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    cs = os.path.join(HERE, "capture_session.py")
+    with tempfile.TemporaryDirectory() as d:
+        env = dict(os.environ, HOME=d)
+        def run(*args):
+            return subprocess.run([sys.executable, cs, *args], capture_output=True, text=True, env=env, cwd=d)
+        cap = os.path.join(d, ".savoya-quoting", "captures")
+        r = run("--blocked", "could not save responses", "--slug", "blk", "--client", "Blk")
+        if "CAPTURE CONSENT UNASKED" not in r.stdout or glob.glob(os.path.join(cap, "*")):
+            problems.append("unasked consent: a blocked session must ask and write nothing")
+        run("--consent", "no", "--user", "G")
+        run("--blocked", "x", "--slug", "blk", "--client", "Blk")
+        if glob.glob(os.path.join(cap, "*.blocked*")):
+            problems.append("declined consent: a blocked session wrote a record")
+        run("--consent", "yes")
+        os.makedirs(os.path.join(d, "handoff", "responses"))
+        _json.dump({"aggregate_total": 100, "quote_units": [{"key": "u1", "label": "L", "line_total": 100}]},
+                   open(os.path.join(d, "handoff", "responses", "A.json"), "w"))
+        open(os.path.join(d, "req.md"), "w").write("the request")
+        r = run("--blocked", "responses could not be saved", "--slug", "blk", "--client", "Blk", "--request", "req.md")
+        out = os.path.join(cap, "blk.blocked.json")
+        if r.returncode or not os.path.exists(out):
+            problems.append(f"no record written with consent granted: {r.stderr.strip()[:150]}")
+        else:
+            rec = _json.load(open(out))
+            if rec.get("request") != "the request" or not rec.get("priced") or rec.get("blocked_because") != "responses could not be saved":
+                problems.append("the record lacks the request, what was priced, or the reason")
+            if "blocked.json" not in r.stdout or not glob.glob(os.path.join(cap, "*.blocked.pending-upload")):
+                problems.append("the record is not offered for upload with a pending marker")
+            packed = os.path.join(cap, "blk.blocked.json.gz.b64")
+            if not os.path.exists(packed):
+                problems.append("the blocked record is not packed for upload (a readable copy is what gets condensed)")
+            else:
+                import base64, gzip, hashlib
+                envl = _json.load(open(packed))
+                body = gzip.decompress(base64.b64decode(envl["data"]))
+                if body != open(out, "rb").read() or hashlib.sha256(body).hexdigest() != envl.get("sha256"):
+                    problems.append("the packed blocked record is not the saved record byte for byte")
+                up = _json.loads(r.stdout[r.stdout.index("{"):r.stdout.rindex("}") + 1])["upload"][0]
+                if up.get("sha256") != hashlib.sha256(open(packed, "rb").read()).hexdigest() or not up.get("bytes"):
+                    problems.append("the upload list does not carry the byte count and hash of the file to upload")
+            r2 = run("--mark-uploaded", "blk", "--file-id", "abc")
+            if glob.glob(os.path.join(cap, "*.blocked.pending-upload")):
+                problems.append("--mark-uploaded did not clear the blocked-session marker")
+    cap_md = open(os.path.join(HERE, "..", "references", "capture.md"), encoding="utf-8").read()
+    skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    intake = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    for name, text in (("capture.md", cap_md), ("quote-document SKILL.md", skill), ("quote-intake SKILL.md", intake)):
+        if "--blocked" not in text:
+            problems.append(f"{name} never tells the session to run capture_session.py --blocked")
+    if problems:
+        print("  \u2717 blocked-session capture")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 blocked-session capture (asks, respects a no, records request and priced data, clears on upload; all three docs name it)")
+    return True
+
+
+def lint_handoff_packages():
+    """Pricing responses are saved by a checked step and separately priced packages become
+    options in one document (PRD R78, R79). Built from the Yerdle options fixture: its four
+    units are split into two packages, ingested, merged and normalized, and the document must
+    come out with the fixture's own totals."""
+    import copy
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
+    fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
+    raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
+    us = raw["quote_units"]
+
+    def pkg(units, headcount=75):
+        d = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
+        # R91: units serving one trip carry a share of the headcount that adds up to it
+        # (the first takes the remainder, the rest 25 each), never the whole headcount each
+        groups = {}
+        for u in units:
+            groups.setdefault((u.get("pickup_date"), str([x.get("name") for x in u.get("stops") or []])), []).append(u)
+        d["quote_units"] = []
+        for g in groups.values():
+            for i_, u in enumerate(g):
+                pc = None if headcount is None else (headcount - 25 * (len(g) - 1) if i_ == 0 else 25)
+                d["quote_units"].append(dict(copy.deepcopy(u), passenger_count=pc))
+        d["aggregate_total"] = sum(u["line_total"] for u in units)
+        return d
+    A = pkg(us[0:2])
+    twin = copy.deepcopy(us[1]); twin["key"] = "optB_jun10_coach"
+    B = pkg([us[2], us[3], twin])
+    with tempfile.TemporaryDirectory() as d:
+        def run(args, stdin=None):
+            return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
+        bad = _json.dumps(dict(B, aggregate_total=B["aggregate_total"] + 1))
+        r = run([intake, "ingest", "--name", "B"], bad)
+        if r.returncode != 2 or os.path.exists(os.path.join(d, "handoff", "responses", "B.json")):
+            problems.append("ingest accepted a response whose units do not add up to its own total")
+        r = run([intake, "ingest", "--name", "B"], "{not json")
+        if r.returncode == 0:
+            problems.append("ingest accepted text that is not JSON")
+        for name, p_ in (("A", A), ("B", B)):
+            r = run([intake, "ingest", "--name", name], _json.dumps(p_))
+            if r.returncode:
+                problems.append(f"ingest rejected a good response {name}: {r.stderr.strip()[:120]}")
+        saved = os.path.join(d, "handoff", "responses", "A.json")
+        if os.path.exists(saved) and _json.load(open(saved)) != A:
+            problems.append("ingest changed the response it saved")
+        shutil.copy(os.path.join(fx, "request.md"), os.path.join(d, "request.md"))
+        base_w = [intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
+                  "--package", "A", "--package", "B", "--shared", "optB_jun10_coach=optA_jun10_coach",
+                  "--reading", "guard reading", "--final"]
+        # R84: the fixture request says 50-75 passengers, so a write without a chosen headcount refuses
+        r = run(base_w)
+        if r.returncode == 0 or "headcount range" not in r.stderr + r.stdout:
+            problems.append("a request with a headcount range was written without a chosen headcount")
+        r = run(base_w + ["--headcount", "200"])
+        if r.returncode == 0:
+            problems.append("a headcount outside the requested range was accepted")
+        # R83: an unresolved stop refuses the write and says to ask for an address
+        r = run(base_w + ["--headcount", "75", "--stop-note", "As Directed|Whistler, BC|unresolved"])
+        if r.returncode == 0 or "address" not in (r.stderr + r.stdout).lower():
+            problems.append("an unresolved stop did not stop the write with a request for an address")
+        r = run(base_w + ["--headcount", "75", "--stop-note", "As Directed|Whistler, British Columbia|resolved"])
+        if r.returncode:
+            problems.append(f"a resolved stop and a chosen headcount were refused: {r.stderr.strip()[:140]}")
+        elif "As Directed" not in open(os.path.join(d, "handoff", "intake.json")).read():
+            problems.append("the stop lookup was not recorded in intake.json")
+        # R84: units priced without passenger_count carry a vehicle default, so they are refused
+        nopc = pkg(us[0:2], headcount=None)
+        run([intake, "ingest", "--name", "N"], _json.dumps(nopc))
+        r = run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
+                 "--package", "N", "--headcount", "75", "--final"])
+        if r.returncode == 0:
+            problems.append("units priced without passenger_count were accepted for a ranged request")
+        r = run(base_w + ["--headcount", "75"])
+        if r.returncode:
+            problems.append(f"write with two packages failed: {r.stderr.strip()[:160]}")
+        else:
+            r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q.json", "--prepared-by", "G"])
+            qp = os.path.join(d, "q.json")
+            if r.returncode or not os.path.exists(qp):
+                problems.append(f"normalize of the merged handoff failed: {(r.stderr or r.stdout).strip()[:160]}")
+            else:
+                run([os.path.join(HERE, "apply_adjustments.py"), "q.json", "--commission-pct", "5"])
+                q = _json.load(open(qp))
+                if q.get("total_cents") != A["aggregate_total"]:
+                    problems.append(f"Option A total {q.get('total_cents')} is not package A's own {A['aggregate_total']}")
+                if (q.get("option_b") or {}).get("total_cents") != B["aggregate_total"]:
+                    problems.append(f"Option B total {(q.get('option_b') or {}).get('total_cents')} is not package B's own {B['aggregate_total']}")
+                if not any("guard reading" in x for x in (q.get("internal") or {}).get("placeholders", [])):
+                    problems.append("a scenario reading did not reach the placeholders the confirm step lists")
+        # R78 amendment: the same unit key in two packages is namespaced by the merge, and the
+        # saved response is never edited to make that work
+        dup = pkg([copy.deepcopy(us[0])])
+        run([intake, "ingest", "--name", "C"], _json.dumps(dup))
+        r = run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
+                 "--package", "A", "--package", "C", "--headcount", "75"])
+        merged = _json.load(open(os.path.join(d, "handoff", "raw_quote.json"))) if r.returncode == 0 else {}
+        keys = [u["key"] for u in merged.get("quote_units", [])]
+        if r.returncode or len(keys) != len(set(keys)) or "C_optA_jun9_coach" not in keys:
+            problems.append(f"colliding unit keys were not namespaced by the merge: {r.stderr.strip()[:120]} {keys}")
+        if _json.load(open(os.path.join(d, "handoff", "responses", "C.json"))) != dup:
+            problems.append("the merge edited a saved response")
+        # R91: a mixed-vehicle trip is split, not duplicated. 50 on one unit plus 25 on another is a correct 75;
+        # 75 on each, or counts that add up to something else, are refused.
+        def one_trip(counts):
+            u0 = copy.deepcopy(us[0]); out = []
+            for i_, c in enumerate(counts):
+                u_ = dict(copy.deepcopy(u0), passenger_count=c, key=f"s{i_}")
+                out.append(u_)
+            d_ = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
+            d_["quote_units"] = out
+            d_["aggregate_total"] = sum(u_["line_total"] for u_ in out)
+            return d_
+        def write_one(name, counts):
+            run([intake, "ingest", "--name", name], _json.dumps(one_trip(counts)))
+            return run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
+                        "--package", name, "--headcount", "75", "--final"])
+        r = write_one("S", [50, 25])
+        if r.returncode:
+            problems.append(f"a trip split 50 + 25 against a confirmed 75 was refused: {r.stderr.strip()[:160]}")
+        r = write_one("T", [75, 75])
+        if r.returncode == 0 or "150" not in r.stderr:
+            problems.append("75 on each of two units serving one trip was accepted, or the refusal did not say 150")
+        r = write_one("U", [50, 20])
+        if r.returncode == 0 or "70" not in r.stderr:
+            problems.append("counts adding up to 70 against a confirmed 75 were accepted")
+        # R92: a refusal leaves blocked.json, and the document step will not carry on past it
+        if not os.path.exists(os.path.join(d, "handoff", "blocked.json")):
+            problems.append("a refused write left no blocked.json")
+        r = run([os.path.join(HERE, "decide.py"), "--next"])
+        if r.returncode == 0 or "R92" not in r.stderr + r.stdout:
+            problems.append("decide.py went on while a refused write was outstanding")
+        r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q2.json", "--prepared-by", "G"])
+        if r.returncode == 0 or "R92" not in r.stderr + r.stdout:
+            problems.append("normalize_quote.py went on while a refused write was outstanding")
+        r = write_one("S", [50, 25])
+        if r.returncode or os.path.exists(os.path.join(d, "handoff", "blocked.json")):
+            problems.append("a good write did not end the refusal")
+        if _json.load(open(os.path.join(d, "handoff", "intake.json"))).get("written_by") != "handoff.py write":
+            problems.append("intake.json does not say it was written by handoff.py")
+        # a response too large to paste may leave out its presentation block, declared and recorded
+        withp = dict(pkg(us[0:1]), presentation={"data": {"big": "x" * 50}})
+        r = run([intake, "ingest", "--name", "P", "--without-presentation"], _json.dumps(withp))
+        sp = _json.load(open(os.path.join(d, "handoff", "responses", "P.json"))) if r.returncode == 0 else {}
+        if "presentation" in sp or (sp.get("_ingest") or {}).get("left_out") != ["presentation"]:
+            problems.append("--without-presentation did not drop the block and record that it did")
+    text = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    for needle in ("handoff.py ingest", "--package", "--reading", "--stop-note", "--headcount", "British Columbia"):
+        if needle not in text:
+            problems.append(f"quote-intake SKILL.md does not tell the session to use `{needle}`")
+    if "hand-type" not in text.lower() and "retype" not in text.lower():
+        problems.append("quote-intake SKILL.md never forbids retyping a pricing response")
+    if problems:
+        print("  \u2717 handoff packages")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 handoff packages (ingest checks totals and never edits; two packages merge to their own Core totals; a split headcount passes and a duplicated one does not; a refusal leaves blocked.json and the document step stops)")
+    return True
+
+
+def lint_capture_at_delivery():
+    """Verification writes the snapshot and the marker; the two instruction files agree (R63).
+
+    Added 16 Oct 2026. The Yerdle session delivered a verified PDF and never captured; the
+    record existed only because the user asked "did we log these?". Capture now happens
+    inside verify_document.py (PASS and PARTIAL write it, FAIL does not), the marker is
+    left behind, and SKILL.md and capture.md must both say "both files" and name the flag.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        env = dict(os.environ, HOME=d)
+        fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
+        q = os.path.join(d, "quote.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"),
+                            "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                           capture_output=True, text=True, env=env)
+        if r.returncode:
+            problems.append("could not normalize yerdle")
+        else:
+            cap = os.path.join(d, ".savoya-quoting", "captures")
+            vcmd = [sys.executable, os.path.join(HERE, "verify_document.py"), q,
+                    "--capture-slug", "guard-slug", "--capture-client", "Guard"]
+            # R76: before the one-time consent answer, nothing is captured and the session is told to ask.
+            v0 = subprocess.run(vcmd, capture_output=True, text=True, env=env)
+            if "CAPTURE CONSENT UNASKED" not in v0.stdout or glob.glob(os.path.join(cap, "*")):
+                problems.append("unasked consent: verify must ask and write nothing")
+            cs = [sys.executable, os.path.join(HERE, "capture_session.py")]
+            subprocess.run(cs + ["--consent", "no", "--user", "Guard User"], capture_output=True, text=True, env=env)
+            v1 = subprocess.run(vcmd, capture_output=True, text=True, env=env)
+            if "CAPTURE SKIPPED" not in v1.stdout or glob.glob(os.path.join(cap, "*.pending-upload")):
+                problems.append("declined consent: verify must skip the capture silently")
+            subprocess.run(cs + ["--consent", "yes"], capture_output=True, text=True, env=env)
+            v = subprocess.run(vcmd, capture_output=True, text=True, env=env)
+            markers = glob.glob(os.path.join(cap, "*.pending-upload")) if os.path.isdir(cap) else []
+            if v.returncode in (0, 2) and not markers:
+                problems.append("verification passed but left no pending-upload marker")
+            if v.returncode in (0, 2) and "NOT UPLOADED" not in v.stdout:
+                problems.append("verify does not tell the session the upload is still owed")
+            # a failing document writes nothing
+            bad = _json.load(open(q, encoding="utf-8"))
+            bad["engine_subtotal_cents"] = (bad.get("engine_subtotal_cents") or 0) + 123
+            bq = os.path.join(d, "bad.json")
+            _json.dump(bad, open(bq, "w"))
+            for m in markers:
+                os.remove(m)
+            v2 = subprocess.run([sys.executable, os.path.join(HERE, "verify_document.py"), bq,
+                                 "--capture-slug", "bad-slug", "--capture-client", "Bad"],
+                                capture_output=True, text=True, env=env)
+            if v2.returncode == 1 and glob.glob(os.path.join(cap, "bad-slug*")):
+                problems.append("a FAILED verification still wrote a capture")
+            if v2.returncode != 1:
+                problems.append("fixture with a moved subtotal no longer fails verification")
+    skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    cap_md = open(os.path.join(HERE, "..", "references", "capture.md"), encoding="utf-8").read()
+    for name, text in (("SKILL.md", skill), ("capture.md", cap_md)):
+        if "--capture-slug" not in text:
+            problems.append(f"{name} does not name verify_document.py --capture-slug")
+        if "both" not in text.lower():
+            problems.append(f"{name} does not say to upload both files")
+        if "CAPTURE CONSENT UNASKED" not in text:
+            problems.append(f"{name} does not tell the session what to do on CAPTURE CONSENT UNASKED")
+    if "Upload the one file" in skill:
+        problems.append("SKILL.md still says to upload one file; capture.md says both")
+    if problems:
+        print("  \u2717 capture at delivery")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 capture at delivery (verify writes snapshot and marker; FAIL writes none; instructions agree)")
     return True
 
 
@@ -2347,6 +2980,20 @@ def lint_email_reconciles():
             if sum(stated) != sum(core):
                 problems.append(f"email lines sum to ${sum(stated) / 100:,.2f}, engine lines "
                                 f"to ${sum(core) / 100:,.2f}")
+        # R71: the short email states the same Core amounts, and the program total.
+        sh = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qp, "--short"],
+                            capture_output=True, text=True).stdout
+        if "=== SHORT VERSION ===" in sh or not sh:
+            problems.append("--short must print only the short email")
+        s_lines = [int(round(float(x.replace(",", "")) * 100))
+                   for x in _re.findall(r"^\s+\u2022 .*: \$([\d,]+\.\d\d)$", sh, _re.M)]
+        if s_lines != [c for c in core]:
+            problems.append(f"short email leg totals {s_lines} differ from Core {core}")
+        if f"${q['total_cents'] / 100:,.2f}" not in sh:
+            problems.append("short email omits the program total")
+        full = mail.stdout
+        if "=== SHORT VERSION ===" not in full:
+            problems.append("default output does not carry the labelled short version")
 
     if problems:
         print("  ✗ email reconciles")
@@ -2822,6 +3469,115 @@ def lint_route_guards():
     return True
 
 
+def lint_help_and_artifacts():
+    """The CSM help page and the managed artifacts stay true to the product (PRD R86-R90)."""
+    import re as _re
+    import subprocess
+    root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+    adir = os.path.join(root, "docs", "artifacts")
+    helpmd = os.path.join(root, "skills", "quote-intake", "references", "help.md")
+    if not os.path.isdir(adir):
+        print("  \u25cb help and artifacts: docs/artifacts is not in this copy (installed plugin) \u2014 skipped")
+        return True
+    problems = []
+    r = subprocess.run([sys.executable, os.path.join(adir, "sync_artifacts.py"), "check", "--quiet"],
+                       capture_output=True, text=True)
+    if r.returncode:
+        problems.append("a managed artifact is stale: " + r.stdout.strip().replace("\n", " | "))
+    text = open(helpmd, encoding="utf-8").read()
+    page = open(os.path.join(adir, "help.html"), encoding="utf-8").read()
+    # R88: open to everyone, so nothing a client, a price or the internals could leak through
+    names = set()
+    for fx in glob.glob(os.path.join(DEFAULT_FIXTURES, "*")):
+        ip = os.path.join(fx, "handoff", "intake.json")
+        if os.path.exists(ip):
+            try:
+                c = json.load(open(ip)).get("client")
+                c = c.get("name") if isinstance(c, dict) else c
+                if c: names.add(str(c).lower())
+            except Exception:
+                pass
+    names = {n for n in names if len(n) > 3}
+    if not names:
+        problems.append("no client names found in the fixtures to check the help page against; the check would pass by default")
+    tools = _re.findall(r"```tools\n(.*?)```", open(os.path.join(root, "skills", "quote-intake", "references", "mcp-contract.md"), encoding="utf-8").read(), _re.S)
+    tool_names = tools[0].split() if tools else []
+    for label, body in (("help.md", text), ("help page", page)):
+        low = body.lower()
+        if _re.search(r"\$\s?\d", body):
+            problems.append(f"{label} carries a dollar amount (R88)")
+        for n in sorted(names):
+            if _re.search(r"\b" + _re.escape(n) + r"\b", low):
+                problems.append(f"{label} names a client: {n} (R88)")
+        for t in tool_names:
+            if t in body:
+                problems.append(f"{label} names a tool: {t} (R88)")
+        if _re.search(r"\.py\b|ENGINEERING|\bMCP\b|\bCore\b", body):
+            problems.append(f"{label} names a script or Savoya's internals (R88)")
+    # R86/R87: the sections the page promises, and the contact route
+    for sec in ("What it does", "How a quote goes", "The questions it asks, and why", "What it cannot do yet", "Questions and answers"):
+        if f"## {sec}" not in text:
+            problems.append(f"help.md has no '{sec}' section (R86)")
+    if "core-ideas" not in text or "Log this session" not in text and "log this session" not in text:
+        problems.append("help.md does not give the log-the-session and core-ideas route (R90)")
+    if "Word and Excel" not in text:
+        problems.append("help.md does not say Word and Excel are unproven")
+    # drift against the code: one bullet per question the product asks
+    sec = text.split("## The questions it asks, and why", 1)[-1].split("\n## ", 1)[0]
+    asked = len(_re.findall(r"^- ", sec, _re.M))
+    sys.path.insert(0, adir)
+    import sync_artifacts as _sa
+    if asked != len(_sa.question_order()):
+        problems.append(f"help.md lists {asked} questions; the product asks {len(_sa.question_order())}")
+    # the skills must answer from it and honour the request (R87, R90)
+    for sk in ("quote-intake", "quote-document"):
+        body = open(os.path.join(root, "skills", sk, "SKILL.md"), encoding="utf-8").read()
+        if "references/help.md" not in body or "log this session" not in body.lower() or "R90" not in body:
+            problems.append(f"{sk} SKILL.md does not point at help.md or handle 'log this session' (R87, R90)")
+    if problems:
+        print("  \u2717 help and artifacts")
+        for m in problems:
+            print("      " + m)
+        return False
+    print("  \u2713 help and artifacts")
+    return True
+
+
+def lint_refusals_and_mechanics():
+    """A refused step is never walked around, and the user is never asked about the product's
+    own working (PRD R92, R93). The behaviour is tested in `handoff packages`; this checks the
+    instructions the session actually reads."""
+    import re as _re
+    problems = []
+    skills = os.path.join(HERE, "..", "..")
+    files = [os.path.join(skills, "quote-intake", "SKILL.md"), os.path.join(skills, "quote-document", "SKILL.md")]
+    for sk in ("quote-intake", "quote-document"):
+        files += sorted(glob.glob(os.path.join(skills, sk, "references", "*.md")))
+    texts = {f: open(f, encoding="utf-8").read() for f in files}
+    ask = _re.compile(r"how should (?:the|a|this) (?:handoff|file|document|quote) be (?:written|saved|stored)", _re.I)
+    for f, t in texts.items():
+        name = os.path.relpath(f, skills)
+        if ask.search(t):
+            problems.append(f"{name} asks the user how a file is written (R93)")
+        for ln in t.splitlines():
+            if "do you want in detail" in ln.lower() and "never when the request named" not in ln.lower():
+                problems.append(f"{name} asks which scenario to detail without limiting it to options intake generated (R93): {ln[:80]!r}")
+    intake = texts[files[0]]
+    doc = texts[files[1]]
+    for needle in ("blocked.json", "R92", "R93", "customize it, go on to the client document, or just the quote"):
+        if needle not in intake:
+            problems.append(f"quote-intake SKILL.md lacks {needle!r}")
+    if "blocked.json" not in doc or "R92" not in doc:
+        problems.append("quote-document SKILL.md does not tell the session to stop on blocked.json (R92)")
+    if problems:
+        print("  \u2717 refusals and mechanics questions")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 refusals and mechanics questions (no question about how a file is written; scenario detail limited to options intake generated; both skills stop on blocked.json)")
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fixtures", default=DEFAULT_FIXTURES)
@@ -2854,6 +3610,13 @@ def main():
     lint_ok = lint_email_headings() and lint_ok
     lint_ok = lint_instructions_match_the_code() and lint_ok
     lint_ok = lint_commission() and lint_ok
+    lint_ok = lint_flight_line() and lint_ok
+    lint_ok = lint_client_requests() and lint_ok
+    lint_ok = lint_confirm_items() and lint_ok
+    lint_ok = lint_capture_at_delivery() and lint_ok
+    lint_ok = lint_handoff_packages() and lint_ok
+    lint_ok = lint_blocked_capture() and lint_ok
+    lint_ok = lint_deliverables() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok
     lint_ok = lint_no_hand_editing() and lint_ok
     lint_ok = lint_path_resolution() and lint_ok
@@ -2861,6 +3624,8 @@ def main():
     lint_ok = lint_no_own_arithmetic() and lint_ok
     lint_ok = lint_passenger_count() and lint_ok
     lint_ok = lint_route_guards() and lint_ok
+    lint_ok = lint_help_and_artifacts() and lint_ok
+    lint_ok = lint_refusals_and_mechanics() and lint_ok
     bad = 0
     # Counting pages never caught the worst failures here: `.page` is a fixed box with
     # overflow:hidden, so content that does not fit is *cut*, and pdftotext still

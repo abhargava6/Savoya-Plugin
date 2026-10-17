@@ -1,0 +1,202 @@
+<title>Savoya Quoting Help</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+  /* One calm reading column: orientation first, then the workflow, limits, and a searchable FAQ.
+     Brand tokens match the team diagrams (copper on warm neutrals). */
+  :root{
+    --bg:#FAF8F5; --ink:#1A1A1A; --muted:#625C57; --rule:#E6E1DC;
+    --copper:#9A5B22; --tint:#F7EDE4; --card:#FFFFFF;
+    --notyet:#8A5A00; --notyetbg:#FFF7E6; --notyetline:rgba(180,120,11,.35);
+    --ok:#2F6F4F; --okbg:#EAF3EE; --okline:rgba(47,111,79,.33);
+    --display:Georgia,"Times New Roman",serif;
+    --body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F0F0F; --ink:#FAF8F5; --muted:#ADA59D; --rule:#2A2A2A;
+      --copper:#D99560; --tint:#1E1712; --card:#171717;
+      --notyet:#E8B04B; --notyetbg:#2A2015; --notyetline:rgba(232,176,75,.33);
+      --ok:#6FB68E; --okbg:#13241B; --okline:rgba(111,182,142,.3);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F0F0F; --ink:#FAF8F5; --muted:#ADA59D; --rule:#2A2A2A;
+    --copper:#D99560; --tint:#1E1712; --card:#171717;
+    --notyet:#E8B04B; --notyetbg:#2A2015; --notyetline:rgba(232,176,75,.33);
+    --ok:#6FB68E; --okbg:#13241B; --okline:rgba(111,182,142,.3);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;
+       line-height:1.6;-webkit-font-smoothing:antialiased;
+       padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:860px;margin:0 auto;padding-block:36px 80px}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.4vw,36px);line-height:1.15;margin:0 0 8px;text-wrap:balance}
+  h2{font-family:var(--display);font-weight:400;font-size:23px;line-height:1.25;margin:48px 0 6px;
+     border-top:2px solid var(--copper);padding-top:12px;text-wrap:balance}
+  p{margin:0 0 12px;max-width:68ch}
+  .lede{font-size:17px;color:var(--ink);max-width:62ch}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--copper);margin:0 0 18px}
+  code{font-family:var(--mono);font-size:.88em;background:var(--tint);padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+  .toc{display:flex;flex-wrap:wrap;gap:6px 18px;margin:20px 0 0;padding:0;list-style:none;font-size:14px}
+  .toc a{color:var(--copper);text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  a:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--copper);outline-offset:3px;border-radius:4px}
+
+  .diagram{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto}
+  .diagram pre.mermaid{margin:0;text-align:center;min-width:0}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin:0 0 6px}
+  .key{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:4px;border:1px solid var(--rule);display:inline-block;flex:none}
+
+  .steps ol{margin:10px 0 0;padding-left:0;list-style:none;counter-reset:s;display:grid;gap:8px}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--rule);
+            border-radius:12px;padding:11px 14px 11px 58px;min-width:0}
+  .steps li::before{content:counter(s);position:absolute;left:14px;top:10px;width:32px;height:30px;font-family:var(--display);
+                    font-size:17px;color:var(--copper);background:var(--tint);border-radius:9px;
+                    display:flex;align-items:center;justify-content:center}
+  .plain ul{margin:8px 0 0;padding-left:20px;max-width:68ch}
+  .plain li{margin-bottom:6px}
+
+  .limits ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+  .limits li{background:var(--notyetbg);border:1px solid var(--notyetline);border-radius:12px;padding:10px 14px;max-width:none}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--notyet);margin-right:8px;font-weight:600}
+
+  .search{display:block;width:100%;max-width:520px;margin:12px 0 14px;padding:10px 13px;font:inherit;color:var(--ink);
+          background:var(--card);border:1px solid var(--rule);border-radius:10px}
+  details.qa{background:var(--card);border:1px solid var(--rule);border-radius:12px;margin-bottom:8px;padding:0 15px}
+  details.qa summary{cursor:pointer;padding:12px 0;font-weight:600;list-style-position:outside}
+  details.qa[open] summary{color:var(--copper)}
+  details.qa > :not(summary){max-width:66ch}
+  details.qa > p:last-child,details.qa > ul:last-child{margin-bottom:14px}
+  .none{color:var(--muted);font-size:14px}
+
+  .report{background:var(--okbg);border:1px solid var(--okline);border-radius:14px;padding:16px 18px;margin-top:14px}
+  .report b{display:block;margin-bottom:4px}
+  .say{display:inline-block;margin:4px 0 8px;padding:8px 12px;background:var(--card);border:1px solid var(--okline);
+       border-radius:10px;font-family:var(--mono);font-size:14px}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+  @media (prefers-reduced-motion:no-preference){details.qa{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+  <h1>Savoya quoting assistant</h1>
+  <p class="stamp">Release 0.27.4</p>
+  <p class="lede">Paste a client's request and get an exact Savoya quote, then the PDF or email you send. This page shows how it works, what it cannot do yet, and answers the questions people ask most.</p>
+  <ul class="toc">
+    <li><a href="#flow">How it works</a></li>
+    <li><a href="#asks">What it asks you</a></li>
+    <li><a href="#limits">What it cannot do yet</a></li>
+    <li><a href="#faq">Questions and answers</a></li>
+    <li><a href="#wrong">If something looks wrong</a></li>
+  </ul>
+
+  <h2 id="what">What it does</h2>
+  <div class="plain"><p>The quoting assistant turns a client's ground-transportation request into an exact Savoya quote, then into the document you send: a PDF proposal, email copy, or both. Every number comes from Savoya's own pricing, the same figures the web app shows. The assistant never works out a price itself.</p></div>
+
+  <h2 id="flow">How a quote goes</h2>
+  <p>You are asked a question only where a person has to decide. Everything else runs on its own.</p>
+  <div class="legend">
+    <span class="key"><i class="sw" style="background:#FFF7E6;border-color:#F59E0B"></i> a question for you</span>
+    <span class="key"><i class="sw" style="background:#EAF3EE;border-color:#2F6F4F"></i> something you receive</span>
+    <span class="key"><i class="sw" style="background:#FFFFFF;border-color:#2F6F4F"></i> a place you can stop</span>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    A["Paste the client's request"] --> BQ{"Anything unclear?"}
+    BQ -->|yes| C["Answer one question<br/>headcount · which hotel · which year"]
+    BQ -->|no| D
+    C --> D(["Rate sheet first,<br/>or straight to the quote?"])
+    D --> E(["Best value, options,<br/>or you name the vehicles?"])
+    E --> SHORT{"Enough vehicles<br/>in that city?"}
+    SHORT -->|no| NEAR(["Three nearest markets<br/>and what each can add.<br/>You choose."])
+    SHORT -->|yes| F
+    NEAR --> F["<b>Priced quote</b><br/>every option, every leg"]
+    F --> GQ(["One question: customize it,<br/>go on to the client document,<br/>or just the quote?"])
+    GQ -->|customize| F
+    GQ -->|just the quote| DONE1(["Done. You have the number"])
+    GQ -->|client document| J(["Six quick questions"])
+    J --> K["<b>PDF and or email copy</b>"]
+    K --> LQ{"Anything you'd like changed?"}
+    LQ -->|yes, fix it| K
+    LQ -->|no| DONE2(["Done"])
+
+    classDef begin fill:#F7EDE4,stroke:#9A5B22,stroke-width:2px,color:#1A1A1A
+    classDef question fill:#FFF7E6,stroke:#F59E0B,stroke-width:2px,color:#1A1A1A
+    classDef branch fill:#FFFFFF,stroke:#8A837C,color:#1A1A1A
+    classDef output fill:#EAF3EE,stroke:#2F6F4F,stroke-width:2px,color:#1A1A1A
+    classDef finish fill:#FFFFFF,stroke:#2F6F4F,color:#2F6F4F
+    class A begin
+    class C,D,E,J,NEAR,GQ question
+    class BQ,LQ,SHORT branch
+    class F,K output
+    class DONE1,DONE2 finish
+</pre>
+  </div>
+  <div class="steps"><ol><li><strong>You paste the client's request.</strong> An itinerary, an RFP, a forwarded email. Anything the client sent.</li><li><strong>It finds the client and the stops.</strong> If a client or a place is ambiguous, it asks you once, in one message.</li><li><strong>It asks two short questions.</strong> Whether you want a rate sheet first, and whether you want it to pick the best value, show options, or price the vehicles you name.</li><li><strong>It checks vehicle availability in the city.</strong> If the city has too few vehicles, it shows the three nearest markets and what each can add, and you choose. It never picks for you.</li><li><strong>You get the priced quote.</strong> Every option, every leg, with the positioning time included.</li><li><strong>You refine it.</strong> Different vehicles, headcount or hours, as often as you like.</li><li><strong>It asks one question.</strong> Customize the quote, go on to the client document, or stop at the quote. "Just the quote" is a complete answer.</li><li><strong>Six quick questions, one at a time.</strong> Discount, commission, cover, personalisation, map, format.</li><li><strong>You get the files.</strong> The PDF, and the email copy if you asked for it.</li><li><strong>It asks what you would like changed.</strong> Name it and the assistant fixes it, checks it again and hands you the new file.</li></ol></div>
+
+  <h2 id="asks">What it asks you</h2>
+  <p>After you say you want a client document, the assistant asks six questions, one at a time and always in this order.</p>
+  <div class="plain"><ul><li><strong>Discount.</strong> An extra percentage discount is priced again through Savoya, so the new total is Savoya's number. It is not saved in Savoya.</li><li><strong>Commission.</strong> Shows the rate and the commission amount on the document. It does not change any total.</li><li><strong>Cover.</strong> Which cover page the PDF opens with.</li><li><strong>Personalisation.</strong> Event name, a short intro note, your contact details, a closing line.</li><li><strong>Map.</strong> Whether to include a route map in the PDF.</li><li><strong>Format.</strong> PDF, email copy, or both. You get exactly what you choose.</li></ul></div>
+
+  <h2 id="limits">What it cannot do yet</h2>
+  <p>These are known limits today, not surprises. Plan around them.</p>
+  <div class="limits"><ul><li>A quote needs an identified client. Generic market rates with no client are not supported yet.</li><li>A market with no stored rate needs a base rate from you. There is no estimate. The client's discount and fuel are applied to the rate you give, and it is not saved in Savoya.</li><li>Real flight numbers and private-aviation details are kept as notes on the quote. Flights go in as "time to be confirmed".</li><li>A passenger manifest with flight and seating detail is not supported yet.</li><li>Vehicle counts for nearby markets are extra vehicles, not date-specific availability, and they are unconfirmed.</li><li>Fuel cannot be changed in the document. To waive it, change it in Savoya and quote again.</li><li>Document adjustments are flat amounts. A percentage change goes through a new quote.</li><li>The email is copy and paste. The assistant does not send mail or create drafts.</li><li>If your network blocks map services, the map falls back to a simple overview that does not show driving routes.</li><li>Word and Excel exports exist but have not yet been proven in real use. Check them before you send.</li><li>It needs the Savoya and Google Drive connections switched on. Saving the session record also needs your one-time agreement.</li></ul></div>
+
+  <h2 id="faq">Questions and answers</h2>
+  <label for="q" class="none">Search the answers</label>
+  <input id="q" class="search" type="search" placeholder="Search, for example: headcount, map, commission" autocomplete="off">
+  <div id="faq-list"><details class="qa"><summary>Why did it ask which headcount to quote?</summary><p>When a request gives a range, such as 50 to 75 passengers, the number of vehicles depends on which number you pick. The assistant asks first and prices that headcount. It never falls back to the capacity of a single vehicle.</p></details>
+<details class="qa"><summary>Why did it ask me for an address instead of a tour area?</summary><p>When a stop such as "around the city" cannot be matched to a place Savoya knows, the assistant stops and asks you for an address. It never swaps in a different stop to get past the problem, because that changes the trip you are pricing.</p></details>
+<details class="qa"><summary>Why doesn't the quote match the rate sheet?</summary><p>The rate sheet is a preview. The quote is the exact price, calculated the way the web app calculates it. For a client whose profile waives incidentals, the sheet can still show a fuel surcharge that the quote correctly leaves out. Use the quote.</p></details>
+<details class="qa"><summary>What is a base rate, and why is the client's price lower than the number I typed?</summary><p>When Savoya has no stored rate for a vehicle in a market, you can give a rate to quote from. It is a base rate: the client's contracted discount and fuel are applied to it. Give the rate you want to quote from, not the cost you were quoted, or the client's price will come out lower than you expect.</p></details>
+<details class="qa"><summary>What does "additional vehicles" mean for nearby markets?</summary><p>The counts are vehicles a nearby market adds on top of the home market, not that market's total fleet. They are unconfirmed and promise nothing about fulfilment. Say so when you talk to the client.</p></details>
+<details class="qa"><summary>Does a commission change the total?</summary><p>No. The document shows the rate and the commission amount, calculated on the subtotal after discounts and before fuel. The option total stays exactly as Savoya returned it.</p></details>
+<details class="qa"><summary>Why was no email drafted when I asked only for the PDF?</summary><p>You get the formats you ask for. If you ask for the PDF only, the assistant does not draft or paste an email. It offers one in a single line, and you can say yes at any time.</p></details>
+<details class="qa"><summary>How do I change an option after the PDF is made?</summary><p>At "Anything you'd like changed?" say what to change. The assistant adjusts the quote, makes the file again, checks it and hands you the new one. A discount goes back through Savoya's pricing.</p></details>
+<details class="qa"><summary>Why does my map look like a diagram without roads?</summary><p>Map services are public, and some company networks block them. When that happens the assistant draws an overview from the stops it already resolved and titles it "stops in order, not a driving route". It tells you which kind of map went out.</p></details>
+<details class="qa"><summary>What is saved when I finish, and who sees it?</summary><p>A record of the session: the request, what was priced, the figures in the documents and anything you asked to change. It is saved to Savoya's team folder so the tool can be improved. The assistant asks once for your agreement and files the record under your name. If you say no, nothing is saved.</p></details>
+<details class="qa"><summary>What does "blocked" mean on a leg?</summary><p>Savoya has no stored rate for that vehicle in that market, so it cannot price the leg. You can give a base rate to quote from, or choose another vehicle.</p></details>
+<details class="qa"><summary>How do I check my setup is working?</summary><p>Say "check my quoting setup". The assistant tests the connections and tells you in plain words what is switched on and what is not.</p></details>
+<details class="qa"><summary>Can I add a discount in the PDF?</summary><p>Yes. Tell the assistant the percentage and it prices the quote again through Savoya, so the document carries Savoya's own figures. Flat amounts, such as a coordinator fee, can be added as lines. The assistant does not apply percentages to a document by hand.</p></details>
+<details class="qa"><summary>What do I do when something looks wrong?</summary><p>Tell the assistant "log this session" and say what looked wrong. It saves a record of the session, with or without a document, so the team can see exactly what happened. Then post a short note in the core-ideas Slack channel so someone picks it up.</p></details></div>
+  <p id="faq-none" class="none" hidden>Nothing matches. Ask the assistant directly, or see the next section.</p>
+
+  <h2 id="wrong">If something looks wrong</h2>
+  <div class="report">
+    <b>Two steps, so the team can see exactly what happened.</b>
+    <p>1. Tell the assistant:</p>
+    <span class="say">Log this session. &lt;what looked wrong&gt;</span>
+    <p>It saves a record of the session, with or without a document.</p>
+    <p>2. Post a short note in the <strong>#core-ideas</strong> Slack channel so someone picks it up.</p>
+  </div>
+
+  <footer>Savoya quoting assistant · release 0.27.4 · for everyone at Savoya</footer>
+</div>
+
+<script>
+(function(){
+  /* Make the limits list read as "Not yet" items, and filter the answers as the reader types. */
+  var items=document.querySelectorAll('.limits li');
+  for(var i=0;i<items.length;i++){
+    var t=document.createElement('span'); t.className='tag'; t.textContent='Not yet';
+    items[i].insertBefore(t,items[i].firstChild);
+  }
+  var box=document.getElementById('q'), list=document.querySelectorAll('#faq-list details.qa'), none=document.getElementById('faq-none');
+  function run(){
+    var q=(box.value||'').toLowerCase().trim(), shown=0;
+    for(var i=0;i<list.length;i++){
+      var hit=!q||list[i].textContent.toLowerCase().indexOf(q)>-1;
+      list[i].hidden=!hit; if(hit) shown++;
+      if(q&&hit) list[i].open=true; else if(!q) list[i].open=false;
+    }
+    none.hidden=shown>0;
+  }
+  box.addEventListener('input',run);
+  if(location.hash==='#faq'){ box.focus(); }
+})();
+</script>

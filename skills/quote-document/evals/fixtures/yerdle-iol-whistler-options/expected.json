@@ -1,0 +1,34 @@
+{
+ "handoff": true,
+ "normalize": {
+  "prepared_by": "Ayush Bhargava",
+  "title": "Ground Transportation Quote"
+ },
+ "edits": {
+  "personalization": {
+   "cover": "event-planners"
+  }
+ },
+ "adjustments": [],
+ "commission_pct": 5,
+ "commission_amounts": {
+  "a": 60050,
+  "b": 72861
+ },
+ "engine_subtotal_cents": 2001650,
+ "total_cents": 1321089,
+ "option_b_total_cents": 1602942,
+ "leg_count": 4,
+ "contains": [
+  "$13,210.89",
+  "$16,029.42",
+  "A 5% commission applies to this program, calculated after discounts and before the fuel surcharge: $600.50 on Option A, $728.61 on Option B.",
+  "This is a quoting tool"
+ ],
+ "not_contains": [
+  "Stop 2",
+  "hourly fallback",
+  "rate_id"
+ ],
+ "pdf_pages": 4
+}

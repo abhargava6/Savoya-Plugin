@@ -81,23 +81,48 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   by construction, which is exactly why they cannot catch a line mislabelled as its
   opposite. A line stating a positive percentage must never carry a negative amount.
 
-## Commission is stated, never calculated
-- **A commission changes no arithmetic** (2026-10-10). It is the first answer in the
+## Commission: the rate is recorded, the amount is computed in code, no total moves
+- **A commission changes no total** (2026-10-10). It is the first answer in the
   question set that is purely presentational: it never enters `adjustments`, the total is
   identical with it and without it, and C4 stays meaningful. `apply_adjustments.py
   --commission-pct <pct|none>` records it — in that script because it owns the terms
   block, so the rate and its terms bullet land in one call and cannot get out of order.
-- **Never compute a commission amount.** The basis is not ours to assume — the quoted
-  total? before discount? excluding fuel? — and a figure nobody returned is a figure
-  nothing can check. The rate is stated and that is all.
+- **The amount is computed by `apply_adjustments.py`, never by the session** (amended
+  2026-10-16, PRD R59). The 2026-10-10 rule said never to compute one, because the basis
+  was not ours to assume. A live Yerdle session needed the amount on both options, worked
+  it out by hand and edited it into the terms — a figure with nothing checking it. The
+  basis is now fixed: **the subtotal after every discount, before the fuel surcharge**,
+  times the rate, rounded half-up to the cent, per option. It is built from Core's per-leg
+  figures; with none (a hand-assembled `quote.json`) the rate is stated and no amount is
+  guessed. **A session must not work out a commission amount itself or edit one into
+  `quote.json`** — re-run `apply_adjustments.py` instead. The wording is *"A 5% commission
+  applies to this program, calculated after discounts and before the fuel surcharge:
+  $600.50 on Option A, $728.61 on Option B."* A single-option quote drops the labels.
 - **It names no beneficiary.** The commission may be earned by the client or by an agency
-  acting for them, and a client-facing document must not assert which. The wording is
-  *"A {pct}% commission applies to this program."* on every format.
-- **Three places, all automatic once recorded**: the PDF heading block beside Discount and
-  Fuel surcharge, the terms list (which is how the HTML email gets it), and one flat
+  acting for them, and a client-facing document must not assert which.
+- **Three places, all automatic once recorded**: a hero line under each option total in
+  the PDF, the terms list (which is how the HTML email gets it), and one flat
   sentence in the email copy after the inclusions paragraph. **Flat in the email on
   purpose** — it moves the needle sometimes, but the client is reading a quote, not an
   offer. On *No*, nothing is recorded and the word appears nowhere.
+
+## Email, confirmation and recovery (0.27.0, 2026-10-16)
+- **A carried client request is noted, never resolved** (R73). "PA on the bus" and
+  "signage in the windows" come from intake's `client_questions`; `normalize_quote.py` carries
+  them and `client_requests.py` builds one flat line ("We've noted your requests (…) and will
+  confirm each with you"). Never write that a request is included, excluded or arranged
+  separately: the session does not know. The line is in the email copy and the HTML email,
+  **not the PDF** (it pushed the Yerdle page 2 past the footer).
+- **Everything uncertain is confirmed before send** (R72). `confirm_items.py` lists the grouped
+  service-area placeholders, each other placeholder and each operational request; the session
+  asks one Right/Wrong question per item. Gate only; a Wrong answer stops the send.
+- **The email asks for flight details only when a flight is TBD** (R74), never because some
+  unrelated placeholder exists.
+- **The email comes in two forms** (R71): full, and a short version with leg and option totals,
+  the discount, the commission amount and a PDF pointer. Both copy Core's figures.
+- **Capture happens at verification, not at the user's prompt** (R63).
+  `verify_document.py --capture-slug` writes the snapshot and the marker on a pass; the session
+  uploads both files and runs `--mark-uploaded` before presenting anything.
 
 ## What reaches the client
 - Never: rate ids, inventory counts, "hourly fallback", basis points, profile or passenger ids, estimate_type as a word.
@@ -136,7 +161,7 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 
 ## Client questions (three kinds)
 - **Boilerplate** (tax, gratuity, cancellation) — the terms block already answers it.
-- **Operational** (greeter, on-site staff, signage, PA, luggage vehicle) — the document flow asks the user for a cost; an amount becomes a line, no amount becomes a "arranged separately, not in vehicle pricing" note.
+- **Operational** (greeter, on-site staff, signage, PA, luggage vehicle) — the document flow asks the user for a cost; an amount becomes a line. With no amount the request stays a carried client request: one neutral "noted, will confirm" line, built in code, never an inclusion or exclusion claim (R73).
 - **Data-answered** (pickup times, drive times, vehicle counts, how long the vehicle is held) — the quote holds the answer implicitly. Surface it as an explicit callout at the top of the PDF **and** the email. Never make a client decode sixteen timestamps.
 
 ## Two copies of this plugin is a silent fork
@@ -390,3 +415,31 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
   sourcing, reading it for the document header put "San Diego, CA" on an Orange County
   event whose Mini Buses happened to be positioned from San Diego. `meta.service_area`
   reads `primary_service_area` — where the work is.
+
+## 0.27.1 additions (2026-10-16)
+
+- **Capture needs one consent answer per machine (R76).** Unasked: verify asks and writes nothing. Declined: verify skips silently. Granted: the capture runs as before. The answer and the user's name live in `~/.savoya-quoting/config.json`.
+- **The printed document never clips (R77).** The renderer measures the layout in a browser and moves a totals block that does not fit onto its own page. Commission sits as a hero line under each option total.
+- **The client-requests sentence appears once.** If the intro note already says it noted the request, the renderers do not add it, and the session does not write it twice.
+
+## 0.27.2 additions (2026-10-17)
+
+- **Pricing responses are saved by `handoff.py ingest`, never retyped (R78).** It stores the response exactly as given and rejects one that does not parse, has no priced units, or whose units do not add up to its own total. A session that cannot save the data stops and reports (`capture_session.py --blocked`); it never rebuilds a `raw_quote.json` by hand.
+- **Separately priced packages become one document (R79).** `handoff.py write --package A --package B`: the first is Option A, the rest are alternatives, a unit priced the same in both is `--shared`. Each option keeps its own Core total. Never tell the user a single document with both scenarios is impossible.
+- **A blocked session still reports (R80).** `capture_session.py --blocked "<reason>"` needs no `quote.json`; same consent rule as a delivered capture.
+- **State the reading of each scenario before pricing (R81).** One yes from the user, then `--reading` carries it into the assumptions.
+- **Commission is a badge (R82).** Under each option total in the PDF; in the email it sits directly under the totals beneath a COMMISSION heading. Still computed in code, still changes no total, still flat.
+
+## 0.27.3 additions (2026-10-17)
+
+- **A stop that will not resolve asks for an address (R83).** Never a substituted stop, never a deleted travel time. Every lookup is recorded with `--stop-note`; `write` refuses an unresolved one. As-directed queries spell out the state or province.
+- **A headcount range is asked before pricing (R84).** `write` refuses a ranged request without `--headcount N`, and units priced without that `passenger_count`.
+- **Deliver only what was asked (R85).** `verify_document.py` prints the deliverables; `draft_email.py` refuses a PDF-only job unless `--asked`.
+- **A saved response is never edited (R78).** Colliding unit keys are namespaced by the merge; a response too large to paste uses `ingest --without-presentation`, which records what it left out.
+
+## 0.27.4 additions (2026-10-17)
+
+- **A split headcount is right; a duplicated one is not (R91).** 75 passengers priced as 50 on a coach plus 25 on two vans passes. `handoff.py write` requires a `passenger_count` on every unit and that the units serving one trip add up to `--headcount`. Never put the full headcount on every group: Core sizes the vehicle count from each group's number.
+- **A refused step is never walked around (R92).** A refused write leaves `handoff/blocked.json`; `decide.py` and `normalize_quote.py` stop while it exists. Fix the cause and write again, or tell the user why not. Never build `intake.json`, keep decisions by hand, or call the scripts' internals to get past it.
+- **Never ask the user about the product's own working (R93).** After the quote there is one question: customize it, go on to the client document, or just the quote. Every named scenario is priced, shown and written; "which one in detail?" is asked only for options intake generated itself.
+- **A record carries the real files (R94).** Upload each file's text exactly; the byte count and SHA-256 are printed. The blocked record is uploaded packed, like the full capture.

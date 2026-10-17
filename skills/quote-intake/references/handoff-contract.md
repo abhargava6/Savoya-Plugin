@@ -9,12 +9,15 @@ handoff/
                     generate_quote_options, calculate_quote_units, or
                     calculate_temporary_quote_units
   intake.json       everything intake decided + everything the document flow decides
+  blocked.json      present only while a write is refused (R92): the gate, the reason and the fix.
+                    The document step stops while it exists; a successful write removes it
 ```
 
 ## intake.json
 ```jsonc
 {
   "contract": 3,
+  "written_by": "handoff.py write",   // only the checked step writes this file; never build it by hand
   "client":        {"name": "Yerdle", "profile_id": 201890, "source": "cache|resolve|user"},
   "units": [        // one per quote unit sent to the engine, in order
     {"key": "offsite_9_16", "date": "2026-09-16T17:45:00-04:00", "passenger_count": 120,

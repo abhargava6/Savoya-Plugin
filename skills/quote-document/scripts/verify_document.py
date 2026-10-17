@@ -56,6 +56,14 @@ def main():
     ap.add_argument("--pdf", default=None)
     ap.add_argument("--email", default=None)
     ap.add_argument("--strict", action="store_true", help="treat warnings as failures")
+    ap.add_argument("--capture-slug", default=None,
+                    help="R63: on PASS or PARTIAL, write the render snapshot (capture_session.py --auto) "
+                         "and leave its .pending-upload marker. Delivery is not complete until the "
+                         "files it lists are uploaded and --mark-uploaded has run.")
+    ap.add_argument("--capture-client", default=None)
+    ap.add_argument("--capture-deliverable", default="pdf")
+    ap.add_argument("--capture-select", default=None)
+    ap.add_argument("--capture-dir", default=None)
     a = ap.parse_args()
 
     q = json.load(open(a.quote, encoding="utf-8"))
@@ -294,6 +302,50 @@ def main():
     print(f"{verdict} — {checks} checks run, {len(fails)} failure(s), {len(warns)} warning(s), {len(skipped)} group(s) skipped")
     if code == 2:
         print("  PARTIAL means the document could not be fully verified — say so when you deliver it.")
+    if code in (0, 2):
+        from deliverables import chosen_format, line_for
+        _dl = line_for(chosen_format(a.quote))
+        if _dl:
+            print(_dl)
+    if code in (0, 2) and a.capture_slug:
+        # R63: the snapshot is written HERE, at the moment of verification, so a session
+        # cannot reach "deliver" without a record on disk and a marker saying it is unsent.
+        import subprocess
+        base = os.path.dirname(os.path.abspath(a.quote))
+        cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture_session.py"),
+               "--slug", a.capture_slug, "--client", a.capture_client or a.capture_slug,
+               "--deliverable", a.capture_deliverable, "--quote", a.quote, "--auto"]
+        for flag, name in (("--raw", "raw_quote.json"), ("--request", "request.md")):
+            for where in (base, os.path.join(base, "handoff"), os.path.join(os.getcwd(), "handoff")):
+                if os.path.exists(os.path.join(where, name)):
+                    cmd += [flag, os.path.join(where, name)]
+                    break
+            else:
+                print(f"NOTE: no {name} beside the quote or in handoff/; the capture records it as missing.")
+        if a.pdf:
+            cmd += ["--pdf", a.pdf]
+        if a.capture_select:
+            cmd += ["--select", a.capture_select]
+        if a.capture_dir:
+            cmd += ["--dir", a.capture_dir]
+        try:
+            _cfg = json.load(open(os.path.expanduser("~/.savoya-quoting/config.json")))
+        except Exception:
+            _cfg = {}
+        _consent = _cfg.get("capture_consent")
+        if _consent == "no":
+            print("CAPTURE SKIPPED: the user declined session captures. Say nothing about it.")
+            sys.exit(code)
+        if _consent not in ("yes", "no"):
+            print("CAPTURE CONSENT UNASKED: ask once, before presenting the files: \"May I send a copy of this "
+                  "session to Savoya so the quoting tool keeps improving? It holds the quote, not your messages "
+                  "beyond the request. And what name should it be filed under?\" Record the answer with "
+                  "capture_session.py --consent yes|no --user NAME, then re-run this verify.")
+            sys.exit(code)
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        print(r.stdout.strip() or r.stderr.strip())
+        print("CAPTURE WRITTEN, NOT UPLOADED. Upload every file in `upload`, run "
+              f"capture_session.py --mark-uploaded {a.capture_slug} --file-id <id>, THEN present the files.")
     sys.exit(code)
 
 

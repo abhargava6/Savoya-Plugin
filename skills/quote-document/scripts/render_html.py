@@ -181,8 +181,10 @@ def render(q):
     cover = (f"<tr><td style='padding:0 0 24px;'><img src='{e(pz['cover_image_url'])}' width='600' alt='' style='display:block;width:100%;max-width:600px;border-radius:14px;'></td></tr>"
              if pz.get("cover_image_url") else "")
     subtitle_bits = [x for x in [pz.get("event_name"), m.get("client")] if x]
-    intro = (f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(pz['intro_note'])}</td></tr>"
-             if pz.get("intro_note") else "")
+    from client_requests import requests_line
+    intro_all = " ".join(x for x in [(pz.get("intro_note") or ""), requests_line(q)] if x)
+    intro = (f"<tr><td style='padding:0 0 24px;font-family:{SANS};font-size:14px;line-height:1.6;color:{GRAY};'>{e(intro_all)}</td></tr>"
+             if intro_all else "")
     quote_block = ""
     if pz.get("pull_quote"):
         quote_block = (f"<tr><td style='padding:0 0 24px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0'><tr>"

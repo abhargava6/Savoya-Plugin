@@ -212,6 +212,15 @@ def passenger_total(legs):
     return max(movements.values(), default=0)
 
 
+# Set by main() when the measured layout shows the totals block running past the footer.
+# The paginator below works in estimated cost units, and no estimate covers every combination
+# of intro length, header fields, adjustment lines and leg notes. The Yerdle quote of
+# 16 Oct 2026 (long intro, seven header fields, three adjustment lines, two sourced legs)
+# came out 103px past the footer with its total invisible. Estimates stay as the first
+# guess; the browser is the check, and a clipped totals block moves onto its own page.
+FORCE_OWN_SUMMARY = 0      # 0 = trust the estimate, 1 = Option A's totals on their own page, 2 = both
+
+
 def quote_page(q):
     m, pz = q["meta"], q.get("personalization", {})
     disc, sur = global_pct(q, True), global_pct(q, False)
@@ -220,16 +229,13 @@ def quote_page(q):
         ("Prepared by", m.get("prepared_by")),
         ("Travel coordinator", m.get("travel_coordinator")),
         ("Service area", m.get("service_area")),
-        ("Passengers", str(passenger_total(q["legs"])) if q["legs"] else None),
+        ("Passengers", str(passenger_total(q["legs"])) if q["legs"] and passenger_total(q["legs"]) else None),
         ("Date", day(m.get("prepared_on"), "%m/%d/%Y")),
         ("Valid until", day(m.get("valid_until"), "%m/%d/%Y")),
         ("Discount", f"{abs(disc):g}%" if disc else None),
         ("Fuel surcharge", f"{sur:g}%" if sur else None),
-        # Stated with the other rates, never calculated into a figure, and naming no
-        # beneficiary — the commission may be earned by the client or by an agency
-        # acting for them, and a client document should not assert which.
-        ("Commission", (f"{float(q['commission_pct']):g}%"
-                        if q.get("commission_pct") else None)),
+        # No commission cell here: the rate and the amount sit under each option's total
+        # (hero_comm in quote_page_for), where the figure it relates to is. R59, 2026-10-16.
     ]
     meta_html = "".join(f"<div><label>{e(k)}</label><span>{e(v)}</span></div>" for k, v in meta_cells if v)
 
@@ -318,6 +324,11 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     # about two lines pushed the table down while the budget still believed it had the
     # whole page: the last rows were cut by the page break and the text ran into the
     # footer. The note is written by the user at question 4, so its length is not bounded.
+    # The carried-client-requests line (R73) is deliberately NOT rendered here. It lives in
+    # the email copy and the HTML email, which do not paginate. Added to this intro on
+    # 16 Oct 2026 it pushed the Yerdle quote's page 2 52px past the footer (a two-page
+    # document already at 100% of the box), and a larger budget cost the nine- and
+    # sixteen-leg fixtures a page each. The PDF carries the terms; the email carries the ask.
     intro_text = (pz.get("intro_note") or "") if option is None else ""
     intro_cost = (2 + 2 * (len(intro_text) // INTRO_CHARS)) if intro_text else 0
     first_budget = max(16, FIRST_BUDGET - intro_cost)
@@ -338,6 +349,8 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
         c += 2 * max(0, -(-route_chars // ROUTE_CHARS) - 1)
         if (l.get("pricing") or {}).get("special_event"):
             c += 2
+        if l.get("sourced_from_other_market") and l.get("service_area"):
+            c += 2                          # the "Positioned from our ... partners" line wraps to two
         if any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") for s in (l.get("stops") or [])):
             c += 1
         return c
@@ -432,6 +445,15 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     notes = "".join(h for _, h in note_rows)
     notes_html = f"<h3>Line notes</h3><table class='notes'>{notes}</table>" if notes else ""
     intro = f"<p class='intro'>{e(pz['intro_note'])}</p>" if (option is None and pz.get("intro_note")) else ""
+    # The commission, quietly, under the total it belongs to. The amount is COPIED from
+    # quote.json (apply_adjustments.py computed it); this renderer works out nothing. A
+    # quote with no per-option amount (hand-assembled) states the rate alone.
+    def hero_comm(which):
+        if not q.get("commission_pct"):
+            return ""
+        amt = (q.get("commission_amounts") or {}).get(which)
+        txt = f"{float(q['commission_pct']):g}% commission" + (f" &middot; {money(amt)}" if amt is not None else "")
+        return f"<div class='hero-comm'>{txt}</div>"
     primary_ref = ""
     if option is not None:
         pr = {l["key"]: l.get("ref") for l in q["legs"]}
@@ -439,7 +461,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
         head = f"""<div class="head"><div class="head-l"><h2>Option B <span class='cap'>· alternative vehicle plan</span></h2>
       <div class='sub'>Same dates and routing as Option A; {e(pairs)}. Choose either option — totals are not additive.</div></div>
       <div class="hero"><label>Option B program total</label><div class="amt">{money(tot_cents)}</div>
-      <div class="hero-sub">vs. Option A {money(q['total_cents'])}</div></div></div>"""
+      <div class="hero-sub">vs. Option A {money(q['total_cents'])}</div>{hero_comm('b')}</div></div>"""
     else:
         head = f"""<div class="head">
     <div class="head-l">
@@ -448,7 +470,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
       <div class="meta">{meta_html}</div>
     </div>
     <div class="hero"><label>Estimated total{' · Option A' if q.get('option_b') else ''}</label><div class="amt">{money(q['total_cents'])}</div>
-      <div class="hero-sub">{len(legs_in)} line item{'s' if len(legs_in)!=1 else ''} · all rates in USD{' · Option B on the next page' if q.get('option_b') else ''}</div></div>
+      <div class="hero-sub">{len(legs_in)} line item{'s' if len(legs_in)!=1 else ''} · all rates in USD{' · Option B on the next page' if q.get('option_b') else ''}</div>{hero_comm('a')}</div>
   </div>"""
 
     thead = "<thead><tr><th>Ref</th><th>Service</th><th class='num'>Basis</th><th class='num'>Min</th><th class='num'>Qty</th><th class='num'>Hrs / veh</th><th class='num'>Rate</th><th class='num'>Total</th></tr></thead>"
@@ -474,7 +496,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
     block_cost = notes_cost(legs_with_notes) + 12          # + the breakdown table
     last_used = sum(leg_cost(l) for _, l in pages_of_legs[-1]) + GROUP_COST * len({g for g, _ in pages_of_legs[-1]})
     room = (first_budget if n == 1 else CONT_BUDGET) - last_used
-    summary_own_page = block_cost > room
+    summary_own_page = block_cost > room or FORCE_OWN_SUMMARY >= (1 if option is None else 2)
     for idx, chunk in enumerate(pages_of_legs):
         first, last = idx == 0, idx == n - 1
         table = f"<table class='lines'>{thead}<tbody>{''.join(rows_for(chunk, True))}</tbody></table>"
@@ -680,6 +702,7 @@ h3 {{ font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:{COPP
 .hero label {{ font-size:7.5pt; letter-spacing:.14em; text-transform:uppercase; color:{COPPER}; }}
 .hero .amt {{ font-size:30pt; margin-top:4pt; }}
 .hero-sub {{ font-size:8.5pt; color:#A09890; margin-top:4pt; }}
+.hero-comm {{ display:inline-block; margin-top:9pt; padding:4pt 11pt; border:1.2pt solid {COPPER}; border-radius:999px; background:rgba(184,115,51,.18); color:#fff; font-size:10pt; font-weight:700; letter-spacing:.02em; }}
 .intro {{ color:{GRAY}; line-height:1.55; margin:0 0 14pt; }}
 table.lines {{ width:100%; border-collapse:collapse; }}
 table.lines th {{ font-size:7.5pt; letter-spacing:.1em; text-transform:uppercase; color:{MUTED}; text-align:left; padding:6pt 6pt; border-top:2px solid {COPPER}; border-bottom:1px solid {RULE}; font-weight:600; }}
@@ -774,6 +797,21 @@ def to_pdf(html_path, pdf_path):
         return None  # caller reports the degradation; the HTML is already on disk
 
 
+def clipped_pages(html_path):
+    """Page numbers whose content runs past the footer, measured in the real browser.
+
+    Returns [] when no browser is available (the wkhtmltopdf fallback, a locked-down
+    machine): the estimate then stands alone, as it always did.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from measure_pages import measure_html
+        res = measure_html([("doc", html_path)])["doc"]
+    except Exception:
+        return []
+    return [r["page"] for r in res if not r.get("blank") and (r.get("overflow_px") or 0) > 4]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("quote")
@@ -813,8 +851,17 @@ def main():
     else:
         key, cover_path = cover_choice(q, a.cover)
         mode = "custom" if cover_path is None else "asset"
+    global FORCE_OWN_SUMMARY
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(render_html(q, cover=mode, cover_pdf=cover_path))
+    # Escalate only as far as needed: Option A's totals first, then Option B's as well.
+    for level in (1, 2):
+        if not clipped_pages(html_path):
+            break
+        FORCE_OWN_SUMMARY = level
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(render_html(q, cover=mode, cover_pdf=cover_path))
+        print(f"NOTE: a totals block did not fit its page; layout level {level} applied", file=sys.stderr)
     eng = to_pdf(html_path, a.pdf)
     if eng is None:
         try:

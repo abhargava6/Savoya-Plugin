@@ -1,0 +1,283 @@
+<title>Savoya Quoting Flow Diagrams</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+  /* Layout: three stacked flows, widest first — the seller's view, then the two
+     skills — each in its own scrolling frame so a wide graph never widens the page. */
+  :root{
+    --bg:#FAF8F5; --ink:#1A1A1A; --muted:#6B6560; --rule:#E6E1DC;
+    --copper:#B87333; --tint:#F7EDE4; --card:#FFFFFF;
+    --call:#2F6F4F; --callbg:#EAF3EE; --ask:#B4780B; --askbg:#FFF7E6;
+    --halt:#A3342A; --haltbg:#FBEDEB; --haltline:rgba(163,52,42,.3);
+    --display:Georgia,"Times New Roman",serif;
+    --body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F0F0F; --ink:#FAF8F5; --muted:#A09890; --rule:#2A2A2A;
+      --tint:#1E1712; --card:#171717; --copper:#D99560;
+      --call:#6FB68E; --callbg:#13241B; --ask:#E8B04B; --askbg:#2A2015;
+      --halt:#E88B7D; --haltbg:#2A1614; --haltline:rgba(232,139,125,.3);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F0F0F; --ink:#FAF8F5; --muted:#A09890; --rule:#2A2A2A;
+    --tint:#1E1712; --card:#171717; --copper:#D99560;
+    --call:#6FB68E; --callbg:#13241B; --ask:#E8B04B; --askbg:#2A2015;
+    --halt:#E88B7D; --haltbg:#2A1614; --haltline:rgba(232,139,125,.3);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
+       line-height:1.55;-webkit-font-smoothing:antialiased;padding-inline:16px}
+  .wrap{max-width:1300px;margin:0 auto;padding-block:30px 72px}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(23px,3.6vw,32px);
+     margin:0 0 6px;text-wrap:balance}
+  h2{font-family:var(--display);font-weight:400;font-size:21px;margin:42px 0 4px;
+     border-top:2px solid var(--copper);padding-top:11px;text-wrap:balance}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 8px;max-width:70ch}
+  .ver{font-family:var(--mono);font-size:12px;color:var(--copper);margin:0 0 4px}
+  code{font-family:var(--mono);font-size:.87em;background:var(--tint);
+       padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(154px,1fr));
+         gap:12px;margin:22px 0 4px}
+  .stat{background:var(--tint);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .stat b{display:block;font-family:var(--display);font-size:26px;color:var(--copper);
+          line-height:1.1;font-variant-numeric:tabular-nums}
+  .stat span{font-size:12.5px;color:var(--muted)}
+
+  .diagram{background:var(--card);border:1px solid var(--rule);border-radius:14px;
+           padding:16px;margin:16px 0;overflow-x:auto}
+  .diagram pre.mermaid{margin:0;text-align:center;min-width:0}
+  .note{background:var(--tint);border:1px solid var(--rule);border-radius:12px;
+        padding:12px 16px;font-size:13.5px;color:var(--muted);margin:10px 0 0}
+  .note b,.note strong{color:var(--ink);font-weight:600}
+  .note.flag{background:var(--haltbg);border-color:var(--haltline)}
+  .note.flag b{color:var(--halt)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 0;font-size:12px;color:var(--muted)}
+  .key{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:4px;border:1px solid var(--rule);
+      display:inline-block;flex:none}
+  footer{margin-top:44px;padding-top:14px;border-top:1px solid var(--rule);
+         font-size:12px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <h1>Savoya quoting — flow diagrams</h1>
+  <p class="sub">Three views of the same system: what the seller experiences, what actually runs in intake, and what runs in the document flow. The logic itself lives in <code>decision-tree.md</code>; these are drawn from it.</p>
+  <p class="ver">v0.27.4 · twelve-tool contract · refreshed 17 Oct 2026</p>
+
+  <div class="stats">
+    <div class="stat"><b>4</b><span>tools that can price a quote — all of them exact</span></div>
+    <div class="stat"><b>4–11</b><span>tool calls across intake</span></div>
+    <div class="stat"><b>11–13</b><span>questions for a full PDF + email</span></div>
+    <div class="stat"><b>4–5</b><span>questions if they stop at the quote</span></div>
+  </div>
+
+  <h2>1 · What the seller sees</h2>
+  <p class="sub">The version to show sales. No tools, no scripts — just the conversation.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    A["Paste the client's request"] --> BQ{"Anything unclear?"}
+    BQ -->|yes| C["Answer one question<br/>which year · headcount · which Marriott"]
+    BQ -->|no| D
+    C --> D(["Rate sheet first,<br/>or straight to the quote?"])
+    D --> E(["Best value, options,<br/>or you name the vehicles?"])
+    E --> SHORT{"Enough vehicles<br/>in that city?"}
+    SHORT -->|no| NEAR(["Here are the 3 nearest markets<br/>and what each can add.<br/>Which one, and how many?"])
+    SHORT -->|yes| F
+    NEAR --> F["<b>Priced quote</b><br/>every option, per leg,<br/>positioning cost included"]
+    F --> GQ(["One question: customize it,<br/>go on to the client document,<br/>or just the quote?"])
+    GQ -->|customize| F
+    GQ -->|just the quote| DONE1(["Done — you have the number"])
+    GQ -->|client document| J(["Six quick questions<br/>discount · commission · cover ·<br/>personalisation · map · format"])
+    J --> K["<b>PDF + email copy</b><br/>ready to paste and send"]
+    K --> LQ{"Anything you'd like changed?"}
+    LQ -->|yes, fix it| K
+    LQ -->|no| DONE2(["Done"])
+
+    classDef begin fill:#F7EDE4,stroke:#B87333,stroke-width:2px,color:#1A1A1A
+    classDef question fill:#FFF7E6,stroke:#F59E0B,stroke-width:2px,color:#1A1A1A
+    classDef branch fill:#FFFFFF,stroke:#8A837C,color:#1A1A1A
+    classDef output fill:#EAF3EE,stroke:#2F6F4F,stroke-width:2px,color:#1A1A1A
+    classDef finish fill:#FFFFFF,stroke:#2F6F4F,color:#2F6F4F
+    class A begin
+    class C,D,E,J,NEAR,GQ question
+    class BQ,LQ,SHORT branch
+    class F,K output
+    class DONE1,DONE2 finish
+</pre>
+  </div>
+  <div class="legend">
+    <span class="key"><i class="sw" style="background:#FFF7E6;border-color:#F59E0B"></i> a question for the seller</span>
+    <span class="key"><i class="sw" style="background:#EAF3EE;border-color:#2F6F4F"></i> something they receive</span>
+    <span class="key"><i class="sw" style="background:#FFFFFF;border-color:#2F6F4F"></i> a valid stopping point</span>
+  </div>
+  <div class="note"><b>Six questions on the document side, not five.</b> A <b>commission</b> question was added on 10 October, after discount and before the presentation questions, so the numbers are settled first. It asks No, 1%, 5% or another percentage, states the rate on the document and in the email, and <b>changes none of the numbers</b>. <b>There is still no fuel question</b> — fuel is market-scoped and applied by the engine, so the document presents what Savoya charged rather than offering to change it. A CSM told to expect one will wait for a question that never comes.</div>
+  <div class="note"><b>One question after the quote, not two.</b> "Happy with it?" and "Want a client document?" are a single question now (R93), and the seller is never asked how the product itself works. If a stop cannot be resolved, or a passenger range or a split group does not add up, the flow stops and asks for the missing piece instead of guessing (R83, R84, R91).</div>
+  <div class="note"><b>The nearby-market step is new, and it only appears when it is needed.</b> An inventory check runs before every quote, silently. If the city covers the request, the seller never sees this branch at all. If it doesn't, they get the three nearest markets by <i>driving</i> distance and what each can add — and they choose. The system never picks a market for them.</div>
+
+  <h2>2 · quote-intake — request to priced quote</h2>
+  <p class="sub">Nodes A–J. Dark blue is an MCP tool call or a bundled script; brown is a question put to the user, one per message; a diamond is a branch the flow decides on its own; green is something deliberately <i>not</i> done, with the reason.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    REQ([Client request pasted]) --> A
+
+    A[["A · resolve_client"]] --> C
+    A -.->|several matches| ASK1
+    C[["C · resolve_vehicle_types<br/>once per quote — Core owns<br/>ids, capacity, eligibility"]] --> D
+    D[["D · resolve_itinerary_stops<br/>one call, every stop, deduped"]] --> BQ
+
+    BQ{User named<br/>a passenger?}
+    BQ -->|yes| B[["B · resolve_passengers"]]
+    BQ -->|no| SKIPB[/"send no passenger_id —<br/>Core attaches one to the<br/>unsaved calculation"/]
+    B --> ASK1
+    SKIPB --> ASK1
+
+    ASK1{{"Blocking gaps + stop<br/>ambiguities — ONE message"}} --> E1
+    E1{{"1 · Rate sheet first,<br/>or straight to the quote?"}} --> FQ
+    FQ{Rate sheet?}
+    FQ -->|yes| F[["F · preview_rate_batch<br/>display: show"]] --> E2
+    FQ -->|no| E2
+    E2{{"2 · Best value, options,<br/>or you name the vehicles?"}} --> INV
+
+    INV[["inventory check — preview with<br/>display: internal. Requested count<br/>against the market count"]] --> SHORT
+    SHORT{Primary market<br/>covers it?}
+    SHORT -->|yes| GQ
+    SHORT -->|"short, or the CSM<br/>asks to explore"| F2[["F2 · lookup_nearby_markets<br/>3 nearest by ROAD distance, the<br/>vehicles each ADDS, a signed ref"]]
+    F2 --> ASKMKT{{"Which market or mix, and<br/>how many of which type?<br/>A lookup is NOT a choice"}}
+    ASKMKT --> GS[["G · calculate_sourced_quote_units<br/>one call, every allocation —<br/>primary-market ones included"]]
+    GS --> NORATE
+
+    GQ{Mode}
+    GQ -->|best / options| GO[["G · generate_quote_options<br/>options[2..5], every trip in each"]]
+    GQ -->|you define| GU[["G · calculate_quote_units<br/>one vehicle_type_id per unit"]]
+    GQ -->|user supplied a rate<br/>or extra discount| GT[["G · calculate_temporary_quote_units<br/>never persisted — say so"]]
+
+    GO --> NORATE
+    GU --> NORATE
+    GT --> GREETQ
+
+    NORATE{Any unit<br/>unpriced?}
+    NORATE -->|"blocked:<br/>no stored rate"| ASKRATE{{"Ask for a temporary BASE rate<br/>or another vehicle. A waiting leg<br/>can only take an HOURLY rate.<br/>There is no estimate to fall back on"}}
+    ASKRATE --> GT
+    NORATE -->|all priced| GREETQ
+
+    GREETQ{"Greeter or<br/>on-site staff?"}
+    GREETQ -->|yes| G3[["G3 · price vehicle type 12/13<br/>pickup + as_directed with hours.<br/>The attempted price IS the<br/>rate check"]]
+    GREETQ -->|no| G2
+    G3 --> G3R{Priced?}
+    G3R -->|yes, client asked| G2
+    G3R -->|yes, CSM added| DOCG[/"handled in the<br/>document flow at<br/>Core's rate"/]
+    G3R -->|"blocked:<br/>no greeter rate"| DOCA[/"document flow asks<br/>for a cost"/]
+    DOCG --> G2
+    DOCA --> G2
+
+    G2[["G2 · calculate_quote_units<br/>for the chosen option"]] --> H
+    H[["H · render_presentation.py<br/>Core's own view.<br/>exit 3 → handoff.py summarize"]] --> I
+    I{{"I · ONE question: customize it, go on to<br/>the client document, or just the quote?"}}
+    I -->|a change| GQ
+    I -->|just the quote| CAP[["capture, done"]]
+    I -->|go on| J[["J · handoff.py ingest + write --final<br/>contract 3. Gates run first:<br/>R83 stops · R84 headcount · R91 per-trip sums"]]
+    J --> JG{Every gate passed?}
+    JG -->|no| BLK[/"blocked.json written. Say what is<br/>missing and ask for it. No hand bypass (R92)"/]
+    BLK --> ASK1
+    JG -->|yes| DOCFLOW([document flow — nodes K–Q])
+
+    classDef toolcall fill:#1f3864,stroke:#0f1e3d,color:#fff
+    classDef question fill:#7b3f00,stroke:#4a2600,color:#fff
+    classDef aside fill:#2d4739,stroke:#1b2b22,color:#fff
+    class A,B,C,D,F,INV,F2,GO,GU,GT,GS,G2,G3,H,J,CAP toolcall
+    class ASK1,E1,E2,I,ASKRATE,ASKMKT,GREETQ question
+    class SKIPB,DOCG,DOCA,BLK aside
+</pre>
+  </div>
+  <div class="note"><b>The handoff is gated, and a gate failure is a file.</b> <code>handoff.py</code> refuses to write when a stop is unresolved (R83), a passenger range has no headcount (R84), or a split group's counts do not sum to the headcount per trip (R91). It writes <code>handoff/blocked.json</code> with the gate, the reason and the fix, and the next skill reads it. The session asks the user for what is missing and runs the write again; it does not edit the handoff by hand.</div>
+  <div class="note"><b>The inventory check is unconditional, and that is the point.</b> It runs before every exact quote even when the CSM declined the rate sheet, using the internal display so no rates are shown. If the primary market covers the request, the sourcing branch is skipped entirely and nobody is asked anything. It is an <b>inventory</b> check, not a driver or vendor schedule check — the counts are static fleet numbers, not date-specific availability.</div>
+  <div class="note flag"><b>Two things about sourcing that are not obvious from the shape of the graph.</b> A sourced vehicle bills the <b>primary market's</b> rates, not its home market's — an Austin Mini Bus sourced into Dallas billed Dallas's <b>$314.92/hr</b>, not Austin's <b>$244.09/hr</b>, because the nearby market supplies the vehicle and not the price. And the returned counts are <b>additional</b> vehicles rather than totals, since any whose vendors already serve the reference market are excluded — a CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four extra ones. They are unconfirmed, too.</div>
+  <div class="note flag"><b>Never price a market you have not priced.</b> A session did rate-sheet arithmetic and told a CSM that sourcing a Mini Bus from Austin would save about $80. The real quote came back <b>$707.18 more expensive</b>, because the arithmetic had missed the positioning drive time that sourcing exists to pay for. Choosing which candidates to price is fine; stating a price for one you have not priced is not, however hedged.</div>
+  <div class="note"><b>Three things in this graph reverse what the older diagrams showed.</b> <code>resolve_vehicle_types</code> runs on <b>every</b> quote, because Core owns capacity and greeter eligibility and the static table was found wrong — it had Exec Van at "~10" where Core says 14, and omitted seven types including both greeters. A passenger is resolved <b>only when the user names one</b>, and no passenger id is cached. And <b>G3</b> exists at all: a greeter is a priced Core unit, not a number a human types — a hand-entered <i>"4 hrs at $235/hr = $940"</i> went out against Core's own $404.20.</div>
+  <div class="note"><b>The one trap worth knowing before you use it.</b> A temporary rate is a <b>base</b> rate: $250.00/hr supplied came back as $192.50/hr effective after a 30% contracted discount and 10% fuel. A CSM who enters the partner's cost quotes the client 23% below it, and afterwards it just looks like a price. Note also what is <i>not</i> on this graph any more — there is no approximate or estimated path at all. The tool that provided one was removed, because its discount arithmetic differed from the web app's.</div>
+
+  <h2>3 · quote-document — handoff to deliverable</h2>
+  <p class="sub">Nodes K–Q. The questions are driven by <code>decide.py --next</code>, so none can be skipped, merged or reordered. Dark red is a refusal: the flow stops rather than shipping something wrong.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    START([handoff/intake.json, final]) --> K0
+    K0[["K0 · preflight.py AND load the Drive tool<br/>once per conversation, at the START —<br/>not at the capture step"]] --> KV
+
+    KV{"contract == 3?"}
+    KV -->|no| REJECT[/"REFUSE: written by an older<br/>build. Re-run the quote."/]
+    KV -->|yes| KB{"blocked.json<br/>present?"}
+    KB -->|yes| BLOCKED[/"REFUSE: gate, reason and fix.<br/>No hand bypass (R92)"/]
+    KB -->|no| K
+
+    K[["K · normalize_quote.py --from-handoff<br/>COPY Core's totals; pin engine lines<br/>to Core's granularity"]] --> L
+
+    L{{"L · decide.py --next<br/>one question per message"}}
+    L --> Q1{{"1 · discount_pct"}}
+    Q1 -->|a percentage| REQ[["calculate_temporary_quote_units<br/>temporary_discount.basis_points<br/>→ re-normalize. NOT a local line"]]
+    Q1 -->|none| Q1A
+    REQ --> Q1A
+    Q1A{{"1a · greeter_cost<br/>only if the client asked<br/>and the market has no rate"}} --> Q2
+    Q2{{"2 · commission_pct<br/>stated on the document.<br/>NO number changes"}} --> Q3
+    Q3{{"3 · cover"}} --> Q4
+    Q4{{"4 · personalization<br/>written by set_personalization.py,<br/>which REFUSES text that<br/>contradicts the terms"}} --> Q5
+    Q5{{"5 · map"}} --> Q6
+    Q6{{"6 · format"}} --> M
+
+    M[["M · apply_adjustments.py<br/>FLAT document lines only —<br/>a percentage line is refused.<br/>Records the commission rate"]] --> LINES
+
+    LINES{"every discount Core applied<br/>has its own line?"}
+    LINES -->|no| MISATTR[/"the fuel remainder swallows it<br/>and prints a NEGATIVE surcharge.<br/>Total still correct — which is<br/>why nothing used to fail"/]
+    MISATTR --> C4
+    LINES -->|yes| C4
+
+    C4{"engine SHARE of the total<br/>== Core's aggregate?"}
+    C4 -->|no| FAIL[/"REFUSE TO RENDER.<br/>Names the engine share, so a CSM<br/>does not read their own added<br/>line as the discrepancy"/]
+    C4 -->|yes| N
+
+    N[["N · render_print.py / draft_email.py<br/>render_html.py"]] --> MAPQ
+    MAPQ{"map style?"}
+    MAPQ -->|tiled| N2
+    MAPQ -->|"offline — the network<br/>blocked the map services"| SCHEM[/"titled 'stops in order —<br/>not a driving route',<br/>and the CSM is told"/]
+    SCHEM --> N2
+    N2[["N2 · verify_document.py"]]
+    N2 -->|0 PASS| O
+    N2 -->|1 FAIL| N
+    N2 -->|2 PARTIAL| O
+    O[["O · deliver — email as a<br/>copy-ready block, files attached"]] --> SNAP
+    SNAP[["P · capture — snapshot pass,<br/>compressed, uploaded NOW"]] --> Q
+    Q{{"Q · Anything you'd like changed?"}}
+    Q -->|a change| M
+    Q -->|no| P[["P · capture — full pass,<br/>separate title. Cannot throw"]]
+    P --> UP{"upload succeeded?"}
+    UP -->|yes| DRIVE[["done"]]
+    UP -->|"connector off, or no<br/>Editor on the folder"| ASKU{{"ASK the user to switch it on<br/>and try again — once, after<br/>the deliverable, never before"}}
+    ASKU --> UP
+
+    classDef toolcall fill:#1f3864,stroke:#0f1e3d,color:#fff
+    classDef question fill:#7b3f00,stroke:#4a2600,color:#fff
+    classDef halt fill:#6b1f1f,stroke:#3d0f0f,color:#fff
+    classDef aside fill:#2d4739,stroke:#1b2b22,color:#fff
+    class K0,K,M,N,N2,O,P,SNAP,REQ,DRIVE toolcall
+    class L,Q1,Q1A,Q2,Q3,Q4,Q5,Q6,Q,ASKU question
+    class REJECT,BLOCKED,FAIL,MISATTR halt
+    class SCHEM aside
+</pre>
+  </div>
+  <div class="note"><b>Six base questions; <code>greeter_cost</code> is the conditional one.</b> It is inserted only when a client question mentions a greeter <i>and</i> the market has no greeter rate. The script also drops <code>cover</code> and <code>map</code> for an email-only job, because nothing but the PDF and the printable document reads those answers. <b>Pricing questions come before presentation ones</b>, which is why commission sits at position 2 rather than at the end.</div>
+  <div class="note"><b>The commission amount is computed in code, on a fixed basis, and changes no total.</b> The script works it out and the model never does (R59, R82). An earlier version of this page said it was never calculated; that is no longer true. No beneficiary is named, because the commission may be earned by the client or by an agency acting for them. It appears in the PDF heading block, the terms list and one flat email sentence; on <i>No</i>, nowhere at all.</div>
+  <div class="note"><b>The discount is a Core re-quote, not a document line.</b> This reversed in 0.23: a percentage applied here was our arithmetic on Core's number, so it now goes back through <code>calculate_temporary_quote_units</code> as <code>temporary_discount.basis_points</code> and the document re-normalizes from the response. Discounts are <b>additive</b> in basis points — 30% contracted plus 10% here is 40%, not 37%. A document percentage line is refused outright.</div>
+  <div class="note flag"><b>The money check compares the engine's share, and a document line does not switch it off.</b> It originally ran only when no document line had been added, on the reasoning that the total is then deliberately no longer the engine's — true of the total, not of the engine's <i>share</i> of it. One flat $200 coordinator line disabled the only fail-closed money check in the plugin, on a quote also built from a hand-transcribed engine response. Reproduced: a $100 slip in one leg's line total ships a client document $100 light, silently. A <b>waived</b> engine amount is added back before comparing, too — until that was fixed, <code>--waive</code> refused on every waiver and was unusable.</div>
+  <div class="note flag"><b>The two red boxes fail for opposite reasons, which is the point.</b> The lower one catches a wrong total. The upper one catches a <i>right</i> total telling the wrong story: an additional discount with no line of its own stays inside Core's net, the fuel remainder swallows it, and the document prints a negative "Fuel surcharge" at a positive percentage. That shipped to a client. Nothing failed, because a reconciliation check structurally cannot catch a mislabel — so a separate guard now checks each line's sign against its own stated percentage.</div>
+  <div class="note"><b>The capture goes up twice, and a failed upload asks rather than mentions.</b> A snapshot on the render pass and the full capture after the feedback exchange, under different titles, because Drive's create always creates and because a session that ends at delivery must still leave a record. It is <b>always compressed</b> — about 15× — so there is no size at which a capture stays behind; the old 25 KB ceiling meant the richest sessions were exactly the ones that never arrived. And when the upload fails, the user is the only one who can switch the connector on, so the flow asks them while the session is still alive. Three sessions in a row ended with the record stranded before that changed.</div>
+  <div class="note flag"><b><code>~</code> is not the user's computer.</b> On claude.ai the home directory is a cloud container reclaimed with the session; on a linked desktop the shell's home is an isolated VM. Only a <i>connected folder</i> is really their disk. Two real captures — 192 KB and 36 KB — were written there, reported as saved, and lost. The capture now reports whether its local copy is durable, and when it isn't, Drive is the only destination and the upload is not optional.</div>
+
+  <footer>savoya-quoting v0.27.4 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · companion to <code>PRD_TDD_Quoting_MCP.md</code> · regenerate when the tree changes</footer>
+</div>

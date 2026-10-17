@@ -55,7 +55,7 @@ def order_for(intake):
     return o
 QUESTIONS = {
   "discount_pct": "Any additional discount for this client? A whole percentage, or none. I'll re-quote it through Savoya rather than adjusting the number here.{engine}",
-  "commission_pct": "Does this client get a commission on this quote? No, 1%, 5%, or another percentage. It goes on the quote and in the email as a stated rate \u2014 it changes none of the numbers.",
+  "commission_pct": "Does this client get a commission on this quote? No, 1%, 5%, or another percentage. It goes on the quote and in the email with its amount, which is computed for you \u2014 it changes none of the totals.",
   "greeter_cost": "The client asked about a greeter / on-site coordinator. How many hours? I'll price it through Savoya at the market rate. If this market has no greeter rate I'll come back and ask for a cost, or leave it off as arranged separately.",
   "cover": "Which cover?\n{covers}\n…or upload your own (PDF or image).",
   "personalization": "I'll use: event name \"{event}\", a two-line intro note from you, your contact card at the end, no client logo, no per-leg notes, no closing line. Confirm, or tell me what to change (logo URL, notes, closing line).",
@@ -65,6 +65,15 @@ QUESTIONS = {
 ap = argparse.ArgumentParser(); ap.add_argument("key", nargs="?"); ap.add_argument("value", nargs="?")
 ap.add_argument("--next", action="store_true"); ap.add_argument("--dir", default="handoff"); ap.add_argument("--quote", default="quote.json")
 a = ap.parse_args()
+b_ = os.path.join(a.dir, "blocked.json")
+if os.path.exists(b_):
+    try:
+        r_ = json.load(open(b_, encoding="utf-8"))
+    except (OSError, ValueError):
+        r_ = {}
+    sys.exit(f"The handoff write was refused ({r_.get('gate', '?')}): {r_.get('reason', 'see blocked.json')}\nFix: {r_.get('fix', 'fix the cause and write the handoff again')}\n"
+             "Do not carry on by hand: no hand-built intake.json, no decisions kept in your head, no calling the scripts' internals. "
+             "Fix the cause and write again, or stop and tell the user why (R92).")
 p = os.path.join(a.dir, "intake.json")
 if not os.path.exists(p):
     sys.exit(f"No {p} — fallback path; ask the questions in BASE_ORDER without persistence.")

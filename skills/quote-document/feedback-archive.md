@@ -4,6 +4,24 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-16 (0.27.0 — the Yerdle session: a wrong claim, an unasked question, a missing capture)
+
+Source: the Yerdle IOL Whistler quote on 0.26.1 (Drive feedback record and full capture) and the
+chat that followed it.
+
+- **The session wrote "PA and signage are arranged separately, not included in vehicle pricing".**
+  It did not know that. The plugin's own rule told it to. Replaced by a neutral carried line.
+- **Commission was a rate with no amount**, so the CSM worked it out by hand. Now computed from
+  Core's per-leg figures.
+- **A 9:00 AM pickup placeholder made the email ask a coach-hire client for flight details.**
+- **Four legs priced from Seattle with no service area, and unconfirmed inventory, shipped with
+  no one asked.** Now a confirm-before-send gate.
+- **The capture did not run until the user asked "did we log these?"** It now runs inside
+  verification.
+- **The session ran long and was compacted mid-quote.** Recovery is logged as Deferred (R75).
+
+---
+
 ## 2026-10-09 (0.23.9 — the --pdf gate found a regression I shipped, and a defect it hid)
 
 Ayush ran `regress.py --pdf` from the installed 0.23.7 on his own machine, the first time
@@ -525,3 +543,10 @@ A live probe of the connector found **nine** tools where 22 September served ten
 - **The lesson worth keeping:** the server changed and we found out two weeks later, by
   looking. `regress.py` now fails if any instruction file names a tool outside the current
   nine — the same idea as the instruction-path lint, applied to tool names.
+
+## 2026-10-16 (night) — two more Yerdle sessions, one delivered, one blocked (0.27.1)
+
+- **Both met the same wall:** the sourced pricing results arrived as chat text, not files. Session 1 hand-typed `raw_quote.json` (also recorded in the 0.26.1 capture) and patched Option A/B into `intake.json` by hand. Session 2 refused to retype, told the user a single two-scenario document was impossible, hand-wrote an unchecked email, and could not capture because a capture needed a `quote.json`. → R78 ingest, R79 packages as options, R80 blocked-session capture.
+- **Same request priced two ways** (one coach + 6 h shuttle vs coach + mini bus, 8 h, 8 h shuttle), about $7,000 apart. → R81.
+- **User feedback:** make the commission amount pop; it sells the quote to travel agencies. Session 1 restyled it by hand outside the renderer. → R82.
+- One Drive upload (feedback snapshot) was blocked by a permission check; cause not yet read.

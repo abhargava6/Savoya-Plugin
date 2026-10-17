@@ -15,8 +15,14 @@ def day(iso, fmt="%A, %B %-d"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("quote"); ap.add_argument("--to", default=None)
-    ap.add_argument("--attachment", default=None); ap.add_argument("--json", default=None)
+    ap.add_argument("--short", action="store_true"); ap.add_argument("--attachment", default=None); ap.add_argument("--json", default=None)
+    ap.add_argument("--asked", action="store_true", help="the user asked for an email even though the recorded format is PDF-only")
     a = ap.parse_args()
+    from deliverables import chosen_format, EMAIL_FORMATS
+    fmt = chosen_format(a.quote)
+    if fmt and fmt not in EMAIL_FORMATS and not a.asked:
+        sys.exit(f"The user chose {fmt!r}, not an email. Do not draft or paste one (R85); offer it in one line. "
+                 "If they have since asked for one, re-run with --asked.")
     q = json.load(open(a.quote, encoding="utf-8"))
     m, pz = q["meta"], q.get("personalization", {})
     am = pz.get("account_manager") or {}
@@ -40,7 +46,12 @@ def main():
     legs_txt = "\n".join(line(l) for l in primaries)
     if alts:
         legs_txt += "\n  Option B swaps " + "; ".join(f"{l.get('ref')} for {next((p.get('ref') for p in primaries if p['key']==l.get('alternative_of')),'?')} ({l['vehicle']['quantity']} × {l['vehicle']['name']}, {l['pricing'].get('billable_hours') or ''} hrs)" for l in alts)
-    tbd = [p for p in q.get("internal", {}).get("placeholders", [])]
+    # Asked for ONLY when a flight is actually outstanding: an airport stop whose flight is
+    # TBD. This used to key off ANY placeholder, so a 9:00 AM pickup placeholder on a coach
+    # hire with no flights made the email ask the client to "send over the flight details"
+    # (Yerdle, 15 Oct 2026; PRD R74).
+    flight_tbd = any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd")
+                     for l in q["legs"] for s in (l.get("stops") or []))
     subject = f"Savoya quote — {event}" + (f" ({date_txt})" if date_txt else "")
     tc = (m.get("travel_coordinator") or "").split(" (")[0].split()[0] if m.get("travel_coordinator") else None
     greet = f"Hi {tc}," if tc else "Hi there,"
@@ -170,18 +181,46 @@ def main():
     # One plain sentence, on its own, after the inclusions and before the close. It is
     # kept deliberately flat and names no beneficiary: the commission may be earned by
     # the client or by an agency acting for them, and this is a note on the arrangement
-    # rather than something to sell. No figure is calculated.
+    # rather than something to sell. The amount is COPIED from quote.json, where
+    # apply_adjustments.py computed it; this script computes nothing.
     commission = q.get("commission_pct")
-    commission_line = (f"A {float(commission):g}% commission applies to this program."
-                       if commission else "")
-    tbd_line = "Send over the flight details when you have them and we'll lock in the timing." if tbd else ""
+    commission_line = (q.get("commission_line")
+                       or (f"A {float(commission):g}% commission applies to this program."
+                           if commission else ""))
+    # R82: the commission is the figure that helps sell the quote, so it sits directly under
+    # the totals under its own heading, not after the inclusions paragraph. Still flat.
+    commission_block = ("COMMISSION\n" + commission_line) if commission_line else ""
+    tbd_line = "Send over the flight details when you have them and we'll lock in the timing." if flight_tbd else ""
     closer = ("We'll be standing by at your service!" if register == "sales" else "As always, let us know if you have any questions! We are happy to help.")
     signoff = "Warm Regards," if register == "sales" else "All the best,"
-    body = "\n\n".join(x for x in [greet, opener, blocks, cx_note, total_line + " The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " + day(m.get('valid_until'), '%B %-d') + ".", incl, commission_line, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
-    out = {"to": a.to, "subject": subject, "body": body, "attachment": a.attachment}
+    from client_requests import requests_line
+    body = "\n\n".join(x for x in [greet, opener, requests_line(q), blocks, cx_note, total_line + " The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " + day(m.get('valid_until'), '%B %-d') + ".", commission_block, incl, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
+    # R71: the short email. Option and leg totals, the discount, the commission amount and a
+    # pointer to the PDF. Every figure is COPIED from quote.json (Core's engine_net_line_cents,
+    # total_cents, option_b.total_cents, commission_line); this script computes none.
+    def short_line(l):
+        net = l.get("engine_net_line_cents")
+        return f"  \u2022 {l.get('ref','')} {day(l.get('date'),'%a %-m/%-d')}, {l['vehicle']['quantity']} \u00d7 {l['vehicle']['name']}" + (f": {money(net)}" if net is not None else "")
+    short_bits = ["Option A:\n" + "\n".join(short_line(l) for l in primaries)]
+    if ob and alts:
+        short_bits.append("Option B (in place of " + ", ".join(replaced_refs) + "):\n" + "\n".join(short_line(l) for l in alts))
+    short_totals = f"Option A comes to {money(q['total_cents'])}" + (f" and Option B to {money(ob['total_cents'])}" if ob else "") + "."
+    disc_short = (f" That includes a {abs(disc['value']):g}% discount" + (f" and the {fuel['value']:g}% fuel surcharge" if fuel else "") + ".") if disc else (f" That includes the {fuel['value']:g}% fuel surcharge." if fuel else "")
+    short_body = "\n\n".join(x for x in [
+        greet,
+        f"Here is the quote for {event}.",
+        "\n\n".join(short_bits),
+        short_totals + disc_short,
+        commission_block, requests_line(q), tbd_line,
+        f"The full line items and terms are in the attached PDF. Pricing holds through {day(m.get('valid_until'), '%B %-d')}.",
+        signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya')] if x)
+    out = {"to": a.to, "subject": subject, "body": body, "short_body": short_body, "attachment": a.attachment}
     if a.json:
         json.dump(out, open(a.json, "w", encoding="utf-8"), indent=2)
-    print("Subject: " + subject + "\n\n" + body)
+    if a.short:
+        print("Subject: " + subject + "\n\n" + short_body)
+    else:
+        print("Subject: " + subject + "\n\n" + body + "\n\n=== SHORT VERSION ===\n\n" + short_body)
 
 if __name__ == "__main__":
     main()

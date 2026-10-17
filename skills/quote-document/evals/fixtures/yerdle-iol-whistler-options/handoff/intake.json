@@ -1,0 +1,161 @@
+{
+  "contract": 3,
+  "client": {
+    "name": "Yerdle",
+    "profile_id": 201890,
+    "source": "resolve"
+  },
+  "passenger": {
+    "id": null,
+    "name": null,
+    "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"
+  },
+  "tool": "calculate_temporary_quote_units",
+  "estimate_type": "exact",
+  "quote_mode": "defined",
+  "selected_option": null,
+  "option_keys": [],
+  "units": [
+    {
+      "key": "optA_jun9_coach",
+      "label": "Jun 9 guided Whistler tour, 1 coach all day",
+      "date": "2027-06-09T09:00:00-07:00",
+      "passenger_count": null,
+      "structure": "as-directed",
+      "rationale": "Guided tour, vehicle held on site all day (8 hrs as directed)",
+      "vehicle": {
+        "id": 6,
+        "name": "Coach Bus",
+        "quantity": 1
+      },
+      "line_total": 655578,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false,
+        "temporary_discount_basis_points": 1000,
+        "effective_discount_basis_points": 4000,
+        "temporary_discount_amount": 109263,
+        "temporary_discount_label": "Additional discount"
+      }
+    },
+    {
+      "key": "optA_jun10_coach",
+      "label": "Jun 10 continuous shuttle, Westin and Fairmont golf course",
+      "date": "2027-06-10T09:00:00-07:00",
+      "passenger_count": null,
+      "structure": "hourly-block",
+      "rationale": "Continuous shuttle, one 8-hour hourly block, vehicle held at Fairmont",
+      "vehicle": {
+        "id": 6,
+        "name": "Coach Bus",
+        "quantity": 1
+      },
+      "line_total": 665511,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false,
+        "temporary_discount_basis_points": 1000,
+        "effective_discount_basis_points": 4000,
+        "temporary_discount_amount": 110919,
+        "temporary_discount_label": "Additional discount"
+      }
+    },
+    {
+      "key": "optB_jun9_coach",
+      "label": "Jun 9 guided Whistler tour, coach (4 hrs)",
+      "date": "2027-06-09T09:00:00-07:00",
+      "passenger_count": null,
+      "structure": "as-directed",
+      "rationale": "Guided tour, coach 4 hrs",
+      "vehicle": {
+        "id": 6,
+        "name": "Coach Bus",
+        "quantity": 1
+      },
+      "line_total": 506583,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false,
+        "temporary_discount_basis_points": 1000,
+        "effective_discount_basis_points": 4000,
+        "temporary_discount_amount": 84431,
+        "temporary_discount_label": "Additional discount"
+      }
+    },
+    {
+      "key": "optB_jun9_minibus",
+      "label": "Jun 9 guided Whistler tour, mini bus (4 hrs)",
+      "date": "2027-06-09T09:00:00-07:00",
+      "passenger_count": null,
+      "structure": "as-directed",
+      "rationale": "Guided tour, mini bus 4 hrs",
+      "vehicle": {
+        "id": 7,
+        "name": "Mini Bus",
+        "quantity": 1
+      },
+      "line_total": 430848,
+      "pricing_method": "hourly",
+      "adjustments": {
+        "discount_basis_points": 3000,
+        "special_handling_basis_points": 0,
+        "fuel_surcharge_basis_points": 1000,
+        "temporary_rate_used": false,
+        "temporary_discount_basis_points": 1000,
+        "effective_discount_basis_points": 4000,
+        "temporary_discount_amount": 71808,
+        "temporary_discount_label": "Additional discount"
+      }
+    }
+  ],
+  "rate_sheet_shown": false,
+  "ambiguities": [],
+  "placeholders": [
+    "Pickup 9:00 AM at The Westin both days is a placeholder",
+    "Jun 9 Option 2 second vehicle is a Mini Bus: Seattle has one Coach Bus; inventory unconfirmed",
+    "Same Seattle Coach Bus quoted Jun 9 and Jun 10; Jun 10 inventory not separately checked"
+  ],
+  "client_questions": [
+    "PA/speaker system on the bus for the guided tour",
+    "Signage 'IOL Invitational Group' in the bus windows"
+  ],
+  "final": true,
+  "selection": {
+    "select": [
+      "optA_jun9_coach",
+      "optA_jun10_coach"
+    ],
+    "alternatives": {
+      "optB_jun9_coach": "optA_jun9_coach",
+      "optB_jun9_minibus": "optA_jun9_coach"
+    }
+  },
+  "decisions": {
+    "format": "email+pdf",
+    "discount_pct": 10,
+    "commission_pct": 5,
+    "cover": "event-planners",
+    "personalization": "defaults",
+    "map": "yes"
+  },
+  "source_tool": "calculate_temporary_quote_units",
+  "persisted": false,
+  "aggregate_total": 1321089,
+  "temporary_pricing": {
+    "rate": null,
+    "discount": {
+      "basis_points": 1000,
+      "label": "Additional discount"
+    },
+    "label": "Additional discount"
+  }
+}

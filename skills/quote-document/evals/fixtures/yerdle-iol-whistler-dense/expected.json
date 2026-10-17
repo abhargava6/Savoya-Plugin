@@ -1,0 +1,32 @@
+{
+ "_note": "The Yerdle quote as the fresh-chat test produced it on 16 Oct 2026: a long intro, seven header fields, three engine adjustment lines and two sourced legs. Its totals block ran 103px past the footer on page 2. render_print.py now measures the laid-out page and moves a clipped totals block onto its own page; pdf_pages 5 is cover, Option A legs, Option A totals, Option B, rate card.",
+ "adjustments": [],
+ "commission_pct": 5,
+ "commission_amounts": {
+  "a": 65054,
+  "b": 78517
+ },
+ "engine_subtotal_cents": 2001650,
+ "total_cents": 1431180,
+ "option_b_total_cents": 1727368,
+ "leg_count": 4,
+ "contains": [
+  "$14,311.80",
+  "$17,273.68",
+  "5% commission · $650.54",
+  "5% commission · $785.17"
+ ],
+ "not_contains": [
+  "Stop 2",
+  "hourly fallback",
+  "rate_id",
+  "Passengers 0"
+ ],
+ "pdf_pages": 5,
+ "edits": {
+  "personalization": {
+   "cover": "event-planners"
+  }
+ },
+ "needs_browser_layout": true
+}

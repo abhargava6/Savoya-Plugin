@@ -30,21 +30,23 @@ What each answer does:
    falls back to asking for a cost. See the greeter node in
    `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md`. A hand-entered
    figure on an Irvine quote was **$940** against Core's **$404.20**.
-3. **commission_pct** — **stated, never calculated.** *"Does this client get a commission
+3. **commission_pct** — **the rate is recorded; the amount is computed in code.** *"Does this client get a commission
    on this quote? No, 1%, 5%, or another percentage."* Offer those four; *something else*
    takes any percentage. Record it with
    `apply_adjustments.py quote.json --commission-pct <pct|none>` — it lives there rather
    than in a setter because that script owns the terms block, so the rate and its terms
    bullet land in one call and cannot get out of order.
-   - **No arithmetic changes.** It is not an adjustment, it never enters `adjustments`,
-     and the total is identical with it and without it. Do not compute a commission
-     amount: the basis is not ours to assume (the quoted total? before discount?
-     excluding fuel?), and a figure nobody returned is a figure nothing can check.
+   - **No total changes.** It is not an adjustment, it never enters `adjustments`, and
+     the total is identical with it and without it. `apply_adjustments.py` also computes
+     the amount per option (the subtotal after every discount, before fuel, times the
+     rate, half-up). **Never work an amount out yourself or edit one into `quote.json`**;
+     if it looks wrong, re-run the script.
    - **It names no beneficiary.** The commission may be earned by the client or by an
      agency acting for them, and a client-facing document should not assert which. The
-     wording is *"A 5% commission applies to this program."* everywhere.
-   - It appears in three places, all automatic once recorded: the PDF heading block
-     beside Discount and Fuel surcharge, the terms list (so the HTML email gets it too),
+     wording is *"A 5% commission applies to this program, calculated after discounts
+     and before the fuel surcharge: $600.50 on Option A, $728.61 on Option B."* everywhere.
+   - It appears in three places, all automatic once recorded: a hero line under each
+     option total in the PDF, the terms list (so the HTML email gets it too),
      and one flat sentence in the email copy after the inclusions paragraph. **Don't
      emphasise it in the email** — it moves the needle sometimes, but the client is
      reading a quote, not an offer.
@@ -90,3 +92,8 @@ Formats and what they need:
 | Full verification | poppler (`pdftotext`, `pdfinfo`) | structural checks only — say the document wasn't fully verified |
 | Route map | Pillow | skipped |
 | Uploaded cover from a PDF | poppler + Pillow | an image file still works |
+
+
+## Confirm before send
+
+After the five questions and the build, `confirm_items.py quote.json --json` lists the items the user must confirm: grouped service-area placeholders, each other placeholder, and each operational client request. Ask one `ask_user_input_v0` question per item (`Right` / `Wrong`), one per message. Gate only. A `Wrong` answer stops the send and asks for the corrected value.

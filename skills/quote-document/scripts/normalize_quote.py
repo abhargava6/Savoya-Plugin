@@ -16,6 +16,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 
 # The handoff contract this build reads. Bumped whenever intake starts writing a
 # field the document relies on, so a handoff from an older build is refused rather
@@ -499,6 +500,15 @@ def main():
 
     handoff = None
     if args.from_handoff:
+        b_ = os.path.join(args.from_handoff, "blocked.json")
+        if os.path.exists(b_):
+            try:
+                r_ = json.load(open(b_, encoding="utf-8"))
+            except (OSError, ValueError):
+                r_ = {}
+            sys.exit(f"The handoff write was refused ({r_.get('gate', '?')}): {r_.get('reason', 'see blocked.json')}\nFix: {r_.get('fix', 'fix the cause and write the handoff again')}\n"
+                     "Do not carry on by hand: no hand-built intake.json, no decisions kept in your head, no calling the scripts' internals. "
+                     "Fix the cause and write again, or stop and tell the user why (R92).")
         handoff = json.load(open(os.path.join(args.from_handoff, "intake.json"), encoding="utf-8"))
         # F2 — a stale handoff is REJECTED, not interpreted. A v1 or v2 handoff was written
         # against the previous MCP contract, where estimate_type could be "approximate", a
@@ -709,6 +719,8 @@ def main():
             "closing_note": None,
         },
         "terms": [],  # filled by apply_adjustments (conditional bullets)
+        # R73: requests the client made that Core cannot answer. Carried, never resolved here.
+        "client_requests": __import__("client_requests").carry((handoff or {}).get("client_questions")),
         "internal": {
             "rate_ids": sorted(set(r for r in rate_ids if r)),
             "warnings": sorted(set(warnings)),

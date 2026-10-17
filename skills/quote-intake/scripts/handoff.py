@@ -11,6 +11,16 @@
       [--unit key=structure:rationale]... [--placeholder "..."]... [--ambiguity "..."]... \
       [--passenger-id N --passenger-name "..."] [--rate-sheet-shown] [--final]
 
+  handoff.py ingest --name A [--dir handoff] [--file response.json]   (response on stdin otherwise)
+      → saves a pricing response EXACTLY as given to <dir>/responses/<name>.json, after checking
+        that it parses, carries priced units, and that the unit totals add up to the response's
+        own aggregate_total. Never edits a figure. Exit 2 = rejected, nothing written.
+
+  handoff.py write … --package A --package B [--shared B_key=A_key]... [--alt-of B_key=A_key]...
+      → several separately priced packages as options in one handoff (R79). The first package is
+        Option A; every other package's units become alternatives. Each package keeps its own
+        Core total; nothing is summed or averaged.
+
   handoff.py client "Yerdle"                 → cached profile id, else exit 1
   handoff.py capture --dir handoff [--slug ...] [--worked ...] [--change ...]
 """
@@ -231,19 +241,246 @@ def temporary_pricing_of(units):
     return None
 
 
+def check_response(raw):
+    """Return (problems, units, total). A response is acceptable only if it is a priced package
+    whose units add up to the figure the pricing system itself returned."""
+    problems = []
+    if not isinstance(raw, dict):
+        return ["not a JSON object"], [], None
+    if shape_of(raw) != "package":
+        return ["no quote_units: this is not a priced package (a multi-option response is saved whole with --raw)"], [], None
+    units = raw.get("quote_units") or []
+    if not units:
+        problems.append("no quote_units")
+    keys = [u.get("key") for u in units]
+    if len(set(keys)) != len(keys):
+        problems.append("duplicate unit keys")
+    for u in units:
+        if not isinstance(u.get("line_total"), (int, float)):
+            problems.append(f"unit {u.get('key')}: no numeric line_total")
+        if not u.get("pickup_date"):
+            problems.append(f"unit {u.get('key')}: no pickup_date")
+    total = raw.get("aggregate_total")
+    if not isinstance(total, (int, float)):
+        problems.append("no aggregate_total")
+    elif not problems and sum(u["line_total"] for u in units) != total:
+        problems.append(f"unit totals add to {sum(u['line_total'] for u in units)} but aggregate_total is {total}: "
+                        "the text was altered or cut off. Paste the response again, whole")
+    return problems, units, total
+
+
+def ingest(a):
+    text = open(a.file, encoding="utf-8").read() if a.file else sys.stdin.read()
+    try:
+        raw = json.loads(text)
+    except ValueError as e:
+        sys.exit(f"REJECTED (nothing written): not valid JSON ({e}). Paste the whole response, unedited.")
+    problems, units, total = check_response(raw)
+    if problems:
+        print("REJECTED (nothing written):", file=sys.stderr)
+        for p in problems:
+            print(f"  - {p}", file=sys.stderr)
+        sys.exit(2)
+    out = os.path.join(a.dir, "responses")
+    os.makedirs(out, exist_ok=True)
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", a.name).strip("-") or "A"
+    path = os.path.join(out, f"{name}.json")
+    if a.without_presentation:
+        # The ONE declared way to shrink a response too large to paste. Priced units and the
+        # aggregate are untouched (the check above already passed on them), and the file says
+        # what was left out so nothing downstream mistakes it for the whole response.
+        raw.pop("presentation", None)
+        raw["_ingest"] = {"left_out": ["presentation"], "reason": "too large to paste; declared by the session"}
+        text = json.dumps(raw)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    print(f"SAVED {path}: {len(units)} units, total {money(total)} (units add up to the response's own total)")
+
+
+def merge_packages(a):
+    """Build raw_quote.json from separately priced packages. The first is the primary; the
+    others' units become alternatives. Unit objects are copied verbatim; only bookkeeping is added."""
+    import copy
+    pk = []
+    for name in a.package:
+        path = os.path.join(a.dir, "responses", f"{name}.json")
+        if not os.path.exists(path):
+            sys.exit(f"No saved response {path}. Run: handoff.py ingest --name {name}")
+        raw = load_json(path, {}) or {}
+        problems, units, total = check_response(raw)
+        if problems:
+            sys.exit(f"Saved response {name} no longer checks out: {problems}")
+        pk.append((name, raw, units, total))
+    shared = dict(x.split("=", 1) for x in a.shared)        # other_key=primary_key
+    alt_of = dict(x.split("=", 1) for x in a.alt_of)
+    merged = copy.deepcopy(pk[0][1])
+    prim_units = merged["quote_units"]
+    seen = {u["key"] for u in prim_units}
+    prim_by_key = {u["key"]: u for u in prim_units}
+    alternatives, meta = {}, {pk[0][0]: {"aggregate_total": pk[0][3], "unit_keys": [u["key"] for u in prim_units]}}
+    for name, raw, units, total in pk[1:]:
+        kept, renamed = [], {}
+        for u in units:
+            k = orig = u["key"]
+            if k in shared:
+                p = prim_by_key.get(shared[k])
+                if p is None or p.get("line_total") != u.get("line_total"):
+                    sys.exit(f"{k} is declared the same as {shared[k]} but its line total differs. "
+                             "Declare it an alternative (--alt-of) or fix the pairing")
+                continue                                   # carried: the primary's unit stands
+            if k in seen:
+                # Two packages quoted separately can reuse a key ("jun9_tour_coach"). The merge
+                # namespaces it; a session never edits a saved response to avoid this.
+                new = f"{name}_{k}"
+                n = 2
+                while new in seen:
+                    new = f"{name}_{k}_{n}"; n += 1
+                renamed[k] = new
+                u = dict(u, key=new)
+                k = new
+            seen.add(k)
+            twin = alt_of.get(orig) or alt_of.get(k) or next((pu["key"] for pu in prim_units
+                                          if (pu.get("pickup_date") or "")[:10] == (u.get("pickup_date") or "")[:10]), None)
+            if twin is None:
+                sys.exit(f"Cannot tell which Option A unit {k} replaces. Pass --alt-of {k}=<option A unit key>")
+            alternatives[k] = twin
+            kept.append(copy.deepcopy(u))
+            if k in renamed.values():
+                kept[-1]["key"] = k
+        merged["quote_units"] = merged["quote_units"] + kept
+        meta[name] = {"aggregate_total": total, "unit_keys": [u["key"] for u in kept], "renamed_keys": dict(renamed),
+                      "shared_with_primary": {k: v for k, v in shared.items() if k in {x["key"] for x in units}}}
+    merged["merged_packages"] = meta
+    return merged, [u["key"] for u in prim_units], alternatives
+
+
+RANGE = re.compile(r"(\d{1,4})\s*(?:-|\u2013|\u2014|to)\s*(\d{1,4})\s*(?:passengers?|guests?|people|persons?|pax|attendees|travell?ers|riders)"
+                   r"|between\s+(\d{1,4})\s+and\s+(\d{1,4})\s+(?:passengers?|guests?|people|persons?|pax|attendees|travell?ers|riders)", re.I)
+
+
+def headcount_range(text):
+    """(low, high) when the request gives a headcount as a range, else None (R84)."""
+    m = RANGE.search(text or "")
+    if not m:
+        return None
+    lo, hi = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), m.group(4))
+    lo, hi = int(lo), int(hi)
+    return (lo, hi) if lo < hi else None
+
+
+def refuse(a, gate, reason, fix):
+    """R92: a refusal leaves a record and a way forward. `blocked.json` sits beside request.md;
+    the document step refuses to run while it exists, so a refused write is never walked
+    around by hand. A successful write removes it."""
+    try:
+        os.makedirs(a.dir, exist_ok=True)
+        json.dump({"gate": gate, "reason": reason, "fix": fix,
+                   "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                   "given": {"client": a.client, "headcount": a.headcount, "package": a.package,
+                             "stop_note": a.stop_note, "selected": a.selected}},
+                  open(os.path.join(a.dir, "blocked.json"), "w", encoding="utf-8"), indent=2)
+    except OSError:
+        pass
+    sys.exit(f"Refusing to write ({gate}): {reason}\nFix: {fix}\n"
+             "Do not build intake.json, decisions or the document by hand to get past this. Fix the cause and write again, "
+             "or stop and tell the user why (R92).")
+
+
+def trip_key(u):
+    """Units that serve the same trip share a pickup time and a stop list (R91)."""
+    sig = []
+    for s_ in u.get("stops") or []:
+        sig.append((s_.get("name") or s_.get("display_name") or s_.get("label") or s_.get("address") or "") if isinstance(s_, dict) else str(s_))
+    return ((u.get("pickup_date") or ""), tuple(sig))
+
+
+def package_sets(raw, units_src, pkgs):
+    """The unit lists that are each one complete priced package. In a merged response each
+    package's own units plus the Option A units it shares."""
+    mp = raw.get("merged_packages") if isinstance(raw, dict) else None
+    if mp:
+        by_key = {u.get("key"): u for u in units_src}
+        out = {}
+        for name, m in mp.items():
+            keys = list(m.get("unit_keys") or []) + list((m.get("shared_with_primary") or {}).values())
+            out[name] = [by_key[k] for k in dict.fromkeys(keys) if k in by_key]
+        return out
+    return {(p[0] or "quote"): p[3] for p in pkgs}
+
+
+def split_problems(units, headcount):
+    """R91: every unit carries its own passenger_count, and the counts of the units that serve
+    one trip add up to the confirmed headcount. Never equality per unit: Core sizes the number
+    of vehicles from a unit's count, so 50 on a coach and 25 on two vans is a correct 75."""
+    out = []
+    ok = lambda n: isinstance(n, int) and not isinstance(n, bool) and n > 0
+    nocount = [u.get("key") for u in units if not ok(u.get("passenger_count"))]
+    if nocount:
+        out.append(f"units {nocount} were priced without a passenger_count, so their capacity is a vehicle default")
+    groups = {}
+    for u in units:
+        if ok(u.get("passenger_count")):
+            groups.setdefault(trip_key(u), []).append(u)
+    for (when, _), us_ in groups.items():
+        tot = sum(u["passenger_count"] for u in us_)
+        if tot != headcount:
+            out.append("units " + ", ".join(f"{u.get('key')} ({u['passenger_count']})" for u in us_)
+                       + f" serve the same trip ({when[:16]}) and add up to {tot}, not {headcount}")
+    return out
+
+
+def gates(a, raw, units_src, pkgs):
+    """R83 and R84 (amended by R91): the rules a session kept skipping while they were only guidance."""
+    notes = []
+    for n in a.stop_note:
+        parts = [x.strip() for x in n.split("|")]
+        if len(parts) != 3 or parts[2] not in ("resolved", "unresolved"):
+            sys.exit(f"--stop-note must be '<stop>|<query sent>|resolved' or '…|unresolved', got {n!r}")
+        notes.append({"stop": parts[0], "query": parts[1], "result": parts[2]})
+    bad = [x for x in notes if x["result"] == "unresolved"]
+    if bad:
+        refuse(a, "R83", "a stop did not resolve (" + "; ".join(f"{x['stop']} via {x['query']!r}" for x in bad) + ").",
+               "Ask the user for an address. Never substitute another stop, and never edit travel times or stops to get past a check.")
+    rng = headcount_range(open(a.request, encoding="utf-8", errors="replace").read())
+    if rng:
+        if not a.headcount:
+            refuse(a, "R84", f"the request gives a headcount range ({rng[0]}-{rng[1]}).",
+                   "Ask the user which number to quote, re-quote with that passenger_count, then pass --headcount N.")
+        if not (rng[0] <= a.headcount <= rng[1]):
+            refuse(a, "R84", f"--headcount {a.headcount} is outside the requested range {rng[0]}-{rng[1]}.",
+                   "Ask the user which number to quote.")
+        for name, units in package_sets(raw, units_src, pkgs).items():
+            probs = split_problems(units, a.headcount)
+            if probs:
+                refuse(a, "R84/R91", f"package {name}: " + "; ".join(probs) + ".",
+                       "Re-quote so each vehicle group carries its own passenger_count and the groups serving one trip add up to "
+                       f"{a.headcount} (for example 50 on the coach and 25 on the vans), then ingest again.")
+    return notes
+
+
 def write(a):
     os.makedirs(a.dir, exist_ok=True)
     shutil.copy(a.request, os.path.join(a.dir, "request.md"))
-    shutil.copy(a.raw, os.path.join(a.dir, "raw_quote.json"))
+    merged_sel = None
+    if a.package:
+        merged, prim_keys, alts = merge_packages(a)
+        json.dump(merged, open(os.path.join(a.dir, "raw_quote.json"), "w", encoding="utf-8"), indent=2)
+        a.raw = os.path.join(a.dir, "raw_quote.json")
+        merged_sel = {"select": prim_keys, "alternatives": alts}
+    elif a.raw:
+        shutil.copy(a.raw, os.path.join(a.dir, "raw_quote.json"))
+    else:
+        sys.exit("write needs --raw <file> or --package <ingested name> (repeat for options)")
     if a.scenarios:
         shutil.copy(a.scenarios, os.path.join(a.dir, "scenarios.json"))
     raw = load_json(a.raw, {}) or {}
     pkgs = packages(raw)
     chosen = next((p for p in pkgs if p[0] == a.selected), pkgs[0])
     units_src = chosen[3]
+    stop_notes = gates(a, raw, units_src, pkgs)
     missing = [u.get("key") for u in units_src if not u.get("pickup_date")]
     if missing:
-        sys.exit(f"Refusing to write handoff: units without pickup_date: {missing}.")
+        refuse(a, "pickup_date", f"units without pickup_date: {missing}.", "Re-quote those units with a date and ingest again.")
     struct = {}
     for spec in a.unit:
         k, _, rest = spec.partition("=")
@@ -268,6 +505,7 @@ def write(a):
     prev = load_json(path, {}) or {}
     intake = {
         "contract": 3,
+        "written_by": "handoff.py write",
         "client": {"name": a.client, "profile_id": a.profile_id, "source": a.client_source},
         # Set only when the USER named a passenger. Omitted from the call otherwise:
         # Core attaches an eligible passenger to the unsaved calculation itself. The old
@@ -279,9 +517,11 @@ def write(a):
         "selected_option": a.selected, "option_keys": [p[0] for p in pkgs if p[0]],
         "units": units,
         "rate_sheet_shown": a.rate_sheet_shown,
-        "ambiguities": a.ambiguity, "placeholders": a.placeholder,
+        "headcount_confirmed": a.headcount, "stop_resolution": stop_notes,
+        "ambiguities": a.ambiguity,
+        "placeholders": a.placeholder + [f"Scenario reading: {r}" for r in a.reading],
         "client_questions": a.client_question, "final": a.final,
-        "selection": {"select": [u["key"] for u in units], "alternatives": {}},
+        "selection": merged_sel or {"select": [u["key"] for u in units], "alternatives": {}},
         "decisions": prev.get("decisions", {}),
         # DERIVED from the response, not passed in. Two of the three live sessions on
         # 10 Oct 2026 patched these into intake.json by hand -- "since handoff.py write
@@ -297,6 +537,10 @@ def write(a):
                                        "note": f"{a.tool}, mode={a.mode}, option={a.selected}, final={a.final}"}],
     }
     json.dump(intake, open(path, "w", encoding="utf-8"), indent=2)
+    try:
+        os.remove(os.path.join(a.dir, "blocked.json"))  # a successful write ends the refusal (R92)
+    except OSError:
+        pass
     if a.client and a.profile_id:
         cfg = load_json(CONFIG, {}) or {}
         cfg.setdefault("known_clients", {})[a.client] = a.profile_id
@@ -355,7 +599,14 @@ def main():
     w = sub.add_parser("write")
     w.add_argument("--dir", default="handoff"); w.add_argument("--client", required=True)
     w.add_argument("--profile-id", type=int, required=True); w.add_argument("--request", required=True)
-    w.add_argument("--raw", required=True); w.add_argument("--scenarios", default=None)
+    w.add_argument("--raw", default=None); w.add_argument("--scenarios", default=None)
+    w.add_argument("--package", action="append", default=[], help="name of an ingested response; repeat for options (first = Option A)")
+    w.add_argument("--shared", action="append", default=[], help="OTHER_KEY=A_KEY: a unit priced identically in both packages")
+    w.add_argument("--alt-of", dest="alt_of", action="append", default=[], help="B_KEY=A_KEY: the Option A unit a unit replaces")
+    w.add_argument("--headcount", type=int, default=None, help="the headcount the user chose when the request gave a range (R84)")
+    w.add_argument("--stop-note", dest="stop_note", action="append", default=[],
+                   help="'<stop>|<query sent>|resolved|unresolved' for every stop lookup (R83); unresolved refuses the write")
+    w.add_argument("--reading", action="append", default=[], help="how a scenario was read (vehicles, hours, headcount); R81")
     w.add_argument("--mode", default="best"); w.add_argument("--tool", default="calculate_quote_units")
     w.add_argument("--selected", default=None)
     w.add_argument("--unit", action="append", default=[]); w.add_argument("--ambiguity", action="append", default=[])
@@ -364,6 +615,10 @@ def main():
                    help="a client question that does not change pricing; answered in the document stage")
     w.add_argument("--final", action="store_true"); w.add_argument("--client-source", default="resolve")
     w.add_argument("--passenger-id", type=int, default=None); w.add_argument("--passenger-name", default=None)
+    ig = sub.add_parser("ingest"); ig.add_argument("--name", required=True); ig.add_argument("--dir", default="handoff")
+    ig.add_argument("--file", default=None)
+    ig.add_argument("--without-presentation", dest="without_presentation", action="store_true",
+                    help="drop Core's presentation block when the response is too large to paste (recorded in the file)")
     c = sub.add_parser("client"); c.add_argument("name")
     cp = sub.add_parser("capture"); cp.add_argument("--dir", default="handoff"); cp.add_argument("--slug", default=None)
     cp.add_argument("--worked", default=None); cp.add_argument("--change", default=None)
@@ -371,6 +626,8 @@ def main():
 
     if a.cmd == "summarize":
         print(summarize(load_json(a.raw, {}) or {}, a.select))
+    elif a.cmd == "ingest":
+        ingest(a)
     elif a.cmd == "write":
         write(a)
     elif a.cmd == "capture":

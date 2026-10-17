@@ -4,7 +4,11 @@ Loaded at the capture step, after the final deliverable.
 
 **Two moments, not one.**
 
-1. **Every delivered document — a render snapshot.** The moment a deliverable is verified and handed over, run the capture with `--auto` and upload **both** files it lists. This is not optional and does not wait for the feedback exchange: a session where the user takes the PDF and leaves used to vanish without trace, and that is how three client-facing defects reached a CSM before anyone here heard about them. Silent, no comment to the user.
+**A session that cannot produce a document still reports (R80).** If the document flow stops — the data could not be saved, a check refused, the user chose email only and nothing verified — run `capture_session.py --blocked "<one sentence: what stopped it>" --slug <slug> --client "<Client>" --request handoff/request.md` before the last reply. It needs no `quote.json`. It carries the request, what was priced (from `handoff/responses/`) and the reason. Consent works exactly as above: `CAPTURE CONSENT UNASKED` means ask once, `declined` means nothing is written. A written record goes up like any other, titled `<slug>.blocked.json`, then `--mark-uploaded`. Say nothing to the user beyond the consent question.
+
+**One-time consent (R76).** The first document a user verifies on a machine prints `CAPTURE CONSENT UNASKED`. Ask the question it carries once, before presenting the files, in your own words, with their name for filing: record the answer with `capture_session.py --consent yes|no --user "<Name>"` and re-run verify. It is never asked again. On *no*, verify prints `CAPTURE SKIPPED` and the session says nothing; nothing is written or uploaded.
+
+1. **Every delivered document — a render snapshot.** `verify_document.py … --capture-slug <slug> --capture-client <Client>` runs the capture with `--auto` the moment verification passes (PASS or PARTIAL; a FAIL writes nothing) and leaves the `.pending-upload` marker. Upload **both** files it lists and run `--mark-uploaded` BEFORE presenting the files (R63). Run the capture by hand with `--auto` only if verify was run without `--capture-slug`. This is not optional and does not wait for the feedback exchange: a session where the user takes the PDF and leaves used to vanish without trace, and that is how three client-facing defects reached a CSM before anyone here heard about them. Silent, no comment to the user.
 
    The full capture goes up on **this** pass, not just the later one. It used to be held back to keep this pass to a single Drive call — and on 10 Oct 2026 a live London/Sicily/Milan quote delivered its PDF, uploaded the snapshot, never asked the feedback question, and the full capture reached the folder only because the user asked for it by name. Compressed it is around 8 KB; the saved call is not worth a lost capture.
 2. **After the feedback exchange** — re-run for the same slug with `--worked` / `--change` / `--fixed` filled in. It supersedes the snapshot with the richer record and uploads both again under their own titles (`<slug>.feedback.json` and `<slug>.capture.json.gz.b64`, against the snapshot's `.feedback.snapshot.json` and `.capture.snapshot.json.gz.b64`). Drive's `create_file` always creates, so the separate titles are what stop the normal flow leaving two files with one name on every quote.
@@ -33,6 +37,8 @@ Run it after the final deliverable of the document flow — after the PDF and em
    Pass `--pdf <the delivered PDF>` whenever there is one, so `expected.pdf_pages` is
    measured. Without it the key is left out, which is correct — it used to be the literal
    `3` on every capture, while real deliverables were 4, 5 and 8 pages.
+
+   **Upload the real file, exactly (R94).** The script prints each file's byte count and SHA-256 and the instruction `upload_exactly`. Read the file and pass its whole text as `textContent`. Never retype, shorten or summarize a record, a blocked one included: a condensed copy of a blocked log is a record that hides what a replay would show. The blocked record goes up packed (`<slug>.blocked.json.gz.b64`) for that reason: it cannot be summarized, only uploaded or not. `unpack_capture.py` checks the hash.
 
    **The script writes files. It has no Drive access and uploads nothing.** Its output
    opens with `status: NOTHING IS UPLOADED YET` for a reason: a session ran the capture,

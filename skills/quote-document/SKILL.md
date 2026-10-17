@@ -87,11 +87,13 @@ Exit 0 = everything available; exit 1 = some formats unavailable, and it prints 
   ```
   That reads client, profile, selection, alternatives, and placeholders from `intake.json`, and the engine result from `raw_quote.json`.
 
+**If `handoff/blocked.json` exists, the handoff write was refused (R92).** `normalize_quote.py` and `decide.py` stop and print the gate, the reason and the fix. Do what the fix says and run the write again, or tell the user why you cannot go on and report the session (`capture_session.py --blocked`). This is not the "no handoff" fallback below: never build `intake.json` or the decisions by hand, and never call the scripts' internals, to get past a refusal.
+
 **Fallback: no handoff.** The user brought a quote from somewhere else. Save it to `raw_quote.json`, ask which units are chosen vs. alternatives, and normalize with `--select` / `--alternative` (semantics in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/quote-schema.md`).
 
 **Answer the client's carried questions.** `intake.json → client_questions` holds what the client asked that didn't change pricing. Three kinds (`${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/client-questions.md`):
 - **Boilerplate** (tax, gratuity, cancellation) — the terms block and per-leg cancellation column already answer it. No extra work.
-- **Operational** (signage, PA, luggage vehicle) — a client-facing line note: arranged separately, **not included in the vehicle pricing**.
+- **Operational** (signage, PA, luggage vehicle) — carried into `client_requests` by `normalize_quote.py` and shown as one neutral line near the top ("We've noted your requests (…) and will confirm each with you"). **Never write that it is included, excluded or arranged separately**: you do not know (R73). The answer is confirmed with the user before send (R72).
 - **On-site staff / greeter** is no longer in that group: Core prices it as a quote unit (vehicle types 12 and 13). See node G3 in `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md`. Only a market with no greeter rate falls back to a flat line or a note.
 - **Data-answered** (pickup times, drive times, vehicle counts, how long the vehicle is held) — the quote already contains the answer but only implicitly. **Surface it as an explicit callout** near the top of the first quote page (usually `personalization.intro_note`) *and* near the top of the email, before the line-item breakdown. A client asking "can you suggest pick-up times?" should not have to read sixteen timestamps to find out.
 
@@ -112,7 +114,13 @@ Ask what it prints using **`ask_user_input_v0` with tappable options** (labels i
 
 The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· commission_pct · cover · personalization · map · format**. There is no `fuel` key — fuel is Core's and not adjustable here.
 
-**commission_pct** is the one that changes no numbers. *"Does this client get a commission on this quote? No, 1%, 5%, or another percentage."* Record it with `apply_adjustments.py quote.json --commission-pct <pct|none>`, which also rebuilds the terms so the rate and its bullet cannot get out of step. It never enters `adjustments` and the total is identical with it and without it. **Never compute a commission amount** — the basis is not ours to assume, and a figure nobody returned is a figure nothing can check. It names no beneficiary, because the commission may be the client's or an agency's. Once recorded it appears in the PDF heading block beside Discount and Fuel surcharge, in the terms list (which is how the HTML email gets it), and as one flat sentence in the email copy. **Keep it flat in the email** — it moves the needle sometimes, but the client is reading a quote, not an offer.
+**Deliver exactly the format the user chose (R85).** `verify_document.py` prints a `DELIVERABLES:` line from the recorded decision. If it says PDF only, do **not** run `draft_email.py` (it refuses) and do not write or paste an email; after delivering, offer one in a single line. Run it with `--asked` only when the user has since asked for an email.
+
+**When the flow cannot produce a document (R80):** run `capture_session.py --blocked` as `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/capture.md` describes, so the failure is still reported.
+
+**Capture consent (R76):** if verify prints `CAPTURE CONSENT UNASKED`, follow `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/capture.md` before presenting the files.
+
+**commission_pct** is the one that changes no totals. *"Does this client get a commission on this quote? No, 1%, 5%, or another percentage."* Record it with `apply_adjustments.py quote.json --commission-pct <pct|none>`, which also rebuilds the terms so the rate and its bullet cannot get out of step. It never enters `adjustments` and the total is identical with it and without it. `apply_adjustments.py` also computes the amount per option — the subtotal after every discount, before fuel, times the rate, rounded half-up — and states it as *"A 5% commission applies to this program, calculated after discounts and before the fuel surcharge: $600.50 on Option A, $728.61 on Option B."* **Never work the amount out yourself or edit one into `quote.json`**; re-run the script. It names no beneficiary, because the commission may be the client's or an agency's. Once recorded it appears in a hero line under each option total in the PDF (smaller than the total, same on every option), in the terms list (which is how the HTML email gets it), and as one flat sentence in the email copy. **Keep it flat in the email** — it moves the needle sometimes, but the client is reading a quote, not an offer.
 
 **If the user has already said which format they want — "just draft the email", "send me the spreadsheet" — record it first: `decide.py format <value>`.** Only the PDF and the printable document use a cover page or a route map, so once the format is known the script stops asking about them. Asking a CSM to pick a cover for an email is not a neutral extra question, and answering the map question costs 10–20 seconds of routing for a field the email never reads.
 
@@ -161,7 +169,7 @@ Ask which format if the user hasn't said. Default to **PDF** for "proposal", "qu
 | Format | Read first | Notes |
 |---|---|---|
 | PDF (default) | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-print.md` | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/render_print.py quote.json out.pdf [--cover key]` — audience cover page, quote page (hero total, refs, line notes, breakdown), rate card page (standard vs net, cancellation table, terms). Light print theme. |
-| Email copy | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-print.md` § Email copy + `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/email-voice/README.md` | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/draft_email.py quote.json --json draft.json` gives the house structure (per-leg quote block, cancellation note, inclusions). Read `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/email-voice/README.md` and two samples — one Robyn, one Julia — then adjust the opener, recommendation sentence, and closer to match; keep the numbers block exactly. Then put the finished email **in the chat** as a copy-ready block (subject line, blank line, body) and hand the PDF over with `present_files` in the same reply. That's the whole deliverable: the user copies the text into their own mail client and drags the PDF in. Do not create drafts in Gmail/Outlook, do not attach anything, do not send. |
+| Email copy | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-print.md` § Email copy + `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/email-voice/README.md` | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/draft_email.py quote.json --json draft.json` gives the house structure (per-leg quote block, cancellation note, inclusions). Read `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/assets/email-voice/README.md` and two samples — one Robyn, one Julia — then adjust the opener, recommendation sentence, and closer to match; keep the numbers block exactly. Then put **both** finished emails **in the chat** as labelled copy-ready blocks, "Full" and "Short" (subject line, blank line, body each; the script prints both). Adjust only the wording around the numbers in each and hand the PDF over with `present_files` in the same reply. That's the whole deliverable: the user copies the text into their own mail client and drags the PDF in. Do not create drafts in Gmail/Outlook, do not attach anything, do not send. |
 | HTML email | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-html.md` | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/render_html.py quote.json out.html` — dark brand theme, quote inline, email-safe |
 | DOCX | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-docx.md` + the docx skill | For clients who need to edit; same page plan as the PDF |
 | XLSX | `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/format-xlsx.md` + the xlsx skill | Line-item sheet with live formulas for adjustments |
@@ -175,12 +183,22 @@ The terms block is fixed text in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/as
 Every rendered deliverable goes through the checker first — it has caught dropped legs, missing dates, unlabeled stops and terms/fuel mismatches:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/verify_document.py quote.json --pdf out.pdf [--email draft.txt]
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/verify_document.py quote.json --pdf out.pdf [--email draft.txt] --capture-slug "<client>-<event>" --capture-client "<Client>"
 ```
 
 Exit codes: **0 PASS** → deliver. **1 FAIL** → fix, re-render, verify again; never deliver a failing document and never describe the failure as the user's problem. **2 PARTIAL** → deliver, but say in one line that it couldn't be fully verified on this machine and why. Warnings are judgement calls; read them and decide.
 
 The checker reconciles totals against `quote.json`, confirms every leg's reference and line total actually appear in the PDF (page overflow silently drops legs), requires the terms block, keeps the fuel bullet and the fuel line in sync, flags TBD flights that aren't disclosed, and refuses internal vocabulary.
+
+## Stage 5b — Confirm before send (R72)
+
+After verification passes and before you present the files, list what the user must confirm:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/confirm_items.py "$OUT/quote.json" --json
+```
+
+Ask **one `ask_user_input_v0` question per item** with `Right` / `Wrong` options, one per message. The service-area placeholders arrive grouped as one item. It is a gate only: nothing from the answer is written into the document. On `Wrong`, stop, ask for the corrected value, fix it at the source (intake or the adjustment script), and re-render. An empty list means skip this stage. Do not present the files to the user until every item is answered `Right`.
 
 ## What the document always contains
 
@@ -212,9 +230,11 @@ that works.
 
 ## Capture — once, at the end
 
-Twice, and the first one is not optional:
+Twice, and the first one is not optional (R63: the user never has to ask for it):
 
-1. **The moment a document is verified and delivered** — `capture_session.py … --auto`, plus `--workaround "…"` if you did anything outside the documented path. Upload the one file it lists. Silent; say nothing to the user. A session that ends right here is then still on record, which is the only reason we ever hear about a document that went out wrong.
+1. **At verification, before delivery** — `verify_document.py … --capture-slug …` writes the snapshot (`capture_session.py --auto`) on a pass and leaves a `.pending-upload` marker. Upload **both** files it lists, then run `capture_session.py --mark-uploaded <slug> --file-id <id>`, and only then present the files. Add `--workaround "…"` (re-run `capture_session.py … --auto --workaround`) if you did anything outside the documented path. Silent; say nothing to the user.
+
+   **The delivery reply, in this order:** verify with `--capture-slug` → upload both capture files → `--mark-uploaded` → present the PDF and both emails → end with "Anything you'd like changed?". **First rule of every later turn:** if any `.pending-upload` marker exists (`setup_check.py` counts them), upload it before anything else. A marker in a cloud container is lost when the container is reclaimed, so do not defer the upload. A session that ends right here is then still on record, which is the only reason we ever hear about a document that went out wrong.
 
 **Capture hardest when the session went worst.** If you patched a renderer in a working copy, rebuilt a line by hand, or worked around anything, that session is the single most valuable one of the week — and it is the one most likely to skip this step while firefighting. Run it anyway, put what you did in `--workaround`, and upload. A bug you only mention in chat reaches nobody: the user is not the maintainer, and the chat is not a channel.
 
@@ -228,3 +248,10 @@ Twice, and the first one is not optional:
 ## Hard-won rules
 
 All in `RULES.md` — read it before rendering; it's short. The dated history is in `feedback-archive.md` (weekly pass only).
+
+
+## Questions about how this works, and "log this session" (R87, R90)
+
+**"How does this work?", "what can't it do?", "why did it ask that?"** Read `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/help.md` and answer from it, in your own words, for the user's question only. If its frontmatter has a `page_url`, give that link when they want the whole picture. If the file does not answer the question, say so; do not answer from memory. Never state a price in an answer.
+
+**"Log this session"** (or "report a problem", "save this session"), at any point in the conversation: the user is asking for the session record, with or without a document. Follow the capture consent rules in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/capture.md`. If a document has been delivered, run the normal capture with `--change "<their words>"`. If not, run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py --blocked "user-requested: <their words>" --slug <slug> --client "<Client>" --request handoff/request.md`, upload the file it lists, then `--mark-uploaded`. Reply in one line that it is saved, and tell them to post a short note in the core-ideas Slack channel so someone picks it up. A user asking for this is asking for the record; do not talk them out of it.

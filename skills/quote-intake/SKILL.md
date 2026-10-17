@@ -75,6 +75,10 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
   - **Close to the line?** Price it both ways and show the cheaper, noting the other. The threshold is a heuristic; the rate sheet decides.
 - **Continuous shuttle / waves → one hourly block per vehicle**, waves in the label.
 - **"Scenario 2" / "or" / "vs" → a separate option** in `generate_quote_options`, never a note.
+- **Spell out the state or province in every stop lookup, and record each one (R83).** An as-directed stop is queried as `"Whistler, British Columbia"`, never `"Whistler, BC"` (abbreviations return nothing) and pick the candidate whose `id` matches the pickup's city. Pass every lookup to `handoff.py write` as `--stop-note "<stop>|<query sent>|resolved"` or `…|unresolved`. **If a stop is unresolved, stop and ask the user for an address.** Never substitute another stop (a Westin round trip for an as-directed tour), never delete a travel time or stop to get past verify. `write` refuses an unresolved note.
+- **A headcount range is never priced on a default (R84).** "50–75 passengers" means ask which number to quote, *before* pricing, as question 0. Then price each vehicle group with its own share of that number — 75 as 50 on the coach and 25 on the vans — and pass `--headcount 75` to `handoff.py write`. It refuses a ranged request without it, refuses a unit with no `passenger_count`, and refuses groups serving one trip whose counts do not add up to the headcount (R91). Never put the full headcount on every group: Core sizes the number of vehicles from each group's count, so 75 on a coach and 75 on two vans prices extra vehicles. Capacity must follow the headcount, never one vehicle's seats.
+- **When a write is refused, stop (R92).** `handoff.py write` prints the gate, the reason and the fix, and leaves `handoff/blocked.json`. Fix the cause and write again, or tell the user why you cannot go on. Never build `intake.json`, keep decisions by hand, or call the scripts' internals to get past it; `decide.py` and `normalize_quote.py` refuse to run while `blocked.json` exists. If you cannot fix it, run the blocked capture (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/capture.md`) so the session is reported.
+- **State your reading of every scenario and get a yes before pricing (R81).** One line per scenario: vehicles and counts, hours, headcount, and any leg the client left open (a shuttle with no stated hours, "all day" with no end time). Ask it as question 0 with the reading in the message and "Yes, that reading" first. A request that names scenarios without vehicles or hours is never priced on a silent guess: the same Yerdle request was priced as one coach with a 6-hour shuttle in one session and as coach plus mini bus for 8 hours in another, $7,000 apart. After the yes, record each reading with `--reading "<scenario: vehicles, hours, headcount>"` so it travels into the document's assumptions.
 - **"However many are needed" → omit `quantity`, pass `passenger_count`.** A fixed count ("two coaches") → `quantity`.
 - **Anything that would change the quote is a blocking question** — missing year or ambiguous date, headcount given as a range, a location that won't resolve, an unsettled service shape. Ask the user in Step 3 before quoting; never guess a placeholder and never push it into the client document. See `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/client-questions.md`.
 - **Every airport stop needs a `flight` object — pickup or drop-off, no exceptions.** The engine rejects the unit otherwise (`flight is required for airport stops`). An arrival leg has the airport as **stops[0]**, and that one is missed most often.
@@ -99,7 +103,7 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
 
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md` is the **single source** for what to call, skip and ask at every node (A–J here, K–Q in the document skill). Read it once at the start of a quote; don't re-read it mid-flow. The shape in one paragraph so you know what you're reading:
 
-resolve client + stops + vehicle types in one turn (no passenger unless the user named one) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → *which detailed quote?* → refine loop → handoff → *PDF or email?*
+resolve client + stops + vehicle types in one turn (no passenger unless the user named one) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → (*which detailed quote?* only when intake itself generated options the request did not name) → refine loop → *customize it, go on to the client document, or just the quote?* → handoff
 
 **When a unit has no stored rate in the market**, that is not a dead end. Core's recovery
 is the flow: ask the user for a temporary rate or another vehicle, then re-quote through
@@ -116,8 +120,10 @@ otherwise. Say the number came from a rate they supplied.
 | 0 | Only if something is genuinely ambiguous | Blocking gaps **and** stop ambiguities, batched into **one** message — missing year, headcount range, a location that didn't resolve, unsettled service shape |
 | 1 | **Every quote, no exceptions** | Rate sheet first, or straight to the quote? |
 | 2 | **Every quote, no exceptions** | Best value, a few options side by side, or you name the vehicles? |
-| 3 | After the scenarios are presented | Which one do you want in detail? |
-| 4 | After that | PDF, email copy, or nothing yet? |
+| 3 | After options intake generated itself are presented (never when the request named its own scenarios: price and show every one of them, write them all with `--package`) | Which one do you want in detail? |
+| 4 | After the quote | Customize it, go on to the client document, or just the quote? (One question; if they go on, quote-document asks the format.) |
+
+**Never ask the user about the product's own working (R93):** how a file is written, how the handoff is saved, which of the scenarios you just showed to keep. A CSM cannot answer these and every one is a chance to answer wrongly.
 
 1 and 2 are asked on every quote however self-evident the request looks — skipping them is the single most common regression. Client questions that don't change pricing (tax, gratuity, cancellation, on-site staff) are **never** asked and never block: record them with `--client-question` and let the document stage answer them. "go" means no rate sheet, best value.
 
@@ -135,5 +141,31 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py write --dir
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py capture --dir handoff   # only if they decline a document
 ```
 
+## Saving a pricing response (R78) — never retype one
+A pricing tool's result arrives in the conversation as text. The document step needs it as a file **exactly as returned**. **Never hand-type, rebuild or "tidy" a `raw_quote.json`** — retyping is how a figure drifts, and two sessions on 16 Oct 2026 either did it or stopped because of it. Instead pass the whole response, untouched, to the checked step:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py ingest --name A --dir handoff <<'JSON'
+<the complete tool result, pasted as returned>
+JSON
+```
+It prints `SAVED … units add up to the response's own total`, or `REJECTED` with the reason (not JSON, no priced units, totals do not add up — the paste was cut or changed). On `REJECTED`, paste the response again, whole; never patch it to pass. One `ingest` per priced package; `--name` is any short label (`A`, `B`).
+
+**Two or more separately priced packages become options in one document (R79).** When scenarios are separate packages (sourced vehicles are quoted one package at a time), ingest each, then:
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py write --dir handoff … \
+  --package A --package B [--shared B_unit=A_unit] [--alt-of B_unit=A_unit] --reading "…" --final
+```
+The first `--package` is Option A; the others' units become alternatives. A unit priced identically in both (the same Jun 10 shuttle) is declared with `--shared` and counted once. Each option keeps the pricing system's own total; nothing is summed. A single document with both scenarios is possible and is the default; never tell the user it is not.
+
+If the data cannot be saved or the document flow stops for any reason, intake still leaves a record: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py --blocked "<what stopped it>" --slug <slug> --client "<Client>" --request handoff/request.md` (R80).
+
 ## What intake never does
 Discounts beyond the client's contracted rate, fuel surcharge, covers, personalization, maps, formats, mail. Those are document-flow questions. The number presented is the client's contracted pricing, and the summary says so.
+
+
+## Questions about how this works, and "log this session" (R87, R90)
+
+**"How does this work?", "what can't it do?", "why did it ask that?"** Read `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/help.md` and answer from it, in your own words, for the user's question only. If its frontmatter has a `page_url`, give that link when they want the whole picture. If the file does not answer the question, say so; do not answer from memory. Never state a price in an answer.
+
+**"Log this session"** (or "report a problem", "save this session"), at any point in the conversation: the user is asking for the session record, with or without a document. Follow the capture consent rules in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/capture.md`. If a document has been delivered, run the normal capture with `--change "<their words>"`. If not, run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py --blocked "user-requested: <their words>" --slug <slug> --client "<Client>" --request handoff/request.md`, upload the file it lists, then `--mark-uploaded`. Reply in one line that it is saved, and tell them to post a short note in the core-ideas Slack channel so someone picks it up. A user asking for this is asking for the record; do not talk them out of it.

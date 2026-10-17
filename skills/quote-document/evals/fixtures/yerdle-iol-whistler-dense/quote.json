@@ -1,0 +1,374 @@
+{
+ "meta": {
+  "client": "Yerdle",
+  "profile_id": null,
+  "prepared_by": "Ayush",
+  "prepared_on": "2026-10-16",
+  "valid_until": "2026-10-23",
+  "estimate_type": "exact",
+  "currency": "USD",
+  "title": "Ground Transportation Quote",
+  "reference": null,
+  "travel_coordinator": null,
+  "service_area": "Vancouver, Canada"
+ },
+ "legs": [
+  {
+   "key": "s1_jun9_coach",
+   "service_area": "Seattle, WA",
+   "primary_service_area": "Vancouver, Canada",
+   "sourced_from_other_market": true,
+   "no_local_service_area": true,
+   "label": "Jun 9 Whistler guided tour — 1 Coach Bus, 8 hrs (PA system, 'IOL Invitational Group' window signage)",
+   "date": "2027-06-09T09:00:00-07:00",
+   "passenger_count": null,
+   "vehicle": {
+    "name": "Coach Bus",
+    "capacity": 50,
+    "quantity": 1
+   },
+   "stops": [
+    {
+     "label": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "kind": "address",
+     "lat": 50.1121815,
+     "lon": -122.9561244,
+     "marker": 1
+    },
+    {
+     "label": "As Directed",
+     "kind": "as_directed",
+     "as_directed": true,
+     "wait_hours": 8,
+     "drive_minutes": 6
+    }
+   ],
+   "pricing": {
+    "method": "hourly",
+    "rate_cents": 60200,
+    "billable_hours": 16.5,
+    "minimum_hours": 4,
+    "cancellation_hours": 72,
+    "special_event": null,
+    "per_vehicle_cents": 993300,
+    "line_total_cents": 993300,
+    "sourcing_drive_time": {
+     "from_service_area": "Seattle, WA",
+     "additional_quoted_hours": 4.5,
+     "amount_cents": 193694
+    }
+   },
+   "client_notes": [],
+   "engine_fuel_pct": 10.0,
+   "route": {
+    "drive_min": 6,
+    "source": "engine"
+   },
+   "engine_net_line_cents": 710210,
+   "engine_standard_rate_cents": 60200,
+   "engine_rate_units": 16.5,
+   "engine_standard_line_cents": 993300,
+   "engine_discount_pct": 30.0,
+   "engine_temp_discount_pct": 5.0,
+   "engine_temp_discount_label": "Additional discount",
+   "ref": "A1"
+  },
+  {
+   "key": "jun10_shuttle_coach",
+   "service_area": "Seattle, WA",
+   "primary_service_area": "Vancouver, Canada",
+   "sourced_from_other_market": true,
+   "no_local_service_area": true,
+   "label": "Jun 10 continuous shuttle — 1 Coach Bus, 8 hrs (Westin ↔ Fairmont golf course)",
+   "date": "2027-06-10T07:00:00-07:00",
+   "passenger_count": null,
+   "vehicle": {
+    "name": "Coach Bus",
+    "capacity": 50,
+    "quantity": 1
+   },
+   "stops": [
+    {
+     "label": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "kind": "address",
+     "lat": 50.1121815,
+     "lon": -122.9561244,
+     "marker": 1
+    },
+    {
+     "label": "As Directed",
+     "kind": "as_directed",
+     "as_directed": true,
+     "wait_hours": 8,
+     "drive_minutes": 6
+    }
+   ],
+   "pricing": {
+    "method": "hourly",
+    "rate_cents": 60200,
+    "billable_hours": 16.75,
+    "minimum_hours": 4,
+    "cancellation_hours": 72,
+    "special_event": null,
+    "per_vehicle_cents": 1008350,
+    "line_total_cents": 1008350,
+    "sourcing_drive_time": {
+     "from_service_area": "Seattle, WA",
+     "additional_quoted_hours": 4.75,
+     "amount_cents": 204454
+    }
+   },
+   "client_notes": [],
+   "engine_fuel_pct": 10.0,
+   "route": {
+    "drive_min": 6,
+    "source": "engine"
+   },
+   "engine_net_line_cents": 720970,
+   "engine_standard_rate_cents": 60200,
+   "engine_rate_units": 16.75,
+   "engine_standard_line_cents": 1008350,
+   "engine_discount_pct": 30.0,
+   "engine_temp_discount_pct": 5.0,
+   "engine_temp_discount_label": "Additional discount",
+   "ref": "A2"
+  },
+  {
+   "key": "s2_jun9_coach",
+   "service_area": "Seattle, WA",
+   "primary_service_area": "Vancouver, Canada",
+   "sourced_from_other_market": true,
+   "no_local_service_area": true,
+   "label": "Jun 9 Whistler guided tour — Coach Bus #1, 4 hrs (PA system, 'IOL Invitational Group' window signage)",
+   "date": "2027-06-09T09:00:00-07:00",
+   "passenger_count": null,
+   "vehicle": {
+    "name": "Coach Bus",
+    "capacity": 50,
+    "quantity": 1
+   },
+   "stops": [
+    {
+     "label": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "kind": "address",
+     "lat": 50.1121815,
+     "lon": -122.9561244,
+     "marker": 1
+    },
+    {
+     "label": "As Directed",
+     "kind": "as_directed",
+     "as_directed": true,
+     "wait_hours": 4,
+     "drive_minutes": 6
+    }
+   ],
+   "pricing": {
+    "method": "hourly",
+    "rate_cents": 60200,
+    "billable_hours": 12.75,
+    "minimum_hours": 4,
+    "cancellation_hours": 72,
+    "special_event": null,
+    "per_vehicle_cents": 767550,
+    "line_total_cents": 767550,
+    "sourcing_drive_time": {
+     "from_service_area": "Seattle, WA",
+     "additional_quoted_hours": 4.5,
+     "amount_cents": 193693
+    }
+   },
+   "client_notes": [],
+   "engine_fuel_pct": 10.0,
+   "route": {
+    "drive_min": 6,
+    "source": "engine"
+   },
+   "engine_net_line_cents": 548798,
+   "engine_standard_rate_cents": 60200,
+   "engine_rate_units": 12.75,
+   "engine_standard_line_cents": 767550,
+   "engine_discount_pct": 30.0,
+   "engine_temp_discount_pct": 5.0,
+   "engine_temp_discount_label": "Additional discount",
+   "alternative_of": "s1_jun9_coach",
+   "ref": "B1"
+  },
+  {
+   "key": "s2_jun9_minibus",
+   "service_area": "Seattle, WA",
+   "primary_service_area": "Vancouver, Canada",
+   "sourced_from_other_market": true,
+   "no_local_service_area": true,
+   "label": "Jun 9 Whistler guided tour — Mini Bus #2, 4 hrs (PA system, 'IOL Invitational Group' window signage)",
+   "date": "2027-06-09T13:00:00-07:00",
+   "passenger_count": null,
+   "vehicle": {
+    "name": "Mini Bus",
+    "capacity": 41,
+    "quantity": 1
+   },
+   "stops": [
+    {
+     "label": "The Westin Resort & Spa, Whistler",
+     "address": "4090 Whistler Way",
+     "kind": "address",
+     "lat": 50.1121815,
+     "lon": -122.9561244,
+     "marker": 1
+    },
+    {
+     "label": "As Directed",
+     "kind": "as_directed",
+     "as_directed": true,
+     "wait_hours": 4,
+     "drive_minutes": 7
+    }
+   ],
+   "pricing": {
+    "method": "hourly",
+    "rate_cents": 51200,
+    "billable_hours": 12.5,
+    "minimum_hours": 4,
+    "cancellation_hours": 72,
+    "special_event": null,
+    "per_vehicle_cents": 640000,
+    "line_total_cents": 640000,
+    "sourcing_drive_time": {
+     "from_service_area": "Seattle, WA",
+     "additional_quoted_hours": 4.5,
+     "amount_cents": 164736
+    }
+   },
+   "client_notes": [],
+   "engine_fuel_pct": 10.0,
+   "route": {
+    "drive_min": 7,
+    "source": "engine"
+   },
+   "engine_net_line_cents": 457600,
+   "engine_standard_rate_cents": 51200,
+   "engine_rate_units": 12.5,
+   "engine_standard_line_cents": 640000,
+   "engine_discount_pct": 30.0,
+   "engine_temp_discount_pct": 5.0,
+   "engine_temp_discount_label": "Additional discount",
+   "alternative_of": "s1_jun9_coach",
+   "ref": "B2"
+  }
+ ],
+ "engine_total_cents": 1431180,
+ "engine_subtotal_cents": 2001650,
+ "adjustments": [
+  {
+   "label": "Preferred client discount",
+   "type": "percent",
+   "value": -30.0,
+   "applies_to": null,
+   "source": "engine",
+   "amount_cents": -600495,
+   "amount_cents_fixed": -600495
+  },
+  {
+   "label": "Additional discount",
+   "type": "percent",
+   "value": -5.0,
+   "applies_to": null,
+   "source": "engine",
+   "amount_cents": -100082,
+   "amount_cents_fixed": -100082
+  },
+  {
+   "label": "Fuel surcharge",
+   "type": "percent",
+   "value": 10.0,
+   "applies_to": null,
+   "source": "engine",
+   "amount_cents": 130107,
+   "amount_cents_fixed": 130107
+  }
+ ],
+ "total_cents": 1431180,
+ "personalization": {
+  "cover": "event-planners",
+  "cover_image_url": null,
+  "client_logo_url": null,
+  "event_name": "IOL Invitational Group — Whistler Ground Transportation, June 9–10, 2027",
+  "intro_note": "Thank you for considering Savoya for the IOL Invitational Group in Whistler. Below are two options for June 9, one coach all day or two vehicles for four hours each, plus the June 10 shuttle between The Westin and the Fairmont golf course. We've noted your requests for a PA system and window signage and will confirm each with you.",
+  "pull_quote": null,
+  "pull_quote_attribution": null,
+  "account_manager": {
+   "name": "Ayush",
+   "title": null,
+   "email": null,
+   "phone": null
+  },
+  "closing_note": null
+ },
+ "terms": [
+  "Our pricing includes all charges EXCLUDING: variable fees such as parking, airport fees, tolls, and state taxes where applicable. We bill these charges at cost as they are incurred.",
+  "Our drivers are well compensated and additional gratuity is not expected.",
+  "A fuel surcharge of 10% is currently in effect.",
+  "A 5% commission applies to this program, calculated after discounts and before the fuel surcharge: $650.54 on Option A, $785.17 on Option B.",
+  "Transfer rates include up to 30 minutes of complimentary wait time. Additional wait time is billed in 15 minute increments at the market hourly rate. Partial quarter hour increments are rounded to the next quarter hour.",
+  "Trips with stops are billed hourly. Hourly trips are billed garage to garage.",
+  "We have a 2-hour cancellation policy unless otherwise noted above.",
+  "This is a quoting tool and therefore builds quotes. This is not a final price nor is it guaranteed pricing."
+ ],
+ "client_requests": [
+  {
+   "text": "PA/speaker system requested for Jun 9",
+   "kind": "operational"
+  },
+  {
+   "text": "Window signage 'IOL Invitational Group'",
+   "kind": "operational"
+  },
+  {
+   "text": "Guide joining the bus on Jun 9",
+   "kind": "operational"
+  }
+ ],
+ "internal": {
+  "rate_ids": [],
+  "warnings": [
+   "Temporary user-supplied discount was used for this quote and was not saved in Savoya"
+  ],
+  "placeholders": [
+   "s1_jun9_coach: NO SAVOYA SERVICE AREA at any stop. Core priced it from Seattle, WA and billed 16.5 hours = $7,102.10. Positioning drive time is inside that figure. Confirm with the CSM before this goes to a client.",
+   "jun10_shuttle_coach: NO SAVOYA SERVICE AREA at any stop. Core priced it from Seattle, WA and billed 16.75 hours = $7,209.70. Positioning drive time is inside that figure. Confirm with the CSM before this goes to a client.",
+   "s2_jun9_coach: NO SAVOYA SERVICE AREA at any stop. Core priced it from Seattle, WA and billed 12.75 hours = $5,487.98. Positioning drive time is inside that figure. Confirm with the CSM before this goes to a client.",
+   "s2_jun9_minibus: NO SAVOYA SERVICE AREA at any stop. Core priced it from Seattle, WA and billed 12.5 hours = $4,576.00. Positioning drive time is inside that figure. Confirm with the CSM before this goes to a client.",
+   "Year assumed 2027; Jun 9 start 9:00; scenario 2 coach 9:00 and mini bus 13:00; Jun 10 shuttle 7:00 for 8 hrs; headcount quoted at 50"
+  ],
+  "dropped_units": [],
+  "intake": {
+   "quote_mode": "defined",
+   "ambiguities": [],
+   "rationale": {
+    "s1_jun9_coach": "Scenario 1 — one coach all day, Westin start, 8 hrs as directed",
+    "jun10_shuttle_coach": "Continuous shuttle modeled as one 8-hr hourly block per vehicle",
+    "s2_jun9_coach": "Scenario 2 — coach 4 hrs, alternative to scenario 1",
+    "s2_jun9_minibus": "Scenario 2 — mini bus 4 hrs, alternative to scenario 1"
+   }
+  }
+ },
+ "option_b": {
+  "alt_subtotal_cents": 1407550,
+  "carried_subtotal_cents": 1008350,
+  "carried_refs": [
+   "A2"
+  ],
+  "subtotal_cents": 2415900,
+  "total_cents": 1727368
+ },
+ "commission_pct": 5.0,
+ "commission_amounts": {
+  "a": 65054,
+  "b": 78517
+ },
+ "commission_line": "A 5% commission applies to this program, calculated after discounts and before the fuel surcharge: $650.54 on Option A, $785.17 on Option B."
+}

@@ -1,0 +1,189 @@
+<title>Savoya Quoting Help</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+  /* One calm reading column: orientation first, then the workflow, limits, and a searchable FAQ.
+     Brand tokens match the team diagrams (copper on warm neutrals). */
+  :root{
+    --bg:#FAF8F5; --ink:#1A1A1A; --muted:#625C57; --rule:#E6E1DC;
+    --copper:#9A5B22; --tint:#F7EDE4; --card:#FFFFFF;
+    --notyet:#8A5A00; --notyetbg:#FFF7E6; --notyetline:rgba(180,120,11,.35);
+    --ok:#2F6F4F; --okbg:#EAF3EE; --okline:rgba(47,111,79,.33);
+    --display:Georgia,"Times New Roman",serif;
+    --body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F0F0F; --ink:#FAF8F5; --muted:#ADA59D; --rule:#2A2A2A;
+      --copper:#D99560; --tint:#1E1712; --card:#171717;
+      --notyet:#E8B04B; --notyetbg:#2A2015; --notyetline:rgba(232,176,75,.33);
+      --ok:#6FB68E; --okbg:#13241B; --okline:rgba(111,182,142,.3);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F0F0F; --ink:#FAF8F5; --muted:#ADA59D; --rule:#2A2A2A;
+    --copper:#D99560; --tint:#1E1712; --card:#171717;
+    --notyet:#E8B04B; --notyetbg:#2A2015; --notyetline:rgba(232,176,75,.33);
+    --ok:#6FB68E; --okbg:#13241B; --okline:rgba(111,182,142,.3);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;
+       line-height:1.6;-webkit-font-smoothing:antialiased;
+       padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:860px;margin:0 auto;padding-block:36px 80px}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.4vw,36px);line-height:1.15;margin:0 0 8px;text-wrap:balance}
+  h2{font-family:var(--display);font-weight:400;font-size:23px;line-height:1.25;margin:48px 0 6px;
+     border-top:2px solid var(--copper);padding-top:12px;text-wrap:balance}
+  p{margin:0 0 12px;max-width:68ch}
+  .lede{font-size:17px;color:var(--ink);max-width:62ch}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--copper);margin:0 0 18px}
+  code{font-family:var(--mono);font-size:.88em;background:var(--tint);padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+  .toc{display:flex;flex-wrap:wrap;gap:6px 18px;margin:20px 0 0;padding:0;list-style:none;font-size:14px}
+  .toc a{color:var(--copper);text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  a:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--copper);outline-offset:3px;border-radius:4px}
+
+  .diagram{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto}
+  .diagram pre.mermaid{margin:0;text-align:center;min-width:0}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin:0 0 6px}
+  .key{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:4px;border:1px solid var(--rule);display:inline-block;flex:none}
+
+  .steps ol{margin:10px 0 0;padding-left:0;list-style:none;counter-reset:s;display:grid;gap:8px}
+  .steps li{counter-increment:s;position:relative;background:var(--card);border:1px solid var(--rule);
+            border-radius:12px;padding:11px 14px 11px 58px;min-width:0}
+  .steps li::before{content:counter(s);position:absolute;left:14px;top:10px;width:32px;height:30px;font-family:var(--display);
+                    font-size:17px;color:var(--copper);background:var(--tint);border-radius:9px;
+                    display:flex;align-items:center;justify-content:center}
+  .plain ul{margin:8px 0 0;padding-left:20px;max-width:68ch}
+  .plain li{margin-bottom:6px}
+
+  .limits ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+  .limits li{background:var(--notyetbg);border:1px solid var(--notyetline);border-radius:12px;padding:10px 14px;max-width:none}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--notyet);margin-right:8px;font-weight:600}
+
+  .search{display:block;width:100%;max-width:520px;margin:12px 0 14px;padding:10px 13px;font:inherit;color:var(--ink);
+          background:var(--card);border:1px solid var(--rule);border-radius:10px}
+  details.qa{background:var(--card);border:1px solid var(--rule);border-radius:12px;margin-bottom:8px;padding:0 15px}
+  details.qa summary{cursor:pointer;padding:12px 0;font-weight:600;list-style-position:outside}
+  details.qa[open] summary{color:var(--copper)}
+  details.qa > :not(summary){max-width:66ch}
+  details.qa > p:last-child,details.qa > ul:last-child{margin-bottom:14px}
+  .none{color:var(--muted);font-size:14px}
+
+  .report{background:var(--okbg);border:1px solid var(--okline);border-radius:14px;padding:16px 18px;margin-top:14px}
+  .report b{display:block;margin-bottom:4px}
+  .say{display:inline-block;margin:4px 0 8px;padding:8px 12px;background:var(--card);border:1px solid var(--okline);
+       border-radius:10px;font-family:var(--mono);font-size:14px}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+  @media (prefers-reduced-motion:no-preference){details.qa{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+  <h1>Savoya quoting assistant</h1>
+  <p class="stamp">Release {{release}}</p>
+  <p class="lede">Paste a client's request and get an exact Savoya quote, then the PDF or email you send. This page shows how it works, what it cannot do yet, and answers the questions people ask most.</p>
+  <ul class="toc">
+    <li><a href="#flow">How it works</a></li>
+    <li><a href="#asks">What it asks you</a></li>
+    <li><a href="#limits">What it cannot do yet</a></li>
+    <li><a href="#faq">Questions and answers</a></li>
+    <li><a href="#wrong">If something looks wrong</a></li>
+  </ul>
+
+  <h2 id="what">What it does</h2>
+  <div class="plain"><!--WHAT--></div>
+
+  <h2 id="flow">How a quote goes</h2>
+  <p>You are asked a question only where a person has to decide. Everything else runs on its own.</p>
+  <div class="legend">
+    <span class="key"><i class="sw" style="background:#FFF7E6;border-color:#F59E0B"></i> a question for you</span>
+    <span class="key"><i class="sw" style="background:#EAF3EE;border-color:#2F6F4F"></i> something you receive</span>
+    <span class="key"><i class="sw" style="background:#FFFFFF;border-color:#2F6F4F"></i> a place you can stop</span>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    A["Paste the client's request"] --> BQ{"Anything unclear?"}
+    BQ -->|yes| C["Answer one question<br/>headcount · which hotel · which year"]
+    BQ -->|no| D
+    C --> D(["Rate sheet first,<br/>or straight to the quote?"])
+    D --> E(["Best value, options,<br/>or you name the vehicles?"])
+    E --> SHORT{"Enough vehicles<br/>in that city?"}
+    SHORT -->|no| NEAR(["Three nearest markets<br/>and what each can add.<br/>You choose."])
+    SHORT -->|yes| F
+    NEAR --> F["<b>Priced quote</b><br/>every option, every leg"]
+    F --> GQ(["One question: customize it,<br/>go on to the client document,<br/>or just the quote?"])
+    GQ -->|customize| F
+    GQ -->|just the quote| DONE1(["Done. You have the number"])
+    GQ -->|client document| J(["Six quick questions"])
+    J --> K["<b>PDF and or email copy</b>"]
+    K --> LQ{"Anything you'd like changed?"}
+    LQ -->|yes, fix it| K
+    LQ -->|no| DONE2(["Done"])
+
+    classDef begin fill:#F7EDE4,stroke:#9A5B22,stroke-width:2px,color:#1A1A1A
+    classDef question fill:#FFF7E6,stroke:#F59E0B,stroke-width:2px,color:#1A1A1A
+    classDef branch fill:#FFFFFF,stroke:#8A837C,color:#1A1A1A
+    classDef output fill:#EAF3EE,stroke:#2F6F4F,stroke-width:2px,color:#1A1A1A
+    classDef finish fill:#FFFFFF,stroke:#2F6F4F,color:#2F6F4F
+    class A begin
+    class C,D,E,J,NEAR,GQ question
+    class BQ,LQ,SHORT branch
+    class F,K output
+    class DONE1,DONE2 finish
+</pre>
+  </div>
+  <div class="steps"><!--STEPS--></div>
+
+  <h2 id="asks">What it asks you</h2>
+  <p>After you say you want a client document, the assistant asks six questions, one at a time and always in this order.</p>
+  <div class="plain"><!--QUESTIONS--></div>
+
+  <h2 id="limits">What it cannot do yet</h2>
+  <p>These are known limits today, not surprises. Plan around them.</p>
+  <div class="limits"><!--LIMITS--></div>
+
+  <h2 id="faq">Questions and answers</h2>
+  <label for="q" class="none">Search the answers</label>
+  <input id="q" class="search" type="search" placeholder="Search, for example: headcount, map, commission" autocomplete="off">
+  <div id="faq-list"><!--FAQ--></div>
+  <p id="faq-none" class="none" hidden>Nothing matches. Ask the assistant directly, or see the next section.</p>
+
+  <h2 id="wrong">If something looks wrong</h2>
+  <div class="report">
+    <b>Two steps, so the team can see exactly what happened.</b>
+    <p>1. Tell the assistant:</p>
+    <span class="say">Log this session. &lt;what looked wrong&gt;</span>
+    <p>It saves a record of the session, with or without a document.</p>
+    <p>2. Post a short note in the <strong>#core-ideas</strong> Slack channel so someone picks it up.</p>
+  </div>
+
+  <footer>Savoya quoting assistant · release {{release}} · for everyone at Savoya</footer>
+</div>
+
+<script>
+(function(){
+  /* Make the limits list read as "Not yet" items, and filter the answers as the reader types. */
+  var items=document.querySelectorAll('.limits li');
+  for(var i=0;i<items.length;i++){
+    var t=document.createElement('span'); t.className='tag'; t.textContent='Not yet';
+    items[i].insertBefore(t,items[i].firstChild);
+  }
+  var box=document.getElementById('q'), list=document.querySelectorAll('#faq-list details.qa'), none=document.getElementById('faq-none');
+  function run(){
+    var q=(box.value||'').toLowerCase().trim(), shown=0;
+    for(var i=0;i<list.length;i++){
+      var hit=!q||list[i].textContent.toLowerCase().indexOf(q)>-1;
+      list[i].hidden=!hit; if(hit) shown++;
+      if(q&&hit) list[i].open=true; else if(!q) list[i].open=false;
+    }
+    none.hidden=shown>0;
+  }
+  box.addEventListener('input',run);
+  if(location.hash==='#faq'){ box.focus(); }
+})();
+</script>

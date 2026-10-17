@@ -3,6 +3,80 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.27.4 (unreleased)
+
+Keeps the Claude artifacts current and adds a help page for CSMs (PRD R86–R90).
+
+- **CSM help page.** `skills/quote-intake/references/help.md` is the one source for the page and for answers to "how does this work": the workflow, the six questions, what it cannot do yet, 14 answers, and the route for reporting a problem. Both skills read it (R87).
+- **"Log this session" (R90).** Either skill treats the phrase as a request for the session record at any point, with or without a document, and the help page tells users to ask in those words and then post in the core-ideas Slack channel.
+- **`docs/artifacts/`.** The artifact sources, `artifacts.json` (URLs, releases, hashes) and `sync_artifacts.py`. One new guard fails when a managed artifact's sources changed without a refresh, and rejects a price, a client name, a tool or script name or an internal reference on the help page.
+- The three team diagrams are not managed yet; they still describe 0.26.1.
+
+Fixes from the first 0.27.3 session (PRD R91–R94, TDD §14.y):
+
+- **A split headcount passes the gate (R91).** 75 passengers priced as 50 on a coach plus 25 on two vans was refused because the check wanted 75 on every group. `write` now requires a `passenger_count` on every unit and that the units serving one trip add up to the headcount, for every package in a merge.
+- **A refusal leaves a record and stops the flow (R92).** `handoff.py write` writes `handoff/blocked.json` (gate, reason, fix); `decide.py` and `normalize_quote.py` refuse while it exists; `intake.json` carries `written_by`; the blocked capture includes the refusal.
+- **No questions about the product's own working (R93).** After the quote there is one question (customize, go on to the client document, or just the quote). "Which one do you want in detail?" is asked only for options intake generated itself, never for scenarios the request named.
+- **A record carries the real files (R94).** Captures print byte count and SHA-256 and say to upload the text exactly; the blocked record is packed like the full capture; `unpack_capture.py` warns when a file does not match its hash.
+- New guard: refusals and mechanics questions (suite now 37 guards + 12 fixtures = 49 checks).
+
+## 0.27.3
+
+From the first fresh-chat test of 0.27.2 (17 Oct 2026). Three of the user's standing rules were guidance only and were skipped; they are now gates. Requirements R83-R85 are in the PRD first.
+
+- **Unresolved stops ask for an address (R83).** `handoff.py write --stop-note` records every lookup; an unresolved one refuses the write. The as-directed query spells out the state or province. The capture now carries the lookups.
+- **A headcount range is asked before pricing (R84).** `write` refuses a ranged request without `--headcount N` or with units priced without that `passenger_count`.
+- **Only the requested formats are delivered (R85).** `verify_document.py` prints `DELIVERABLES:`; `draft_email.py` refuses a PDF-only job unless `--asked`.
+- **Saved responses are never edited (R78).** The merge namespaces colliding unit keys; `ingest --without-presentation` is the declared way to shrink a response and records it.
+- **Capture:** snapshot carries `stop_resolution` and `headcount_confirmed`; `raw_quote.json` and `request.md` are found in `./handoff/`.
+
+## 0.27.2
+
+From two more Yerdle sessions on 16 Oct 2026. Requirements R78-R82 are in the PRD first.
+
+- **Pricing responses are saved by a checked step (R78).** `handoff.py ingest` stores a response exactly as given and refuses one whose units do not add up to its own total. Both sessions had met the same wall: results arrived as chat text, not files. One retyped them, the other stopped.
+- **Separately priced packages become options in one document (R79).** `handoff.py write --package A --package B [--shared] [--alt-of]`. Each option keeps Core's own total.
+- **A blocked session reports (R80).** `capture_session.py --blocked "<reason>"` records the request, what was priced and the reason, with the same consent rule.
+- **Scenario readings are stated and confirmed before pricing (R81).** `--reading` carries them into the assumptions.
+- **Commission is a badge (R82).** Copper-bordered under each option total in the PDF; a COMMISSION heading directly under the totals in both emails.
+- Guards: `handoff packages`, `blocked-session capture`, and the commission guard now pins the badge and the email placement. 46 checks.
+
+## 0.27.1
+
+- **Capture consent (R76).** One question per machine, stored with the user's name; unasked captures nothing, declined skips silently.
+- **Smaller fixes.** Requests sentence never duplicated; guide/host are not operational requests; `;`-joined assumptions become separate confirm items; verify finds `raw_quote.json`/`request.md` in `handoff/` and says when absent; commission amounts are in the capture snapshot.
+- **The printed total never clips (R77).** The renderer estimated page fit; Positioned-from
+  lines, wrapped header rows and three adjustment lines broke the estimate and the totals fell
+  off page 2. It now measures the real layout in a browser and moves a clipped totals block onto
+  its own page. Fixture `yerdle-iol-whistler-dense` covers it.
+- **Commission amount sits under each option total in the PDF (R59).** A smaller hero line,
+  "5% commission · $650.54", replaces the header Commission cell. Passengers cell is omitted
+  when 0.
+
+## 0.27.0
+
+Seven changes from one live session (Yerdle IOL Whistler, plugin 0.26.1) and the feedback
+that followed it. Requirements R71-R75 and the commission amount (R59) are in the PRD first.
+
+- **The commission amount is computed in code.** `apply_adjustments.py` derives it from
+  Core's own per-leg figures (subtotal after every discount, before fuel, rounded half-up):
+  $600.50 on Option A, $728.61 on Option B for Yerdle. No total moves; a hand-assembled quote
+  states the rate only.
+- **Flight line fixed.** "Send over the flight details" printed whenever any placeholder
+  existed; now only when an airport stop has a TBD flight.
+- **Carried client requests** are noted in one neutral line in the email copy and HTML email.
+  The old "arranged separately, not included in vehicle pricing" instruction is gone.
+- **Confirm before send.** New `confirm_items.py`; one Right/Wrong question per item.
+- **Short email.** `draft_email.py` prints a labelled short version after the full one
+  (`--short` for only the short; `short_body` in the JSON).
+- **Capture at delivery.** `verify_document.py --capture-slug` writes the snapshot and the
+  pending-upload marker; SKILL.md and capture.md now agree on uploading both files.
+- **Guards:** commission, flight line, client requests, confirm items, capture at delivery;
+  the email-reconciles guard also covers the short email. New fixture
+  `yerdle-iol-whistler-options`. Each guard was broken on purpose first.
+
+Deferred (R75): recovery when a long session is compacted mid-quote.
+
 ## 0.26.1
 
 A documentation pass, because the docs are now the thing the work runs off rather than a

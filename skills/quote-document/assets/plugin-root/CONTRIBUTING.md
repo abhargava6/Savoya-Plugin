@@ -27,6 +27,7 @@ Every deliverable the skill renders is captured once per conversation — reques
 Three things about the capture that are easy to get wrong:
 
 - **It is always compressed** (`gzip+base64`, declared in the envelope; ~15× on real captures). There is no size at which a capture stays behind — the old 25 KB ceiling meant the richest sessions were exactly the ones that never arrived.
+- **It is written at verification, before delivery** (`verify_document.py --capture-slug`), which leaves a `.pending-upload` marker the session clears with `--mark-uploaded` after the Drive upload.
 - **It goes up on two passes**, under different titles (`.capture.snapshot.json.gz.b64` on the render pass, `.capture.json.gz.b64` after the feedback exchange), because Drive's `create_file` always creates and because a session that ends at delivery must still leave a record.
 - **`~` is not the user's disk.** On claude.ai the home directory is a cloud container reclaimed with the session; on a linked desktop the shell's home is an isolated VM. The capture reports whether its local copy is durable, and when it isn't, Drive is the only destination — so a failed upload **asks** the user to switch the connector on rather than mentioning it afterwards.
 

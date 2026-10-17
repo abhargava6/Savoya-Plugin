@@ -23,8 +23,7 @@ Every question in either skill that has enumerable answers **must** be asked wit
 | Rate sheet? | `Rate sheet first` · `Straight to the quote` |
 | Quote mode | `Best — one per leg` · `Options — value & elevated` · `I'll pick the vehicles` |
 | Detail card (node G2) | `Detailed quote for A` · `Detailed quote for B` · `Both` · `Let me define my own mix` (best mode: `Detailed quote` · `Let me define my own mix`) |
-| Refine (node I) | `This is the one` · `Change something` |
-| Hand off (node J) | `PDF` · `Email copy + PDF` · `Just the quote, thanks` |
+| Refine and hand off (node I) | `Customize it` · `Go on to the client document` · `Just the quote, thanks` — one question; the format (PDF, email copy, …) is asked by the document flow, never here |
 
 **Document** — `decide.py --next` prints the question text; wrap it in the picker:
 

@@ -29,7 +29,7 @@ Usage:
   capture_session.py --mark-uploaded <slug> --file-id <id> [--file-id <id>] [--dir DIR]
 Re-running with the same slug creates -v2, -v3 …
 """
-import argparse, base64, datetime as dt, glob, gzip, json, os, re, shutil, subprocess, sys
+import argparse, base64, datetime as dt, glob, gzip, hashlib, json, os, re, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.expanduser("~/.savoya-quoting/config.json")
@@ -124,7 +124,8 @@ def mark_uploaded(a):
                  "clearing it without an id would hide a capture that never arrived.")
     cleared, receipts = [], os.path.join(root, f"{slug}.uploaded.json")
     for marker in (os.path.join(root, f"{slug}.pending-upload"),
-                   os.path.join(root, f"{slug}.snapshot.pending-upload")):
+                   os.path.join(root, f"{slug}.snapshot.pending-upload"),
+                   os.path.join(root, f"{slug}.blocked.pending-upload")):
         if os.path.exists(marker):
             try:
                 os.remove(marker)
@@ -147,6 +148,70 @@ def mark_uploaded(a):
     return 0
 
 
+UPLOAD_EXACTLY = ("Upload each file's text exactly as it is on disk: read the file and pass its whole text as textContent. "
+                  "Never retype, shorten or summarize it. The byte count and SHA-256 above are what a correct copy has (R94).")
+
+
+def _sha(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def write_blocked(a):
+    """R80: a session that cannot produce a document still reports. Same consent rule as a
+    delivered one: unasked -> ask, declined -> nothing leaves the machine."""
+    if not a.slug or not a.client:
+        sys.exit("--blocked needs --slug and --client")
+    cfg = load_json(CONFIG, {})
+    consent = {"yes": "granted", "no": "declined"}.get(cfg.get("capture_consent"), "unasked")
+    if consent == "declined":
+        print("capture_consent: declined. Nothing written. Say nothing about it.")
+        return 0
+    if consent == "unasked":
+        print('CAPTURE CONSENT UNASKED: ask once, in plain words: "May I send a record of this session to Savoya\'s team '
+              'folder so the quoting tool improves, and what name should it be filed under?" Record the answer with '
+              "capture_session.py --consent yes|no --user NAME, then run this again.")
+        return 0
+    root = capture_root(a, cfg)
+    os.makedirs(root, exist_ok=True)
+    slug = re.sub(r"[^a-z0-9-]+", "-", a.slug.lower()).strip("-")
+    request = None
+    if a.request and os.path.exists(a.request):
+        request = open(a.request, encoding="utf-8", errors="replace").read()[:3000]
+    priced = []
+    for path in sorted(glob.glob(os.path.join(a.handoff, "responses", "*.json"))):
+        r = load_json(path, {}) or {}
+        priced.append({"name": os.path.basename(path)[:-5], "aggregate_total": r.get("aggregate_total"),
+                       "units": [{"key": u.get("key"), "label": u.get("label"), "line_total": u.get("line_total")}
+                                 for u in (r.get("quote_units") or [])]})
+    rec = {"blocked_version": 1, "slug": slug, "client": a.client, "user": a.user or cfg.get("user"),
+           "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+           "plugin_version": load_json(os.path.join(HERE, "..", "..", "..", ".claude-plugin", "plugin.json"), {}).get("version"),
+           "blocked_because": a.blocked, "request": request, "priced": priced,
+           "refusal": load_json(os.path.join(a.handoff, "blocked.json"), None),
+           "feedback": {"worked": a.worked, "change": a.change, "workaround": a.workaround}}
+    out = os.path.join(root, f"{slug}.blocked.json")
+    json.dump(rec, open(out, "w", encoding="utf-8"), indent=1)
+    # R94: uploaded packed like the full capture. A readable record is the one a session
+    # condensed by hand; an opaque envelope cannot be summarized, only uploaded or not.
+    raw_bytes = open(out, "rb").read()
+    packed_out = os.path.join(root, f"{slug}.blocked.json.gz.b64")
+    json.dump({"capture_version": 2, "kind": "blocked", "encoding": "gzip+base64", "slug": slug, "ts": rec["ts"],
+               "user": rec["user"], "client": a.client, "plugin_version": rec["plugin_version"],
+               "raw_bytes": len(raw_bytes), "sha256": hashlib.sha256(raw_bytes).hexdigest(),
+               "data": base64.b64encode(gzip.compress(raw_bytes, 9)).decode("ascii")},
+              open(packed_out, "w", encoding="utf-8"))
+    marker = os.path.join(root, f"{slug}.blocked.pending-upload")
+    open(marker, "w").write(out + "\n")
+    durable, why = durability_of(root)
+    print(json.dumps({"status": "BLOCKED-SESSION RECORD WRITTEN, NOT UPLOADED", "capture_consent": consent,
+                      "upload": [{"title": os.path.basename(packed_out), "path": packed_out,
+                                  "bytes": os.path.getsize(packed_out), "sha256": _sha(packed_out)}],
+                      "upload_exactly": UPLOAD_EXACTLY,
+                      "then": f"capture_session.py --mark-uploaded {slug} --file-id <Drive id>",
+                      "local_copy_durable": durable}, indent=2))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--slug", default=None); ap.add_argument("--client", default=None)
@@ -161,6 +226,13 @@ def main():
     ap.add_argument("--quote", default=None)
     ap.add_argument("--raw", default=None); ap.add_argument("--select", default=None)
     ap.add_argument("--user", default=None)
+    ap.add_argument("--blocked", default=None, metavar="REASON",
+                    help="leave a record when NO document could be produced (R80): needs --slug and --client; "
+                         "--request and --handoff DIR add what was asked and what was priced")
+    ap.add_argument("--handoff", default="handoff", help="with --blocked: the handoff dir whose responses/ were priced")
+    ap.add_argument("--consent", choices=["yes", "no"], default=None,
+                    help="record the user's one-time answer to 'may session captures be shared with Savoya?' "
+                         "in ~/.savoya-quoting/config.json (needs --user the first time); exits")
     ap.add_argument("--worked", default=None); ap.add_argument("--change", default=None)
     ap.add_argument("--fixed", default=None, help="what you changed in-session in response to --change")
     ap.add_argument("--workaround", default=None,
@@ -193,10 +265,34 @@ def main():
     if a.mark_uploaded:
         return mark_uploaded(a)
 
+    if a.consent:
+        cfg = load_json(CONFIG, {})
+        if a.user:
+            cfg["user"] = a.user
+        if not cfg.get("user"):
+            sys.exit("--consent needs --user NAME the first time (the name the captures are filed under)")
+        cfg["capture_consent"] = a.consent
+        os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+        with open(CONFIG, "w") as fh:
+            json.dump(cfg, fh, indent=1)
+        print(f"capture_consent: {'granted' if a.consent == 'yes' else 'declined'} (user: {cfg['user']})")
+        return
+
+    if a.blocked:
+        return write_blocked(a)
+
     for name in ("slug", "client", "deliverable", "quote"):
         if not getattr(a, name):
             sys.exit(f"--{name} is required (only --mark-uploaded may be used without it)")
     cfg = load_json(CONFIG, {})
+    consent = {"yes": "granted", "no": "declined"}.get(cfg.get("capture_consent"), "unasked")
+    print(f"capture_consent: {consent}", file=sys.stderr)
+    # The record of what the pricing system returned and what was asked sits in ./handoff/ by
+    # construction; a capture that says raw_quote: null for a handoff-built quote lost its evidence.
+    if not a.raw and os.path.exists(os.path.join("handoff", "raw_quote.json")):
+        a.raw = os.path.join("handoff", "raw_quote.json")
+    if not a.request and os.path.exists(os.path.join("handoff", "request.md")):
+        a.request = os.path.join("handoff", "request.md")
     asset = load_json(ASSET_CFG, {})
     user = a.user or cfg.get("user")
     if not user:
@@ -312,6 +408,7 @@ def main():
         "client": a.client,
         "plugin_version": capture.get("plugin_version"),
         "raw_bytes": len(raw_bytes),
+        "sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "data": base64.b64encode(gzip.compress(raw_bytes, 9)).decode("ascii"),
     }
     # Separate titles for the two passes, exactly as the feedback files already do it:
@@ -348,9 +445,14 @@ def main():
           "request_missing": capture["request_missing"],
           "totals": {"engine_subtotal_cents": q.get("engine_subtotal_cents"),
                      "total_cents": q.get("total_cents"),
-                     "option_b_total_cents": (q.get("option_b") or {}).get("total_cents")},
+                     "option_b_total_cents": (q.get("option_b") or {}).get("total_cents"),
+                     "commission_amounts": q.get("commission_amounts")},
           "leg_count": len(q.get("legs", [])),
           "decisions": (load_json(os.path.join("handoff", "intake.json"), {}) or {}).get("decisions"),
+          # R83/R84: the lookups the session made and the headcount the user chose, so a failure
+          # can be diagnosed from the record instead of guessed at
+          "stop_resolution": (load_json(os.path.join("handoff", "intake.json"), {}) or {}).get("stop_resolution"),
+          "headcount_confirmed": (load_json(os.path.join("handoff", "intake.json"), {}) or {}).get("headcount_confirmed"),
           "placeholders": q.get("internal", {}).get("placeholders", []),
           "feedback": capture["feedback"],
           # Deliberately NOT called "uploaded": this file is written before any upload
@@ -434,9 +536,10 @@ def main():
                      " --file-id <id>` with the ids it returned. The capture step is not "
                      "done until the connector has returned an id for every file.",
         "upload": [
-            {"path": fb_path, "title": os.path.basename(fb_path), "bytes": os.path.getsize(fb_path)},
+            {"path": fb_path, "title": os.path.basename(fb_path), "bytes": os.path.getsize(fb_path), "sha256": _sha(fb_path)},
         ] + ([{"path": packed_path, "title": os.path.basename(packed_path),
-               "bytes": packed_size}] if send_full else []),
+               "bytes": packed_size, "sha256": _sha(packed_path)}] if send_full else []),
+        "upload_exactly": UPLOAD_EXACTLY,
         "clear_when_uploaded": marker,
         "clear_with": f"capture_session.py --mark-uploaded {name} --file-id <id>",
         # Where the local copy lives and whether it will still be there tomorrow. `~` is

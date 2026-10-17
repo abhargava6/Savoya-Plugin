@@ -1,0 +1,477 @@
+<title>Savoya Quoting Decision Tree</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+  /* Layout: two lanes (intake, document) of node cards, each card a node of the tree.
+     A copper rule opens each lane; the seam between lanes is the handoff folder. */
+  :root{
+    --bg:#FAF8F5; --ink:#1A1A1A; --muted:#6B6560; --rule:#E6E1DC;
+    --copper:#B87333; --tint:#F7EDE4; --card:#FFFFFF;
+    --ask:#B4780B; --askbg:#FFF7E6; --askline:rgba(245,158,11,.4);
+    --call:#2F6F4F; --callbg:#EAF3EE; --callline:rgba(47,111,79,.33);
+    --halt:#A3342A; --haltbg:#FBEDEB; --haltline:rgba(163,52,42,.33);
+    --skip:#8A837C;
+    --display:Georgia,"Times New Roman",serif;
+    --body:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F0F0F; --ink:#FAF8F5; --muted:#A09890; --rule:#2A2A2A;
+      --tint:#1E1712; --card:#171717; --copper:#D99560;
+      --ask:#E8B04B; --askbg:#2A2015; --askline:rgba(232,176,75,.33);
+      --call:#6FB68E; --callbg:#13241B; --callline:rgba(111,182,142,.3);
+      --halt:#E88B7D; --haltbg:#2A1614; --haltline:rgba(232,139,125,.3);
+      --skip:#8A837C;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F0F0F; --ink:#FAF8F5; --muted:#A09890; --rule:#2A2A2A;
+    --tint:#1E1712; --card:#171717; --copper:#D99560;
+    --ask:#E8B04B; --askbg:#2A2015; --askline:rgba(232,176,75,.33);
+    --call:#6FB68E; --callbg:#13241B; --callline:rgba(111,182,142,.3);
+    --halt:#E88B7D; --haltbg:#2A1614; --haltline:rgba(232,139,125,.3);
+    --skip:#8A837C;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
+       line-height:1.5;-webkit-font-smoothing:antialiased;padding-inline:16px}
+  .wrap{max-width:1120px;margin:0 auto;padding-block:32px 72px}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,34px);
+     margin:0 0 6px;text-wrap:balance}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 6px;max-width:68ch}
+  .ver{font-family:var(--mono);font-size:12px;color:var(--copper);margin-bottom:22px}
+  code{font-family:var(--mono);font-size:.87em;background:var(--tint);
+       padding:1px 5px;border-radius:5px;overflow-wrap:anywhere}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+  .pill{font-size:12px;padding:4px 11px;border-radius:99px;border:1px solid var(--rule);white-space:nowrap}
+  .pill.call{background:var(--callbg);border-color:var(--callline);color:var(--call)}
+  .pill.ask{background:var(--askbg);border-color:var(--askline);color:var(--ask)}
+  .pill.halt{background:var(--haltbg);border-color:var(--haltline);color:var(--halt)}
+  .pill.skip{color:var(--skip)}
+
+  .lane{margin-bottom:38px}
+  .lane-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:14px;
+          border-top:2px solid var(--copper);padding-top:9px}
+  .lane-h b{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--copper)}
+  .lane-h span{font-size:13px;color:var(--muted)}
+
+  .row{display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px;align-items:start}
+  .node{width:52px;height:52px;border-radius:12px;background:var(--tint);
+        border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;
+        font-family:var(--display);font-size:18px;color:var(--copper)}
+  .node.sm{font-size:14px}
+  .body{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+        padding:13px 16px;min-width:0}
+  .body h3{margin:0 0 6px;font-size:15px;font-weight:600;text-wrap:balance}
+  .body h3 em{font-style:normal;color:var(--muted);font-weight:400;font-size:13px}
+  .branch{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 11px;
+          margin-top:8px;font-size:13.5px}
+  .tag{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:2px 8px;
+       border-radius:99px;height:fit-content;white-space:nowrap;border:1px solid transparent;
+       margin-top:2px}
+  .tag.call{background:var(--callbg);color:var(--call);border-color:var(--callline)}
+  .tag.ask{background:var(--askbg);color:var(--ask);border-color:var(--askline)}
+  .tag.skip{color:var(--skip);border-color:var(--rule)}
+  .tag.loop{color:var(--copper);border-color:var(--copper)}
+  .tag.halt{background:var(--haltbg);color:var(--halt);border-color:var(--haltline)}
+  .arrow{color:var(--copper);font-size:16px;line-height:1;margin:5px 0 5px 25px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .note b,.note strong{color:var(--ink);font-weight:600}
+  .why{font-size:12.5px;color:var(--muted);margin-top:8px;padding-left:11px;
+       border-left:2px solid var(--rule)}
+  .why b{color:var(--ink);font-weight:600}
+  .why.new{border-left-color:var(--copper)}
+  .tbl{width:100%;border-collapse:collapse;margin-top:9px;font-size:12.5px}
+  .tbl th,.tbl td{text-align:left;padding:5px 9px 5px 0;border-bottom:1px solid var(--rule);
+                  vertical-align:top}
+  .tbl th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+          font-weight:500}
+  .scroll{overflow-x:auto}
+  .end{display:inline-block;font-size:12.5px;color:var(--call);background:var(--callbg);
+       border:1px solid var(--callline);padding:3px 10px;border-radius:99px;margin-top:9px}
+  .seam{background:linear-gradient(90deg,var(--tint),transparent);
+        border-left:3px solid var(--copper);padding:14px 16px;border-radius:0 12px 12px 0;
+        margin:10px 0 30px}
+  .seam b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--copper);margin-bottom:6px}
+  footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);
+         font-size:12px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <h1>Savoya quoting — decision tree</h1>
+  <p class="sub">Every node resolves to one of four outcomes. Anything not listed is skipped. Nodes A–J are <code>quote-intake</code>; K–Q are <code>quote-document</code>. The handoff folder is the seam between them.</p>
+  <div class="ver">v0.27.4 · twelve-tool MCP contract · refreshed 17 Oct 2026</div>
+
+  <div class="legend">
+    <span class="pill call">CALL — a tool or script runs</span>
+    <span class="pill ask">ASK — one question, its own message</span>
+    <span class="pill skip">SKIP — no call, no question</span>
+    <span class="pill halt">REFUSE — the flow stops and says why</span>
+  </div>
+
+  <div class="lane">
+    <div class="lane-h"><b>quote-intake</b><span>client request → exact engine quote</span></div>
+
+    <div class="row"><div class="node">A</div><div class="body">
+      <h3>Client <em>· resolve_client</em></h3>
+      <div class="branch">
+        <span class="tag skip">skip</span><span>name is in <code>known_clients</code> → use the cached profile id</span>
+        <span class="tag call">call</span><span>otherwise. One hit → proceed and cache it</span>
+        <span class="tag ask">ask</span><span>several profiles, or none. Never guess</span>
+      </div>
+      <div class="note"><b>A resolved client is still mandatory on every path.</b> There is no rack-rate or no-client route — not in the plugin, not in the MCP, and not in Core's in-progress work either. That is PRD R9, the oldest unaddressed gap in the product, and PRD R4 (a standalone client-facing rate sheet) sits behind it.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">B</div><div class="body">
+      <h3>Passenger <em>· resolve_passengers</em></h3>
+      <div class="branch">
+        <span class="tag skip">skip</span><span><b>unless the user named a passenger.</b> That is the whole rule</span>
+        <span class="tag call">call</span><span>they named one → match the name, send that id</span>
+        <span class="tag ask">ask</span><span>several matches (batched with A and D)</span>
+      </div>
+      <div class="note"><code>passenger_id</code> is optional on every pricing tool. Omitted, Core deterministically attaches an eligible passenger to the unsaved calculation and says so in a warning.</div>
+      <div class="why"><b>No cache, no pre-flight check.</b> The old rule — take the first result and cache it per profile — was correct against the previous contract and verified then (two passenger ids, byte-identical quotes). Caching now would only keep alive a disclosure the CSM no longer needs. A profile with no eligible passengers isn't ours to pre-empt: we don't look, so we can't know in advance. Core raises it, the plugin surfaces it.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">C</div><div class="body">
+      <h3>Vehicle types <em>· resolve_vehicle_types</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><b>once per quote, every quote.</b> Core owns <code>id</code>, <code>capacity</code>, <code>classification</code>, <code>greeter</code>, <code>bus</code>, <code>limited_availability</code> and <code>client_can_book</code></span>
+      </div>
+      <div class="why"><b>This reverses an earlier decision.</b> A static table existed to save a per-quote call, and the trade stopped being worth it the moment the table was found <b>wrong</b> rather than merely stale: it said Exec Van "~10" where Core says <b>14</b>, and omitted seven types including both greeters. One call against a wrong answer is not a saving.</div>
+      <div class="note"><code>vehicle-types.md</code> stays for what Core has no concept of: <b>physical dimensions</b> and terminology. Dimensions are what rule a coach out of a venue with a 9×18 ft parking cap. <code>client_can_book: false</code> (Mini Bus, Coach Bus) is a field to read, not a rule to remember — and it is read <i>here</i> rather than from the rate sheet, which omits it even though Core knows it in the same payload (<code>ENGINEERING.md</code> G2, PRD R70).</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">D</div><div class="body">
+      <h3>Stops <em>· resolve_itinerary_stops — one call, every leg, deduplicated</em></h3>
+      <div class="branch">
+        <span class="tag call">first</span><span>decide <code>stop_type</code>: hotel/venue/street → <code>address</code>; airport code or flight intent → <code>airport</code>; "around the city" → <code>as_directed</code>, <b>never as a pickup</b></span>
+        <span class="tag skip">skip</span><span>one candidate, or several that are the same place — <b>same <code>id</code> and address</b> → take the first, note it</span>
+        <span class="tag ask">ask</span><span>genuinely different places, or nothing resolved</span>
+      </div>
+      <div class="why"><b>Both halves of that match matter.</b> "Anaheim Convention Center" returned three candidates all under <code>id: 4645260</code> — the venue at 800 W Katella, a Residence Inn at 640, a Hampton Inn at 100. Matching on <code>id</code> alone would have quoted a hotel instead of the venue.</div>
+      <div class="note"><b>Airports: use the IATA code.</b> "John Wayne Airport, Santa Ana, California" resolved to nothing; <code>SNA</code> resolved first time. Colloquial names fail. <b>As-directed city:</b> query <code>"&lt;City&gt;, &lt;State spelled out&gt;"</code> — abbreviations return nothing (<code>ENGINEERING.md</code> C1) — and pick the candidate whose <code>id</code> matches the pickup's city.</div>
+      <div class="why new"><b>Every stop lookup is recorded, and an unresolved one stops the flow (R83).</b> Pass each to <code>handoff.py write</code> as <code>--stop-note "&lt;stop&gt;|&lt;query sent&gt;|resolved"</code> (or <code>unresolved</code>). If an as-directed stop does not resolve, <b>ask the user for an address</b>. Never substitute another stop — a session once priced a hotel round trip in place of an unresolved Whistler tour — and never delete a travel time to get past verify. <code>write</code> refuses an unresolved note.</div>
+      <div class="note"><b>Every airport stop carries a <code>flight</code> object</b>, pickup or drop-off: <code>arrival</code> when it's the pickup, <code>departure</code> when it's the drop-off, always <code>commercial_tbd: true</code>. Omitting it fails the call, and <code>stops[0]</code> on an arrival leg is where it gets missed. A missing flight <i>time</i> is a recorded placeholder — don't ask, it doesn't change the price.</div>
+      <div class="why"><b>TBD is the only shape we send, deliberately.</b> The contract also describes known-commercial flights (needs <code>airline</code> as a resolved object) and private ones (needs <code>fbo</code>), and <b>neither resolver exists in the contract</b>. Even when the client gives a flight number, keep it as a client-facing note and still send <code>commercial_tbd: true</code>. PRD R14 and R52; <code>ENGINEERING.md</code> B7 and B7b.</div>
+      <div class="why new"><b>A stop can sit in no Savoya service area at all.</b> A live London/Sicily/Milan itinerary resolved with Sicily in no market, which Core handles by reporting one market as <i>both</i> source and primary and pricing from Naples — 14.75 hrs billed against a shorter request. It is not an error, and it has to be disclosed to the client in generic wording, since there is no second market to name. It also broke the sourcing feature's own verifier, which read that equality as a contradiction.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">E</div><div class="body">
+      <h3>Questions <em>· one per message, wait after each</em></h3>
+      <div class="branch">
+        <span class="tag ask">ask 0</span><span><b>Blocking gaps</b> — missing year or ambiguous date, headcount range, unresolvable location, unsettled service shape. Batched with D's stop ambiguities</span>
+        <span class="tag ask">ask 1</span><span>Rate sheet first, or straight to the quote?</span>
+        <span class="tag ask">ask 2</span><span>Best value · options · you name the vehicles</span>
+      </div>
+      <div class="note">1 and 2 are asked on <b>every</b> quote, never skipped because the request looks self-evident. Client questions that don't change pricing (tax, gratuity, cancellation, on-site staff) are recorded with <code>--client-question</code> for the document stage — <b>don't ask, don't block</b>. "go" means no rate sheet, best value.</div>
+      <div class="why new"><b>A headcount range is never priced on a default (R84).</b> "50–75 passengers" means ask which number to quote, as question 0 and before pricing. The chosen number is passed to pricing and to <code>handoff.py write --headcount N</code>. The same request priced with no number defaulted every leg to one 50-seat coach.</div>
+      <div class="why new"><b>State the reading of every named scenario and get a yes before pricing (R81).</b> One line each: vehicles and counts, hours, headcount. The same request was once priced two ways about $7,000 apart. After the yes, each reading is recorded with <code>--reading</code> and travels into the document's assumptions.</div>
+      <div class="note"><b>Nothing about discount, commission, cover, personalization, maps or formats is asked here.</b> All of it belongs to the document flow.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">F</div><div class="body">
+      <h3>Rate sheet <em>· preview_rate_batch</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>E said yes — one call, all legs, <code>display: "show"</code></span>
+        <span class="tag skip">skip</span><span>otherwise: node G's response prices every candidate anyway, which is the same discovery</span>
+      </div>
+      <div class="note">A later "show me the rate sheet" just calls it then; stop refs live roughly 24 hours (<code>ENGINEERING.md</code> C2 — measured, not specified). Covers <b>capacity-bearing vehicles only</b> — greeters never appear here, and are not listed in <code>missing_vehicle_type_ids</code> either, so the rate sheet is silently incomplete rather than wrong (PRD R24).</div>
+      <div class="why"><b>One known disagreement to be aware of.</b> The rate sheet ignores the company profile's "Waive All Incidentals" flag, so for an affected client it shows a fuel surcharge the exact-quote tools correctly waive — the sheet a CSM trusts and the quote the client receives disagree, and the plugin has no way to tell which applies (<code>ENGINEERING.md</code> A4).</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node sm">F2</div><div class="body">
+      <h3>Nearby markets <em>· lookup_nearby_markets — when the primary market is short</em></h3>
+      <div class="branch">
+        <span class="tag call">always first</span><span><b>an inventory check before every exact quote</b>, even when E said no rate sheet: run the preview with <code>display: "internal"</code> and compare the requested vehicle count against the returned market count. No count stated → derive it from passenger count and the returned capacity</span>
+        <span class="tag skip">skip</span><span>the primary market covers the request → quote there and skip this node entirely</span>
+        <span class="tag call">call</span><span>short, or the CSM explicitly asks to explore — with <code>reference_service_area_id</code> and <code>inventory_date</code>. Returns the three nearest markets <b>by road distance</b>, each with the vehicle types and quantities it <i>adds</i>, plus a signed <code>market_ref</code></span>
+        <span class="tag call">optional</span><span><code>resolve_service_areas</code> first, to anchor the lookup to a market the CSM names rather than the itinerary's own</span>
+        <span class="tag ask">ask</span><span><b>present the table, then stop.</b> The CSM names the market or mix, the vehicle type and the quantity for each</span>
+      </div>
+      <div class="note">This is an <b>inventory</b> check, not a driver or vendor schedule check — the counts are static fleet numbers, not date-specific availability. PRD R48–R49; user-initiated this phase, so the plugin never goes shopping on its own.</div>
+      <div class="why"><b>A sourced vehicle bills the primary market's rates, not its home market's.</b> Confirmed live: an Austin Mini Bus sourced into Dallas billed Dallas's <b>$314.92/hr</b>, not Austin's <b>$244.09/hr</b>. The nearby market supplies the vehicle, not the price. A nearby market's own rate sheet <i>can</i> be shown and a CSM may legitimately want it — but lead with that fact, and when a sourced quote is in play name both numbers.</div>
+      <div class="why"><b>The counts are "additional", not totals.</b> Vehicles whose vendors already serve the reference market are excluded, because they are already counted there. A CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four <i>extra</i> ones. They are also <b>unconfirmed</b> and promise nothing about fulfilment — say both when presenting the table.</div>
+      <div class="note"><b>A <code>market_ref</code> is scoped to the market it was looked up from</b>, and nearby is not the same as sourceable: Dallas returned only Shreveport, Austin and Oklahoma City while Houston sits in Austin's list. To source into Dallas, look up from Dallas. On <code>sourcing_reference_expired</code>, look up again from the same reference market and swap each ref for the new one — don't ask the CSM again.</div>
+      <div class="why"><b>A lookup is not a choice, and never consent.</b> Never pick a source market for the user, and never read a lookup or a rate preview as agreement to source. <b>And never compare an unpriced option:</b> a session did rate-sheet arithmetic and told a CSM sourcing from Austin would save about $80; the real quote came back <b>$707.18 more expensive</b>, because the arithmetic had missed the positioning drive time that sourcing exists to pay for.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">G</div><div class="body">
+      <h3>Quote <em>· one call, all units, exact path</em></h3>
+      <div class="scroll"><table class="tbl">
+        <tr><th>Condition</th><th>Tool</th><th>Shape</th></tr>
+        <tr><td>best or options</td><td><code>generate_quote_options</code></td><td>an <code>options</code> array, <b>2–5</b>, each with its own <code>key</code>, <code>label</code> and a <b>complete</b> <code>quote_units</code> list</td></tr>
+        <tr><td>you define</td><td><code>calculate_quote_units</code></td><td><b>one</b> <code>vehicle_type_id</code> per unit — candidate lists are not accepted here</td></tr>
+        <tr><td>vehicles sourced from a market the CSM chose at F2</td><td><code>calculate_sourced_quote_units</code></td><td>one allocation per itinerary × vehicle type × source market, <b>all in one call including the primary-market ones</b>. <code>source_market_ref</code> is F2's signed ref; omit it for primary allocations. <code>quantity</code> is <b>required</b> and means <b>vehicle count</b> — not what it means on <code>calculate_quote_units</code>, where it is a repeat count</td></tr>
+        <tr><td>user supplied a rate or an extra discount</td><td><code>calculate_temporary_quote_units</code></td><td>one id per unit, plus <code>temporary_rate</code> (<code>hourly</code>|<code>transfer</code>, in <b>cents</b>) and/or <code>temporary_discount</code> (<code>basis_points</code>). On a sourced package, resend <i>every</i> allocation carrying the temporary input and its ref. <b>Never persisted — say so</b></td></tr>
+      </table></div>
+      <div class="why"><b>Never quote the primary portion alone and present it as the full package.</b> A mixed-market package is one call and one Core-returned aggregate total.</div>
+      <div class="why"><b>A temporary rate is a BASE rate — the client's discount comes off it.</b> Verified 8 Oct: $250.00/hr supplied became <b>$192.50/hr</b> effective after a 30% contracted discount and 10% fuel. So when asking, say so: <i>"this is a base rate before the client's contracted discount — give me the rate you want to quote from, not the cost you were quoted."</i> A CSM who enters the partner's cost quotes the client <b>23% below it</b>. This is the one place it can be caught; afterwards it just looks like a price.</div>
+      <div class="note"><b>No stored rate in the market</b> is never an estimate and never a dead end — <b>there is no approximate path to fall back to</b>. Core's own recovery wording is the flow: ask for a temporary rate, or pick another vehicle, then re-quote. <b>A waiting leg can only take an <i>hourly</i> temporary rate</b> — a <code>transfer</code> rate needs exactly two stops, and our ≲3h out-and-back rule produces three routinely (verified 7 Oct: <code>quote_units_unavailable</code>).</div>
+      <div class="note"><b>Every option must contain every trip.</b> Core rejects a duplicate outright — <i>"labels alone do not create an alternative."</i> An option that drops a leg is a cheaper total for a different job. <b><code>strategy</code> is a label, not a lever:</b> the same two options run twice with only the strategy strings swapped returned identical totals, vehicles, quantities and rate ids. The vehicle argument is the only thing that selects.</div>
+      <div class="why new"><b>Split the headcount across vehicle groups (R91).</b> 75 passengers on a coach plus two vans is 50 on the coach and 25 on the vans, each priced with its own <code>passenger_count</code>. Core sizes the number of vehicles from a group's count, so 75 on every group prices extra vehicles. <code>handoff.py write</code> refuses a unit with no count, and groups serving one trip whose counts do not add up to the confirmed headcount.</div>
+      <div class="why new"><b>Every pricing response is saved by a checked step, and packages become options (R78, R79).</b> <code>handoff.py ingest --name A</code> checks that the units add up to Core's total and never edits the response. Separately priced packages (one coach all day, or two coaches for four hours) are written together with <code>--package A --package B</code> and become options in one document, each keeping Core's own total, with no combined figure.</div>
+      <div class="note"><b>Send <code>requested_stop_count</code> on every unit</b> — the user's own total including pickup, dropoff and every intermediate. It exists so Core can tell it was handed fewer stops than were asked for; silently dropping a stop is the bug class that produced 0-minute drive times in 0.20.0.</div>
+      <div class="why"><b>Hours are Core's.</b> <code>duration</code> is the lever, not the answer: an as-directed stop sent <code>duration: 4</code> bills <b>5.25</b> hours — a constant +1.25 h of positioning. Out of market it is larger: <code>duration: 8</code> billed <b>12</b>. Send what the user asked for, show what Core billed, name the difference. Never back-solve the duration.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node sm">G2</div><div class="body">
+      <h3>Detail card <em>· calculate_quote_units</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>after the user picks an option (or accepts the recommendation in best mode) — that option's chosen vehicle per unit</span>
+        <span class="tag skip">skip</span><span>in define mode: already that shape</span>
+      </div>
+      <div class="note">Identical numbers. It renders the full detail card that <code>scenario_comparison</code> shows condensed.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node sm">G3</div><div class="body">
+      <h3>Greeter / on-site staff <em>· a Core quote unit, never a number a human invents</em></h3>
+      <div class="note">Greeters are vehicle types: <b>12 Hourly Greeter/Coordinator</b>, <b>13 Single Greet</b>. Both return <code>greeter: true</code>, <code>capacity: null</code>.</div>
+      <div class="why"><b>Always check the rate first.</b> An Irvine quote carried a hand-entered <i>"On-site coordinator — 4 hrs at $235/hr = $940"</i> against Core's <b>$404.20</b> for the same request. 2.3× over, in front of a client. The rule it produced: never ask a human for a number Core has.</div>
+      <div class="branch">
+        <span class="tag call">call</span><span><b>the rate check is an attempted price, not a lookup.</b> Greeters are absent from <code>preview_rate_batch</code> and aren't in <code>missing_vehicle_type_ids</code> either — the rate sheet cannot answer. So price one: a priced unit means the market has a rate, <code>status: "blocked"</code> means it doesn't</span>
+      </div>
+      <div class="scroll"><table class="tbl">
+        <tr><th>Who raised it</th><th>Rate in that market?</th><th>Where it's handled</th></tr>
+        <tr><td><b>Client asked</b></td><td>Yes</td><td><b>Intake</b> — a quote unit in the package they requested</td></tr>
+        <tr><td><b>Client asked</b></td><td>No</td><td><b>Document flow</b> — ask the user for a cost, as a flat line</td></tr>
+        <tr><td><b>User wants it</b>, client didn't</td><td>Yes</td><td><b>Document flow</b>, using Core's rate</td></tr>
+        <tr><td><b>User wants it</b>, client didn't</td><td>No</td><td><b>Document flow</b>, ask the user to supply one</td></tr>
+      </table></div>
+      <div class="note">The rate check is the constant; the <i>location</i> follows who raised it. What the client asked for is part of the quote they requested. What the CSM adds is an add-on to a finished quote.</div>
+      <div class="note"><b>The unit shape is pickup + an <code>as_directed</code> stop carrying the hours.</b> A <code>duration</code> on the dropoff is <b>ignored</b> and the unit collapses to the 2-hour minimum. Never model a greeter as hotel → venue: that reports a drive time for someone standing in a lobby. Core adds the same +1.25 h here, so say both numbers: <i>"4 hours as directed; Savoya bills 5.25 including positioning — $404.20."</i></div>
+      <div class="note">Don't pass the group headcount — capacity is <code>null</code>, so there's no fleet to size. <code>limited_availability: true</code> shows up on greeter types; worth saying before a CSM promises one. Core also carries <code>greeter_fee</code> fields on every ordinary vehicle's quote that no tool can set, which may be a second model for the same thing (<code>ENGINEERING.md</code> G1).</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">H</div><div class="body">
+      <h3>Read the result <em>· render_presentation.py</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><code>render_presentation.py &lt;file&gt;</code> renders <b>Core's own <code>presentation</code> block</b> — the same layout for every CSM looking at the same quote, Core's figures printed rather than restated</span>
+        <span class="tag call">exit 3</span><span>no <code>presentation</code> block in the response → fall back to <code>handoff.py summarize</code>, still the right tool for the comparison summary and the handoff</span>
+        <span class="tag skip">never</span><span>open the response yourself, or reword either script's output</span>
+      </div>
+      <div class="note"><b>It is internal.</b> The render carries rate ids, rack-versus-effective rates and <code>limited_availability</code>. None of that goes in front of a client — <code>quote.json</code> and the whole document flow stay ours.</div>
+      <div class="branch">
+        <span class="tag halt">both</span><span>if Core's presentation total and its own quote units <b>disagree</b>, the render says so and prints both figures. Don't pick one — re-quote, and if it persists that's a Savoya-side report</span>
+        <span class="tag call">re-quote</span><span>a unit came back <code>rate_unavailable</code> for every candidate → next class from the table, and say what you swapped</span>
+      </div>
+      <div class="why"><b>Warnings: everything is shown.</b> The summarizer translates the shapes it knows and prints the rest <b>verbatim</b>. It used to print only the two it recognised and drop the others silently, which hides a real warning as effectively as filtering would. Exactly one is suppressed — Core's "no passenger was selected", and only when the unit priced, because omitting <code>passenger_id</code> is now the normal path.</div>
+      <div class="note">One warning the plugin needs and the quote response doesn't carry: the <b>no-local-provider</b> notice naming the source market arrives only on stop resolution, while the quote carries a bare <code>excess_drive_time: true</code>. Intake carries it forward through the handoff to cover that (<code>ENGINEERING.md</code> G4).</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">I</div><div class="body">
+      <h3>Refine and hand off <em>· the one question after the quote</em></h3>
+      <div class="branch">
+        <span class="tag ask">ask</span><span>"Customize this — different vehicles, headcount, hours, another scenario — go on to the client document, or is the quote all you need?"</span>
+        <span class="tag loop">loop</span><span>customize → back to <b>G</b> with the same stop refs</span>
+        <span class="tag loop">re-resolve</span><span>stop refs older than ~24h → back to <b>D</b> first. Never retry a rejected ref</span>
+      </div>
+      <div class="why new"><b>Never ask the user about the product's own working (R93).</b> Not how a file is written, not which of the scenarios just shown to keep. When the request names scenarios, every one is priced, shown and written. "Which one in detail?" (G2) is asked only for options intake generated itself. A CSM cannot answer these questions, and each is a chance to answer wrongly.</div>
+      <div class="note"><code>presentation.actions</code> carries intents (<code>select_scenario</code>, <code>refine_quote</code>). The render names them, but <b>the refine loop is still ours</b> — the intents are undocumented beyond their names, and this node is tested.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">J</div><div class="body">
+      <h3>Hand off <em>· handoff.py ingest, then write … --final</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>after the answer to I: <code>ingest</code> each pricing response, then <code>write</code>. The format (PDF, email copy, …) is asked by the document flow, never here</span>
+        <span class="tag halt">refuse</span><span>an unresolved stop (R83) · a headcount range with no chosen number, or vehicle groups that do not add up to it (R84, R91) · a unit with no date. The refusal prints the fix and leaves <code>handoff/blocked.json</code> (R92)</span>
+        <span class="tag call">just the quote</span><span><code>handoff.py capture</code> → one upload. Done</span>
+        <span class="tag call">go on</span><span>document flow. Don't capture here; K–Q captures once at the end</span>
+      </div>
+      <span class="end">"Just the quote" is a complete end state</span>
+      <div class="why new"><b>A refused step is never walked around (R92).</b> When the 0.27.3 gate refused a correct split package, the session built the decision record by hand to carry on, which defeats the gate. Now the session fixes the cause and writes again, or stops and tells the user why. <code>decide.py</code> and <code>normalize_quote.py</code> stop while <code>blocked.json</code> exists, and a session that cannot continue reports itself with the blocked capture (R80).</div>
+      <div class="note">No answer → leave it. The handoff stays on disk and "make the PDF" later costs nothing.</div>
+    </div></div>
+  </div>
+
+  <div class="seam">
+    <b>The seam</b>
+    <code>handoff/</code> — <code>request.md</code> · <code>responses/</code> · <code>raw_quote.json</code> · <code>intake.json</code> (stamped <code>written_by</code>) · <code>blocked.json</code> (only while a write is refused)
+    <div class="note" style="margin-top:7px">Intake writes the quote and its rationale; the document flow writes the decisions, one key at a time, so a dropped conversation resumes at the first unanswered question. <b>Contract 3</b> — it adds <code>source_tool</code>, <code>persisted: false</code>, <code>temporary_pricing</code>, <code>aggregate_total</code>, the unfiltered <code>warnings</code>, and <code>sourcing</code> (the market and <code>excess_drive_time</code>, which the document flow cannot get any other way). A handoff below contract 3 is <b>rejected, not interpreted</b>.</div>
+    <div class="note" style="margin-top:7px"><b>This file drifted, in the one place nothing was checking.</b> Its <code>decisions</code> block documented a <code>fuel</code> key for three days after the code stopped writing one, and omitted <code>commission_pct</code> and <code>greeter_cost</code>. The question-set guard matched <b>numbered prose lists</b> and could not see a jsonc key block — so the file that <i>is</i> this seam was the one file nothing looked at. The guard now checks its keys and their order against <code>BASE_ORDER</code>.</div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-h"><b>quote-document</b><span>handoff → client-facing document</span></div>
+
+    <div class="row"><div class="node sm">K0</div><div class="body">
+      <h3>Machine check <em>· preflight.py — and load the Drive tool</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>once per conversation, before the first render. Exit 1 = some formats unavailable; say it in one plain line when it first matters and carry on</span>
+        <span class="tag call">call</span><span><b>load the Drive tool here</b>, not at the capture step</span>
+        <span class="tag skip">never</span><span>show install commands, file paths, scripts or Terminal instructions to the user</span>
+      </div>
+      <div class="why"><b>The Drive tool moved to the front for a reason.</b> The capture runs after delivery, when the session is winding down and context is tight, and a fresh connector load at that moment is the easiest step in the whole flow to skip — three live sessions in a row ended with the capture written locally and never uploaded, one saying outright <i>"I didn't upload it because it needs the Google Drive connector, which I hadn't loaded."</i> Loading it with the machine check means it is already there when the capture needs it.</div>
+      <div class="note">CSMs aren't technical and setup is a one-time IT task. The only technical instruction a CSM ever gets is Print → Save as PDF, worded for their OS.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">K</div><div class="body">
+      <h3>Read the handoff <em>· normalize_quote.py --from-handoff</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><code>final: true</code> → normalize, and <b>ask nothing about the quote</b></span>
+        <span class="tag halt">refuse</span><span><code>final: false</code> → "the quote isn't final yet"</span>
+        <span class="tag halt">refuse</span><span><code>contract</code> below 3 → written by an older build. Re-run the quote</span>
+        <span class="tag halt">refuse</span><span><code>blocked.json</code> exists → the handoff write was refused. Do what its fix says, or stop and tell the user. Never build the handoff by hand (R92)</span>
+        <span class="tag call">fallback</span><span>no handoff at all (a quote from elsewhere) → save the response, ask which units are chosen, normalize with <code>--select</code></span>
+      </div>
+      <div class="why"><b>Why reject rather than read what you can.</b> A v1 or v2 handoff was written against the previous contract, where <code>estimate_type</code> could be <code>approximate</code>, a passenger id was always present, and the sourcing warning arrived on the quote. Reading those fields as if they still meant that produces a document that looks right. Refusing produces a sentence a CSM can act on.</div>
+      <div class="note"><code>client_questions</code> arrive in three kinds: <b>boilerplate</b> (the terms block already answers it), <b>operational</b> (a client-facing line note — arranged separately, not in vehicle pricing), and <b>data-answered</b> (pickup times, drive times, vehicle counts — the quote holds the answer implicitly, so surface it as an explicit callout at the top of the PDF and the email). An internal gap must never appear to a client as "please confirm".</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">L</div><div class="body">
+      <h3>Six questions + one conditional <em>· decide.py --next drives the order</em></h3>
+      <div class="branch">
+        <span class="tag ask">ask 1</span><span><b><code>discount_pct</code></b> — <b>a Core re-quote, not a document line.</b> <code>calculate_temporary_quote_units</code> with <code>temporary_discount.basis_points</code>, then re-normalize from the response</span>
+        <span class="tag ask">1a</span><span><b><code>greeter_cost</code></b> — <i>inserted only when a client question mentions a greeter, and only a market with no greeter rate gets this far</i></span>
+        <span class="tag ask">ask 2</span><span><b><code>commission_pct</code></b> — No, 1%, 5%, or another percentage. <b>Rate recorded, amount computed in code; changes none of the totals</b></span>
+        <span class="tag ask">ask 3</span><span><b><code>cover</code></b> — catalog keys with audiences, recommendation first, or their own upload</span>
+        <span class="tag ask">ask 4</span><span><b><code>personalization</code></b> — event name, intro note, contact card, logo, per-leg notes, closing line; defaults stand for anything unmentioned</span>
+        <span class="tag ask">ask 5</span><span><b><code>map</code></b> — drive times already come from the engine; this adds the map image</span>
+        <span class="tag ask">ask 6</span><span><b><code>format</code></b> — PDF · email copy + PDF · HTML · DOCX · XLSX</span>
+      </div>
+      <div class="note">One per message. The script decides what's next, so none is skipped, merged or reordered — and it also <i>drops</i> questions: <code>cover</code> and <code>map</code> aren't asked for an email-only job, because nothing but the PDF and printable document reads those answers. <b>Pricing questions come before presentation ones</b>, which is why commission sits where it does rather than at the end.</div>
+      <div class="why new"><b>The commission amount is computed in code, never by the session (R59, R82).</b> The rate is recorded with <code>apply_adjustments.py --commission-pct</code>. The amount is the subtotal after every discount and before the fuel surcharge, times the rate, per option, rounded half-up. It <b>changes no total</b>, never enters the adjustment lines, and is the most prominent figure after the option total in the PDF and the email. No beneficiary is named, because the commission may be the client's or an agency's. On <i>No</i>, nothing is recorded and the word appears nowhere.</div>
+      <div class="why"><b>The discount rule reversed in 0.23.</b> This node used to say <i>never re-quote through the engine</i>, which was right under the old contract and is wrong now: a discount applied here was our arithmetic on Core's number, while a discount applied through Core <b>is</b> Core's number — it returns the whole standard → discount → net line with nothing left to compute. Discounts are <b>additive in basis points</b>: 30% contracted + 10% here = <code>4000</code>, not 37%. Never persisted.</div>
+      <div class="why"><b>There is no fuel question</b> (7 Oct). Fuel is market-scoped and engine-applied; nothing in the contract subtracts it, and <code>temporary_discount</code> is additive rather than a way to remove a surcharge. A CSM who needs it waived does that in Savoya and the quote is rebuilt. The <code>[if:fuel_surcharge]</code> terms bullet stays, because it reflects what Core actually applied. <b><code>SKILL.md</code> went on contradicting this for three days</b> — telling sessions to add fuel as a document percentage line, which is refused outright — and a session following it hits a hard refusal mid-money-handling and then improvises.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">M</div><div class="body">
+      <h3>Adjust <em>· apply_adjustments.py</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><b>flat</b> document lines apply in order on the running total</span>
+        <span class="tag halt">refuse</span><span>a document <b>percentage</b> line is refused outright — percentages are Savoya's to compute</span>
+        <span class="tag skip">never</span><span>remove an engine-sourced line (contracted discount, fuel, special handling). They survive <code>--clear</code> and can only be <b>waived</b></span>
+        <span class="tag call">call</span><span>the commission rate is recorded <b>here</b> — this script owns the terms block, so the rate and its bullet land in one call and cannot get out of order</span>
+      </div>
+      <div class="why"><b>And the total fails closed.</b> If the engine's <i>share</i> of the document total no longer equals Core's <code>aggregate_total</code>, the render <b>refuses</b> and names that share explicitly. The old code absorbed the gap into the last engine line, which made the document reconcile <i>and</i> made that line misstate its own percentage — it put a 5-vehicle Boston job 30 cents above Savoya's own quote. Engine line amounts are pinned to Core's granularity (per hour, per vehicle) with the fuel line as the remainder, so standard + lines equals Core's aggregate by construction.</div>
+      <div class="why"><b>A document line moves what that check compares; it does not switch it off.</b> The check originally ran only when no document line had been added — true of the total, not of the engine's share of it. One flat $200 coordinator line disabled the only fail-closed money check in the plugin, on a quote also built from a hand-transcribed engine response. Reproduced: a $100 slip in one leg's line total ships a client document $100 light, silently. <b>A waived engine amount is added back before comparing</b>, too — Core's aggregate still contains it, and until that was fixed <code>--waive</code> refused on every waiver and was unusable.</div>
+      <div class="why"><b>Every discount gets its own line — and a reconciling total does not prove it.</b> The contracted discount comes from <code>discount_basis_points</code>; an <i>additional</i> one from <code>temporary_discount_basis_points</code>, under Core's own <code>temporary_discount_label</code>. Reading only the contracted field left the extra discount inside Core's net with no line, so the fuel remainder swallowed it and printed <b>−$422.39 as a "Fuel surcharge" at a stated +10%</b> on a real client quote. The total was right the whole time — which is exactly why nothing failed. Fuel is now the remainder of <i>all</i> discounts, and a guard checks each line's sign against its own stated percentage.</div>
+      <div class="why"><b>Option B's total is Core's amounts summed, never percentages re-applied.</b> It compounded two discounts — 30% then 5% gives 0.665 where Core's additive 35% gives 0.65 — and came out about <b>2.3% high</b> on a live quote, overstating the <i>cheaper</i> option and understating the saving being offered. It survived because Core never prices an Option B combination as a package, so there was nothing to check it against: <b>the only total nobody could verify was the only one still doing its own arithmetic.</b></div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">N</div><div class="body">
+      <h3>Render</h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>everything the format needs <b>before</b> replying — PDF via <code>render_print.py</code>, email text via <code>draft_email.py</code>, HTML via <code>render_html.py</code></span>
+        <span class="tag call">call</span><span>personalization through <code>set_personalization.py</code>, which <b>refuses text contradicting the terms</b> — gratuity or tax described as included, variable fees covered, a price called final or guaranteed</span>
+        <span class="tag skip">degrade</span><span>exit 3 = no PDF engine here. The <code>.print.html</code> is written — deliver it and say so</span>
+      </div>
+      <div class="why"><b>What the flow asks about, the flow writes.</b> <code>decide.py</code> recorded the personalization answer and nothing carried it into <code>quote.json</code>, so two of three live sessions hand-edited the document to set the event name and intro note — and one of those hand-written notes asserted that tax and driver gratuity were included, contradicting the terms on the final page of the same PDF. A rejected note is a wrong note.</div>
+      <div class="note">Read only the one format reference you need. A degraded output is never shipped as if fine: no basemap means the offline overview or no map, never a blank panel. <b>Email headings carry day, clock time, route and headcount</b> — the same four facts the PDF line has always had; before that every heading in one live draft was rewritten by hand before sending, and a heading a CSM has to retype is one that can be retyped wrong.</div>
+      <div class="why"><b>A schematic map is a different claim from a street map.</b> The map needs three public services — OSM tiles, the OSRM demo router, Nominatim at 1 req/s — and corporate networks block them routinely. Below 60% tile coverage the map is redrawn from coordinates the engine already resolved: stops in true relative position, joined in order, on a near-white grid. CSMs reported that as <i>"blank with just straight lines"</i>, which is a fair description of a picture nothing on the page explained. The document now titles them differently — <b>Itinerary map</b> versus <b>Itinerary overview · stops in order — not a driving route</b> — and the schematic states that its lines are not driving routes. <b>Tell the CSM which one went out:</b> they decide whether a schematic suits that client and can't see the PDF as the client will until it's sent.</div>
+      <div class="why new"><b>Only the formats asked for (R85).</b> A PDF-only job drafts no email; an email is offered in one line. <code>verify_document.py</code> prints the deliverables, and <code>draft_email.py</code> refuses a PDF-only job unless asked. When an email is asked for, two versions come: the full email and a short one that carries each option and leg total, the discount and the commission amount, and points to the PDF (R71). A client request that changes no price becomes one neutral "noted, will confirm" line (R73). The email asks for flight details only when a flight is outstanding (R74).</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node sm">N2</div><div class="body">
+      <h3>Verify <em>· verify_document.py</em></h3>
+      <div class="branch">
+        <span class="tag call">0 pass</span><span>deliver</span>
+        <span class="tag halt">1 fail</span><span>fix, re-render, verify again. <b>Never deliver a failing document</b>, and never hand the failure to the user</span>
+        <span class="tag call">2 partial</span><span>deliver, and say in one line it couldn't be fully verified here and why</span>
+      </div>
+      <div class="why"><b>Test the consumer, not just the producer.</b> This verifier rejected any sourced leg whose market equalled its primary market — correct for a cross-market override, and false by construction for a stop in no service area, where Core reports one market as both. The real Sicily legs of a live quote failed verification. The guard had tested <code>normalize_quote</code>, which <b>sets</b> the flag; nothing ran the verifier, which <b>reads</b> it.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node sm">N3</div><div class="body">
+      <h3>Confirm what is unconfirmed <em>· confirm_items.py — before any email is shown</em></h3>
+      <div class="branch">
+        <span class="tag ask">ask</span><span>each unconfirmed item, <b>one at a time</b>: a placeholder value such as a pickup time, vehicle inventory the pricing system could not confirm, a client request still open, a quote priced from outside any Savoya service area (counted as one item)</span>
+        <span class="tag call">then</span><span>the answer releases the email; it does <b>not</b> rewrite the document (R72)</span>
+      </div>
+      <div class="note">In the live Yerdle session the user had to ask for the 9:00 AM pickup and the Seattle inventory to be confirmed. The product raises them itself now.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">O</div><div class="body">
+      <h3>Deliver</h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>one message: the email as a copy-ready block, files via <code>present_files</code></span>
+        <span class="tag skip">never</span><span>a mail connector, an attachment, or a send</span>
+      </div>
+      <div class="note">We provide the email copy and the PDF in the chat. Creating a draft in Gmail or attaching the PDF there is not part of this flow.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">Q</div><div class="body">
+      <h3>Feedback <em>· ask → fix → then log</em></h3>
+      <div class="branch">
+        <span class="tag ask">ask</span><span>the reply carrying the first document ends with "Anything you'd like changed?"</span>
+        <span class="tag loop">fix</span><span>they name something → <b>fix it first</b> (adjust → re-render → re-verify → deliver), then say "fixed and logged"</span>
+        <span class="tag skip">don't chase</span><span>no, or no answer → capture without them</span>
+      </div>
+      <div class="note">Never log a request without acting on it. The user gets the fix; the log gets the pattern.</div>
+    </div></div>
+    <div class="arrow">↓</div>
+
+    <div class="row"><div class="node">P</div><div class="body">
+      <h3>Capture <em>· capture_session.py, once per conversation</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><b>both passes upload</b> — a snapshot on the render pass and the full capture after the feedback exchange, under <i>different</i> titles</span>
+        <span class="tag call">call</span><span><b>always compressed</b> (<code>gzip+base64</code>, declared in the envelope). There is no size at which a capture stays behind</span>
+        <span class="tag ask">ask</span><span>the upload failed because the connector is off, or lacks Editor on the folder → <b>ask the user to switch it on and try again</b>. Once, after the deliverable, never before it</span>
+        <span class="tag skip">never</span><span>split a capture across uploads</span>
+        <span class="tag ask">once</span><span><b>consent (R76)</b> — the first document on a machine prints <code>CAPTURE CONSENT UNASKED</code>. Ask once, in plain words, with the name to file the record under. After a yes every upload is silent; after a no nothing is written or uploaded</span>
+        <span class="tag call">call</span><span><b>verification writes the snapshot</b> and leaves a pending-upload marker; the upload happens before the files are presented (R63)</span>
+        <span class="tag call">blocked</span><span>a session that cannot produce a document still reports: <code>capture_session.py --blocked</code> (R80). The user can also say <b>"log this session"</b> at any point; the same record is saved (R90)</span>
+      </div>
+      <div class="why new"><b>Upload the real file, exactly (R94).</b> A blocked-session record was once uploaded as a condensed retyped copy, marked not durable. Each capture file now prints its byte count and SHA-256, the blocked record is uploaded packed like the full capture so it cannot be summarized, and the unpacker warns when a file does not match its hash.</div>
+      <div class="note">It reads <code>handoff/intake.json</code> itself. Captures carry real client names, addresses and pricing — the folder is restricted.</div>
+      <div class="why"><b><code>~</code> is not the user's computer.</b> On claude.ai the home directory is a cloud container reclaimed with the session; on a linked desktop the shell's home is an isolated VM. Only a <i>connected folder</i> is really the user's disk. Two real captures — <b>192 KB and 36 KB</b> — were written to <code>~/.savoya-quoting/captures/</code>, reported as saved, and lost. The report now states whether the local copy is durable and why not, and when it isn't, <b>Drive is the only destination and the upload is not optional</b>.</div>
+      <div class="why"><b>Three rules here each replaced a specific loss.</b> The old rule kept any capture over 25 KB local, so the richest sessions were exactly the ones that never arrived — measured, gzip gives about 15× and base64 still leaves 17 KB. Holding the full capture until after the feedback exchange made the richest artifact depend on a conversational step, and on a live quote that step was skipped, so it reached the folder only because the user asked by name. And a failed upload used to <i>mention</i> rather than ask, which is how three sessions in a row ended with the record stranded — the user is the only one who can switch the connector on.</div>
+      <div class="why"><b>This is the only channel back to whoever maintains the plugin, and it cannot fail on you.</b> <code>--request</code> is optional, a missing handoff is noted rather than fatal, an unexpected error still writes a failure record and exits 0, and a <i>malformed</i> call writes a refusal record — because the step is specified as silent, so argparse printing usage to stderr is a bug report that never happened. Telling the user about a bug is not reporting it; they are not the maintainer.</div>
+      <div class="why new"><b>Capture hardest when the session went worst.</b> A session that patched a renderer in a working copy or rebuilt a line by hand is the most valuable one of the week and the most likely to skip this while firefighting. That belongs in <code>--workaround</code> — and the highest-risk one found that way is the <b>hand-transcribed engine response</b>: five sessions re-typed a quote response too large to save, which <i>defeats</i> the fail-closed total check, because both sides of its comparison then come from the same typing. That is <code>ENGINEERING.md</code> G6.</div>
+    </div></div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-h"><b>outside the flow</b><span>a separate entry point, not a node</span></div>
+
+    <div class="row"><div class="node">?</div><div class="body">
+      <h3>Setup check <em>· "check my quoting setup" · "is this saving?"</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span><code>setup_check.py</code> — identity, <b>which copy of the plugin is in use</b>, the capture folder, the local backlog, any failed captures, and what the map can do here. CSM language, no paths or commands</span>
+        <span class="tag call">call</span><span>then <b>call the connectors rather than assume them</b>, including writing a small test entry to the shared folder</span>
+        <span class="tag ask">once</span><span>unprompted, the first time you work with someone whose name isn't recorded</span>
+      </div>
+      <div class="why"><b>A connector that is switched on can still fail to write.</b> The upload goes as the CSM's own Google account, so without Editor on the folder every upload fails while everything looks connected. Writing a test entry is the only thing that tells those apart — and it is left in place on purpose, so whoever owns the folder can see at a glance whose setup is verified.</div>
+      <div class="why new"><b>Two installed copies is a silent fork.</b> Every older upload stays on disk, which makes the un-suffixed directory permanently the <i>first</i> one ever installed — so a glob on the bare name matches it and nothing else. The skills themselves load from the current copy, so the flow looks right and the duplicate is invisible; but a session that located a <i>script</i> by name ran September's, whose <code>capture_session.py</code> has no <code>--auto</code> flag, so the call was rejected and the session recorded nothing. Both skills now match <code>savoya-quoting*</code> and take the highest version <b>numerically</b> — as strings, "0.9" sorts above "0.25", and this repo has passed through both — and the setup check names the shadowed lookup.</div>
+      <div class="note">It exists because a CSM could finish setup, believe they were done, and quote for weeks with nothing reaching the folder and no symptom on either side. <code>preflight.py</code> never helped here: it checks local Python packages and never touches a connector, the folder, or identity.</div>
+    </div></div>
+  </div>
+
+  <div class="lane">
+    <div class="lane-h"><b>help</b><span>for CSMs and everyone at Savoya</span></div>
+    <div class="row"><div class="node">i</div><div class="body">
+      <h3>Help page and answers <em>· "how does this work?" · "what can't it do?"</em></h3>
+      <div class="branch">
+        <span class="tag call">call</span><span>both skills answer how-it-works questions from the same help text the page is built from, for the installed release, never from memory (R86, R87). If it does not cover the question, they say so</span>
+        <span class="tag skip">never</span><span>a price, a client name or detail of Savoya's internal systems on the help page: it is open to everyone at the company (R88)</span>
+        <span class="tag call">call</span><span>"log this session" at any point saves the session record; the page then tells the user to post a short note in the core-ideas Slack channel (R90)</span>
+      </div>
+      <div class="note">The help page and these diagrams are updated in the same release as any change to the questions asked, the supported requests or the known limits, and each shows the release it describes (R89). A build check fails when a source changed and the page was not refreshed.</div>
+    </div></div>
+  </div>
+
+  <footer>savoya-quoting v0.27.4 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · tool names and arguments: <code>references/mcp-contract.md</code> · kept current with the code (PRD R89)</footer>
+</div>

@@ -112,7 +112,7 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs **28 guards** beyond the ten fixtures — 38 checks in all. Run it; the
+`regress.py` runs **37 guards** beyond the twelve fixtures — 49 checks in all. Run it; the
 list below is for orientation, not for counting:
 
 | Group | Guards |
@@ -120,7 +120,7 @@ list below is for orientation, not for counting:
 | Contracts | instruction paths · **the tool contract** · handoff contract · paired docs · path resolution |
 | Money | money ownership · discount attribution · email reconciles · Option B is Core's · commission · no own arithmetic |
 | Client-safe | client-safe labels · sourced line · positioned-from · warning surfacing · airport shape · core coordinates · passenger count |
-| Flow | the question set · greeter leg · email headings · instructions match the code · no hand editing |
+| Flow | the question set · greeter leg · email headings · instructions match the code · no hand editing · flight line · client requests · confirm items · capture at delivery · refusals and mechanics questions |
 | Output | page fit · map honesty · route guards · presentation render · capture resilience |
 
 With `--pdf` it also **measures every printed page** and fails on content crossing the
@@ -147,7 +147,7 @@ and issues no tool calls.
 **Decided 2026-10-10.** The three project documents are the base the work runs off, not a
 record written after it:
 
-- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R70) — what the product must do. A new
+- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R94) — what the product must do. A new
   requirement is written here *first*, with a status, before anything is built.
 - `PRD_TDD_Quoting_MCP.md` (the **TDD**) — how it is built. Updated in the same pass as the
   code, not later.
@@ -161,6 +161,18 @@ mid-money-handling, and a `handoff-contract.md` that documented a `fuel` key for
 after the code stopped writing one. **An instruction the code refuses is worse than a wrong
 default**, because the session doesn't get a wrong answer — it gets a dead end, and then it
 improvises.
+
+## Parallel sessions — read the board, claim, then build
+
+Several sessions can build at once. The rules that keep them from colliding:
+
+1. **Read before building.** The Status column in `Requirements_Quoting_Pilot.md` says what is built and what is left; `BUILD_BOARD.md` (same vault folder) says who is building what now. Both are read first, every time.
+2. **Check before proposing.** Search the whole requirements file for the behavior before proposing a new requirement. If one covers it, cite or amend it. Name the requirements checked.
+3. **Claim, then build.** Add a row to `BUILD_BOARD.md` (item, session, branch, date) before touching code. Build only claimed items. A claim older than a day with no commits can be taken over; say so on the board.
+4. **One worktree per session.** `git worktree add ../savoya-quoting-<item> -b <item>`; do not build two sessions in one checkout.
+5. **Docs in the same change.** Requirement, then design, then code; set the Status when the code lands.
+6. **Only the release session bumps the version, RULES and CHANGELOG, and builds the package.** Other sessions add their CHANGELOG line under "(unreleased)" and leave the version alone.
+7. **Run the suite before handing back** and say which checks ran.
 
 ## Two kinds of finding — keep them separate
 
@@ -207,10 +219,28 @@ promoted fixtures come in.
 - Word and Excel output has never been exercised in a real session.
 - No airline resolver, so flights always go as `commercial_tbd: true` — see
   `ENGINEERING.md` item B7 (PRD R14), and B7b for the FBO sibling (PRD R52).
-- **The three Claude diagram artifacts** (decision tree, flow, architecture) are the last
-  item from the original build plan.
+- **The three team diagram artifacts** (decision tree, flow, architecture) still describe
+  0.26.1. Their sources are to be imported into `docs/artifacts/` and refreshed (PRD R89);
+  until then `artifacts.json` marks them unmanaged and one statement in them (that the
+  commission amount is never calculated) is wrong.
 - A coverage audit has never been done: roughly 40 documented flags (`--remove`,
   `--cover-file`, `--no-map`, `--final`, `--rate-sheet-shown`, the personalization setters)
   are exercised by nothing in the suite. Two axes worth checking — operations nothing
   exercises, and instructions nothing validates. The second is what the three-day
   `SKILL.md` drift was.
+
+## Claude artifacts (PRD R86–R90)
+
+`docs/artifacts/` holds the HTML for the artifacts we publish, `artifacts.json` (the one
+home for their URLs, the release each reflects and the release last published) and
+`sync_artifacts.py`. The CSM help page is rendered from
+`skills/quote-intake/references/help.md`, the same file the skills answer questions from.
+It is open to everyone at Savoya, so it never carries a price, a client name, a tool or
+script name, or anything about Savoya's internals — a guard checks.
+
+- **Edit the content in `help.md`, then run `sync_artifacts.py render` and `hashes`.** Never
+  edit `help.html` by hand; the guard fails if it is not the render.
+- **Before a release:** run `sync_artifacts.py check`. It fails when a managed artifact's
+  sources changed, and lists what to republish.
+- **Publishing is a session step.** Publish each listed file to its URL with the Artifact
+  tool, then `sync_artifacts.py published <key> <release>`.

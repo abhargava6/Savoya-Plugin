@@ -6,7 +6,7 @@ Usage: unpack_capture.py <capture.json|dir> [...] --fixtures evals/fixtures
 Each becomes <fixtures>/<slug>/{request.md, raw_quote.json|quote.json, expected.json, capture-meta.json}.
 Review expected.json (tighten contains/not_contains) before running regress.py.
 """
-import argparse, base64, glob, gzip, json, os, re
+import argparse, base64, glob, gzip, hashlib, json, os, re
 ap = argparse.ArgumentParser(); ap.add_argument("paths", nargs="+"); ap.add_argument("--fixtures", required=True)
 a = ap.parse_args()
 files, fb_only = [], []
@@ -40,6 +40,7 @@ for p in a.paths:
             if rank > best_cap.get(slug, (0, None))[0]:
                 best_cap[slug] = (rank, f)
         files += [f for _, f in sorted(best_cap.values(), key=lambda t: t[1])]
+        files += sorted(glob.glob(os.path.join(p, "*.blocked.json.gz.b64")))
         caps = set(best_cap)
         # Three kinds of record can be in the folder for one quote, in decreasing
         # richness: the full capture, the post-feedback `<slug>.feedback.json`, and the
@@ -72,7 +73,11 @@ def read_capture(path):
     """
     c = json.load(open(path, encoding="utf-8"))
     if c.get("encoding") == "gzip+base64":
-        inner = json.loads(gzip.decompress(base64.b64decode(c["data"])).decode("utf-8"))
+        body = gzip.decompress(base64.b64decode(c["data"]))
+        inner = json.loads(body.decode("utf-8"))
+        if c.get("sha256") and hashlib.sha256(body).hexdigest() != c["sha256"]:
+            print(f"  WARNING: {os.path.basename(path)} does not match the hash it was written with; "
+                  f"it is not the file the session saved (R94)")
         raw = c.get("raw_bytes")
         if raw and len(json.dumps(inner, separators=(",", ":"), ensure_ascii=False).encode()) < raw * 0.5:
             print(f"  WARNING: {os.path.basename(path)} decompressed to much less than "
@@ -83,6 +88,9 @@ def read_capture(path):
 
 for f in files:
     c = read_capture(f)
+    if c.get("blocked_version"):
+        print(f"  BLOCKED {c['slug']} ({c.get('user') or 'anon'}): {c.get('blocked_because')}")
+        continue
     d = os.path.join(a.fixtures, c["slug"]); os.makedirs(d, exist_ok=True)
     # `--request` is deliberately optional on the capture: node K's documented fallback
     # (a quote brought in from elsewhere) has no handoff and therefore no request at all,
