@@ -818,9 +818,17 @@ def time_readings(specs, units_src):
     return out, problems
 
 
+def copy_into(src, dst):
+    """Copy src to dst, unless they are the same file (a session that wrote request.md
+    straight into the handoff folder would otherwise crash with SameFileError)."""
+    if os.path.exists(dst) and os.path.samefile(src, dst):
+        return
+    shutil.copy(src, dst)
+
+
 def write(a):
     os.makedirs(a.dir, exist_ok=True)
-    shutil.copy(a.request, os.path.join(a.dir, "request.md"))
+    copy_into(a.request, os.path.join(a.dir, "request.md"))
     merged_sel = None
     osets = None
     if a.package:
@@ -830,11 +838,11 @@ def write(a):
         a.raw = os.path.join(a.dir, "raw_quote.json")
         merged_sel = {"select": prim_keys, "alternatives": alts}
     elif a.raw:
-        shutil.copy(a.raw, os.path.join(a.dir, "raw_quote.json"))
+        copy_into(a.raw, os.path.join(a.dir, "raw_quote.json"))
     else:
         sys.exit("write needs --raw <file> or --package <ingested name> (repeat for options)")
     if a.scenarios:
-        shutil.copy(a.scenarios, os.path.join(a.dir, "scenarios.json"))
+        copy_into(a.scenarios, os.path.join(a.dir, "scenarios.json"))
     raw = load_json(a.raw, {}) or {}
     if not a.package and (raw.get("_ingest") or {}).get("quantity_extension"):
         refuse(a, "R95", "the raw quote carries a quantity extension but was not written from a saved response.",

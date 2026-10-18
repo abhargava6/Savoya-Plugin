@@ -3132,6 +3132,11 @@ def lint_handoff_packages():
             problems.append(f"a resolved stop and a chosen headcount were refused: {r.stderr.strip()[:140]}")
         elif "As Directed" not in open(os.path.join(d, "handoff", "intake.json")).read():
             problems.append("the stop lookup was not recorded in intake.json")
+        # The request already sits in handoff/ (a session may write it there): write must not crash copying it onto itself
+        inplace = [x if x != "request.md" else os.path.join("handoff", "request.md") for x in base_w]
+        r = run(inplace + ["--headcount", "75", "--stop-note", "As Directed|Whistler, British Columbia|resolved"])
+        if r.returncode or "SameFileError" in r.stderr:
+            problems.append(f"write failed when --request already sits in the handoff folder: {r.stderr.strip()[-140:]}")
         # R84: units priced without passenger_count carry a vehicle default, so they are refused
         nopc = pkg(us[0:2], headcount=None)
         run([intake, "ingest", "--name", "N"], _json.dumps(nopc))

@@ -13,6 +13,7 @@ From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing 
 - **The header shows the confirmed headcount (R109).** The Yerdle Dallas test printed 4 passengers for a party of 14, because three Sprinter legs were priced without a passenger count. `quote.json` now carries `meta.headcount` from the intake record and the header prints it; without one, the header works it out from the legs as before.
 - **A real Dallas quote is a fixture.** `yerdle-dallas-flat-headcount` (14 passengers, flat headcount, three legs without a passenger count) fails on 0.27.6-test and passes now. It checks the header shows 14 and that no option is named.
 - **A single option is not named (R71).** The short email wrote "Option A" on a quote with one option. It names options only when there are two or more.
+- **`handoff.py write` no longer crashes on a request already in `handoff/`.** It copied `--request`, `--raw` and `--scenarios` onto themselves and raised `SameFileError`. Hit in two test sessions.
 
 ## 0.27.5
 
