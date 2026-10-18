@@ -673,6 +673,18 @@ def option_sets(merged, prim_keys, alts):
     return sets
 
 
+def _stop_sig(u):
+    """The stops of a unit as a comparable tuple: the location id when Core returned one, else the name."""
+    return tuple((st.get("location") or {}).get("id") or st.get("display_name") or st.get("name") or "" for st in (u.get("stops") or []))
+
+
+def _same_trip(a, b):
+    """R107: two units on the same date, at the same start time, over the same stops serve one trip in
+    parallel (a Sprinter and an SUV carrying one split group). They are not an overlap."""
+    sa, sb = _stop_sig(a), _stop_sig(b)
+    return bool(sa) and sa == sb and a.get("pickup_date") == b.get("pickup_date")
+
+
 def overlaps(units_src, sets=None):
     """R97: an hourly block that runs across an airport transfer on the same date.
     Returns [(hourly_key, transfer_key)]. Nothing is priced on an overlap without the user's answer."""
@@ -687,6 +699,8 @@ def overlaps(units_src, sets=None):
             if sets and not any(h.get("key") in s and t.get("key") in s for s in sets):
                 continue
             if not any(_is_airport_stop(st) for st in (t.get("stops") or [])):
+                continue
+            if _same_trip(h, t):
                 continue
             ts = _span(t)
             if hs and ts and ts[0] < hs[1] and hs[0] < max(ts[1], ts[0] + 1):
@@ -721,6 +735,7 @@ def overlap_decisions(specs, units_src, sets=None):
 
 
 TIME_KINDS = ("flight_departure", "pickup", "airport_arrival_target")
+ARRIVAL_WINDOW_MIN = 10   # R105: the car reaches the airport 0 to 10 minutes before the target
 
 
 def _hm(t):
@@ -737,11 +752,12 @@ def time_readings(specs, units_src):
     """R18/R34: how each client time was read, and the pickup that follows from it.
 
     Spec: KEY|kind|HH:MM[|lead_hours]. kind is flight_departure, pickup or
-    airport_arrival_target. A departure gets target = departure - lead and pickup =
-    target - Core's drive time; an arrival target gets pickup = target - drive time; a
-    pickup is the pickup. The unit must have been PRICED at that pickup, so the time on
-    the quote and the time the price rests on cannot differ. Drive time is Core's
-    travel_times; nothing is estimated here.
+    airport_arrival_target. A departure gets target = departure - lead; an arrival
+    target is the target. The computed pickup is target - Core's drive time. R105: the
+    unit is accepted when the pickup it was PRICED at puts the car at the airport at or
+    before the target and no more than ARRIVAL_WINDOW_MIN before it, using the drive time
+    Core returned for that pickup; the time on the quote is the time priced. A pickup
+    is the pickup, and the unit must be priced at it. Nothing is estimated here.
     """
     out, problems = [], []
     by_key = {u.get("key"): u for u in units_src}
@@ -774,12 +790,30 @@ def time_readings(specs, units_src):
                 continue
             pickup = target - drive
             r.update(airport_target=_fmt(target), drive_minutes=drive)
-        r["pickup"] = _fmt(pickup)
         priced = (u.get("pickup_date") or "")[11:16]
-        if priced != r["pickup"]:
-            problems.append(f"{key}: the leg is priced at {priced or 'no time'} but the reading gives a pickup of {r['pickup']}. "
-                            f"Re-price the unit at {r['pickup']} and ingest again.")
+        if kind == "pickup":
+            r["pickup"] = _fmt(pickup)
+            if priced != r["pickup"]:
+                problems.append(f"{key}: the leg is priced at {priced or 'no time'} but the reading gives a pickup of {r['pickup']}. "
+                                f"Re-price the unit at {r['pickup']} and ingest again.")
+                continue
+            out.append(r)
             continue
+        # R105: a pickup that follows from a drive time is accepted when the car reaches the airport at or
+        # before the target and no more than ARRIVAL_WINDOW_MIN before it, using the drive time Core returned
+        # for the pickup that was priced. The time on the quote is the time priced (R34).
+        computed = _fmt(pickup)
+        if not re.fullmatch(r"\d{2}:\d{2}", priced or ""):
+            problems.append(f"{key}: the leg has no priced pickup time. Re-price the unit at {computed} and ingest again.")
+            continue
+        arrival = _hm(priced) + drive
+        early = (target - arrival) % 1440
+        if early > ARRIVAL_WINDOW_MIN:
+            problems.append(f"{key}: the leg is priced at {priced}, so the car reaches the airport at {_fmt(arrival)} for a target of {_fmt(target)} "
+                            f"(accepted: {_fmt(target - ARRIVAL_WINDOW_MIN)} to {_fmt(target)}). Re-price the unit at {computed} and ingest again. "
+                            f"If it is still outside, ask the user to confirm the pickup and record it with --time-reading {key}|pickup|HH:MM.")
+            continue
+        r.update(pickup=priced, computed_pickup=computed, priced_pickup=priced, arrival=_fmt(arrival), window_min=ARRIVAL_WINDOW_MIN)
         out.append(r)
     return out, problems
 

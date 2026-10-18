@@ -2582,7 +2582,7 @@ def lint_review_fixes():
     # overlaps stay inside one option
     a1 = {"key": "a1", "pickup_date": "2027-03-20T08:00:00-07:00", "travel_times": [30], "stops": [{"name": "LAX", "stop_type": "airport"}],
           "pricing_summary": {"pricing_method": "hourly", "calculation": {"billable_hours": 10}}}
-    b1 = dict(a1, key="b1")
+    b1 = dict(a1, key="b1", pickup_date="2027-03-20T09:00:00-07:00")   # R107: the same time and stops would be one trip in parallel
     if len(h.overlaps([a1, b1])) != 2:
         problems.append("the control pair is not found without option sets")
     if h.overlaps([a1, b1], [{"a1"}, {"b1"}]):
@@ -2700,6 +2700,88 @@ def lint_user_guidance():
                 problems.append("the delivery reminder says something when nothing applies")
     print("  ✓ user guidance (seven tips in help, FYI on discount/greeter/custom rate, stand-in client, delivery reminder)" if not problems
           else "  ✗ user guidance\n      " + "\n      ".join(problems))
+    return not problems
+
+
+def lint_noise_fixes():
+    """PRD R105, R107, R108 (Yerdle Dallas, 18 Oct 2026). One finished quote cost seven pricing calls and two
+    refused saves. The pickup is accepted inside an arrival window (leg 4 priced at 15:40, 15:06, 15:08, 15:07 under
+    the exact match); vehicles on the same trip in parallel are not an overlap; client requests are answered before
+    the document inputs are built."""
+    import copy
+    import importlib
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    skills = os.path.join(HERE, "..", "..")
+    intake = os.path.join(skills, "quote-intake", "scripts", "handoff.py")
+    sys.path.insert(0, os.path.dirname(intake))
+    h = importlib.import_module("handoff")
+    # R105: international departure 18:40, 3 h lead -> target 15:40. (priced, drive, accepted?)
+    def u(priced, drive):
+        return {"key": "L4", "pickup_date": f"2026-11-13T{priced}:00-06:00", "travel_times": [0, drive]}
+    for priced, drive, ok in (("15:06", 32, True), ("15:07", 33, True), ("15:08", 33, False), ("15:40", 34, False),
+                              ("15:00", 32, True), ("14:55", 32, False)):
+        out, probs = h.time_readings(["L4|flight_departure|18:40|3"], [u(priced, drive)])
+        if ok and (probs or not out or out[0]["pickup"] != priced or out[0].get("airport_target") != "15:40"):
+            problems.append(f"priced {priced} with a {drive} min drive should be inside the window: {out} {probs}")
+        if not ok and (out or not any("Re-price the unit at" in x for x in probs)):
+            problems.append(f"priced {priced} with a {drive} min drive should be refused with the pickup to price at: {out} {probs}")
+    out, _ = h.time_readings(["L4|flight_departure|18:40|3"], [u("15:06", 32)])
+    if not out or out[0].get("arrival") != "15:38" or out[0].get("window_min") != 10 or out[0].get("computed_pickup") != "15:08":
+        problems.append(f"the reading does not record the arrival, the window and the computed pickup: {out}")
+    # R107: the same date, time and stops are one trip in parallel
+    stops = [{"location": {"id": 1, "type": "airport"}, "display_name": "DFW"}, {"location": {"id": 2, "type": "address"}, "display_name": "The Joule"}]
+    hourly = {"key": "h", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": stops, "travel_times": [0, 29],
+              "pricing_summary": {"pricing_method": "hourly", "calculation": {"billable_hours": 2}}}
+    xfer = {"key": "t", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": copy.deepcopy(stops), "travel_times": [0, 29],
+            "pricing_summary": {"pricing_method": "transfer"}}
+    if h.overlaps([hourly, xfer]):
+        problems.append("a Sprinter block and an SUV transfer on the same trip were paired as an overlap")
+    later = dict(copy.deepcopy(xfer), key="t2", pickup_date="2026-11-12T11:00:00-06:00")
+    if h.overlaps([hourly, later]) != [("h", "t2")]:
+        problems.append("a transfer that starts inside the block on other stops or at another time stopped being an overlap")
+    other = dict(copy.deepcopy(xfer), key="t3", stops=[{"location": {"id": 9, "type": "airport"}, "display_name": "DAL"}] + stops[1:])
+    if h.overlaps([hourly, other]) != [("h", "t3")]:
+        problems.append("a transfer from other stops at the same time stopped being an overlap")
+    # R108: requests are asked first, and the document inputs are not built while one is open
+    decide = os.path.join(HERE, "decide.py")
+    fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
+    raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
+    units = [copy.deepcopy(x) for x in raw["quote_units"][0:1]]
+    for x in units:
+        x["passenger_count"] = 75
+    base = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
+    with tempfile.TemporaryDirectory() as d:
+        def run(args, stdin=None):
+            return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
+        shutil.copy(os.path.join(fx, "request.md"), os.path.join(d, "request.md"))
+        run([intake, "ingest", "--name", "A"], _json.dumps(dict(base, quote_units=units, aggregate_total=sum(x["line_total"] for x in units))))
+        r = run([intake, "write", "--client", "Req Co", "--profile-id", "1", "--request", "request.md", "--package", "A",
+                 "--headcount", "75", "--final", "--client-question", "Wi-Fi on board"])
+        if r.returncode:
+            problems.append(f"the R108 test handoff was not written: {(r.stderr or r.stdout).strip()[:160]}")
+        else:
+            nxt = run([decide, "--next", "--dir", "handoff"]).stdout
+            if not nxt.startswith("next: request:0"):
+                problems.append(f"decide.py does not ask the client request first: {nxt[:80]!r}")
+            r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q.json", "--prepared-by", "G"])
+            if r.returncode == 0 or "R108" not in (r.stderr + r.stdout) or os.path.exists(os.path.join(d, "q.json")):
+                problems.append("normalize_quote.py built the document inputs while a client request was unanswered")
+            run([decide, "request:0", "included", "--dir", "handoff"])
+            r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q.json", "--prepared-by", "G"])
+            if r.returncode:
+                problems.append(f"normalize_quote.py refused after the request was answered: {(r.stderr or r.stdout).strip()[:140]}")
+    for rel, needles in (("quote-intake/SKILL.md", ("no more than 10 minutes", "one trip in parallel")),
+                         ("quote-intake/references/decision-tree.md", ("0 to 10 minutes", "one trip in parallel")),
+                         ("quote-document/SKILL.md", ("Before you normalize, ask the client requests",))):
+        t = open(os.path.join(skills, rel), encoding="utf-8").read()
+        for n in needles:
+            if n not in t:
+                problems.append(f"{rel} lacks {n!r}")
+    print("  \u2713 noise fixes (arrival window, parallel vehicles are no overlap, client requests asked before the build)" if not problems
+          else "  \u2717 noise fixes\n      " + "\n      ".join(problems))
     return not problems
 
 
@@ -4318,6 +4400,7 @@ def main():
     lint_ok = lint_copy_rules() and lint_ok
     lint_ok = lint_review_fixes() and lint_ok
     lint_ok = lint_user_guidance() and lint_ok
+    lint_ok = lint_noise_fixes() and lint_ok
     lint_ok = lint_confirm_items() and lint_ok
     lint_ok = lint_capture_at_delivery() and lint_ok
     lint_ok = lint_handoff_packages() and lint_ok

@@ -81,11 +81,13 @@ Exit 0 = everything available; exit 1 = some formats unavailable, and it prints 
 
 **Normal path: the handoff exists.** `handoff/intake.json` was written by the quote-intake skill. Check it first:
 - `final` is false → stop: *"The quote isn't final yet — say when it is and I'll build the document."*
-- `final` is true → normalize straight from it and ask **nothing** about the quote:
+- `final` is true → first ask the client requests (R108, below), then normalize from it and ask **nothing** about the quote:
   ```bash
   python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/normalize_quote.py --from-handoff handoff quote.json --prepared-by "<user>"
   ```
   That reads client, profile, selection, alternatives, and placeholders from `intake.json`, and the engine result from `raw_quote.json`.
+
+**Before you normalize, ask the client requests (R108).** Run `decide.py --next`. While the key it prints starts with `request:`, put that question to the user and record the answer with `decide.py request:<n> <answer>`. Stop at the first key that is not `request:`; the rest are asked in Stage 2, after the document is built. `normalize_quote.py` refuses while any request is unanswered, because an answer recorded afterwards is not in `quote.json`.
 
 **If `handoff/blocked.json` exists, the handoff write was refused (R92).** `normalize_quote.py` and `decide.py` stop and print the gate, the reason and the fix. Do what the fix says and run the write again, or tell the user why you cannot go on and report the session (`capture_session.py --blocked`). This is not the "no handoff" fallback below: never build `intake.json` or the decisions by hand, and never call the scripts' internals, to get past a refusal.
 

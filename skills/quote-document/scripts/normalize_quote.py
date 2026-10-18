@@ -510,6 +510,16 @@ def main():
                      "Do not carry on by hand: no hand-built intake.json, no decisions kept in your head, no calling the scripts' internals. "
                      "Fix the cause and write again, or stop and tell the user why (R92).")
         handoff = json.load(open(os.path.join(args.from_handoff, "intake.json"), encoding="utf-8"))
+        # R108: the user answers operational client requests before the document inputs are built. The answers
+        # are read here; an answer recorded afterwards is not in quote.json and the document would contradict it.
+        from client_requests import request_keys as _request_keys
+        _open = [k for k in _request_keys(handoff.get("client_questions")) if k not in (handoff.get("decisions") or {})]
+        if _open:
+            _qs = handoff.get("client_questions") or []
+            sys.exit("The user has not answered " + str(len(_open)) + " client request(s) yet (R108): "
+                     + "; ".join(f"{k} \"{_qs[int(k.split(':')[1])]}\"" for k in _open) + ".\n"
+                     "Ask them first: run decide.py --next, put each question to the user, record each answer with decide.py request:<n> <answer>, "
+                     "and stop asking when the next key is not request:<n>. Then run this again. Never answer for the user.")
         # F2 — a stale handoff is REJECTED, not interpreted. A v1 or v2 handoff was written
         # against the previous MCP contract, where estimate_type could be "approximate", a
         # passenger id was always present, and the sourcing market arrived on the quote.

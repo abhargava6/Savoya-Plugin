@@ -3,6 +3,14 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.27.6
+
+From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing calls, four full quote displays and two refused saves. Requirements R105, R107 and R108; R106 is deferred. `ENGINEERING.md` gains H6 and amends G6 and F8.
+
+- **The pickup is accepted inside an arrival window (R105).** The car must reach the airport 0 to 10 minutes before the target, using the drive time Core returned for the pickup priced. The exact match took four pricings on one leg.
+- **Parallel vehicles are not an overlap (R107).** A Sprinter and an SUV on the same date, time and stops are one trip. The recording half of R107 is held for a decision.
+- **Client requests come first (R108).** `decide.py` asks `request:<n>` before the document is built; `normalize_quote.py` refuses while one is open.
+
 ## 0.27.5
 
 From the five 0.27.4 sessions (London/Sicily/Milan, Bangkok, Irvine, MetLife, IOL Whistler), the review that followed, and the first 0.27.5 test session (Yerdle Dallas, 17 Oct 2026). Requirements R95-R100 and the amendments to R18, R34, R35, R62, R72-R74, R78, R93 and R97 are in the PRD first.

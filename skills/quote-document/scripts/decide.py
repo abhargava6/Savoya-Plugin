@@ -2,7 +2,7 @@
 """Drive the document-flow questions from handoff/intake.json → decisions.
   decide.py --next            → prints the next unanswered key and its question text
   decide.py <key> <value>     → records the answer, prints the next key
-Keys, in order: discount_pct, request:<n> (one per operational client request, R72), commission_pct, cover, personalization, map, format.
+Keys, in order: request:<n> (one per operational client request, R72, R108: asked before the document inputs are built), discount_pct, commission_pct, cover, personalization, map, format.
 
 The `fuel` question is gone (C3, 0.23.0). Fuel is market-scoped and engine-applied, and
 nothing in the contract subtracts it: `temporary_discount` is additive and a surcharge is
@@ -51,7 +51,7 @@ def order_for(intake):
     # tax, gratuity and cancellation questions are answered by the terms block and never asked.
     sys.path.insert(0, HERE)
     from client_requests import request_keys
-    o[o.index("discount_pct") + 1:o.index("discount_pct") + 1] = request_keys(intake.get("client_questions"))
+    o[0:0] = request_keys(intake.get("client_questions"))   # R108: before anything the document build reads
     if any(GREETER_RE.search(q or "") for q in (intake.get("client_questions") or [])):
         o.insert(o.index("discount_pct") + 1, "greeter_cost")
     fmt = normalize_format((intake.get("decisions") or {}).get("format"))

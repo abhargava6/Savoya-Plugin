@@ -23,7 +23,7 @@
       "reflects_version": "0.27.5",
       "published_version": "0.27.5",
       "published_hash": "57068372c39b4161",
-      "source_hash": "ba86f49a9cf6c7d0"
+      "source_hash": "483284d00ac33d2b"
     },
     {
       "key": "flow-diagrams",
@@ -35,7 +35,7 @@
       "reflects_version": "0.27.5",
       "published_version": "0.27.5",
       "published_hash": "9cd7dc6c61d1b5cc",
-      "source_hash": "ba86f49a9cf6c7d0"
+      "source_hash": "483284d00ac33d2b"
     },
     {
       "key": "architecture",
@@ -47,7 +47,7 @@
       "reflects_version": "0.27.5",
       "published_version": "0.27.5",
       "published_hash": "4eb30fa08f7c86c2",
-      "source_hash": "ba86f49a9cf6c7d0"
+      "source_hash": "483284d00ac33d2b"
     }
   ]
 }

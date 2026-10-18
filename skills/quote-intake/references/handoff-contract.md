@@ -46,7 +46,7 @@ handoff/
 ```
 
 ## Rules
-- Intake writes `client`, `units`, `quote_mode`, `rate_sheet_shown`, `ambiguities`, `placeholders`, `final`, `selection`. It never writes `decisions`. `time_readings` (optional, additive; no contract bump): per airport unit `{unit, kind, client_time, pickup, airport_target?, lead_hours?, drive_minutes?}`; the document prints the pickup and the airport arrival target (R34). Also optional and additive: `overlap_decisions` (R97), `placeholder_stops` (R98), `flight_details` (R74), `venue_names` (R62), `user_supplied_facts` (R35), and `decisions.request:<n>` (R72/R73).
+- Intake writes `client`, `units`, `quote_mode`, `rate_sheet_shown`, `ambiguities`, `placeholders`, `final`, `selection`. It never writes `decisions`. `time_readings` (optional, additive; no contract bump): per airport unit `{unit, kind, client_time, pickup, airport_target?, lead_hours?, drive_minutes?, computed_pickup?, priced_pickup?, arrival?, window_min?}` (`pickup` is the time priced; R105 accepts an arrival 0 to `window_min` minutes before `airport_target`); the document prints the pickup and the airport arrival target (R34). Also optional and additive: `overlap_decisions` (R97), `placeholder_stops` (R98), `flight_details` (R74), `venue_names` (R62), `user_supplied_facts` (R35), and `decisions.request:<n>` (R72/R73).
 - Document writes `decisions` **one key at a time, as each question is answered**, so a dropped conversation resumes at the first unanswered key.
 - A re-quote (node I refine loop, or a discount applied in document) overwrites `raw_quote.json` and appends to `log`; it never edits `units` in place — it replaces them.
 - If `handoff/` exists but `final` is false, the document skill refuses to start and says the quote isn't final.
