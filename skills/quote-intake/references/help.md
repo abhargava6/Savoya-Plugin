@@ -1,7 +1,7 @@
 ---
 title: Savoya quoting assistant — help
 page_url: "https://claude.ai/artifact/QTmf31aDH5hn7o6pMdHYXm"
-describes_release: 0.27.5
+describes_release: 0.27.6
 audience: everyone at Savoya
 ---
 

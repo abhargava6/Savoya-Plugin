@@ -8,7 +8,7 @@
       "url": "https://claude.ai/artifact/QTmf31aDH5hn7o6pMdHYXm",
       "audience": "everyone at Savoya",
       "managed": true,
-      "reflects_version": "0.27.5",
+      "reflects_version": "0.27.6",
       "published_version": "0.27.5",
       "published_hash": "746b16be1b0a887e",
       "source_hash": "fa5406dbe9afe351"
@@ -20,7 +20,7 @@
       "url": "https://claude.ai/artifact/Ahp59uyA6xuiDwaqeuaeSm",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.27.5",
+      "reflects_version": "0.27.6",
       "published_version": "0.27.5",
       "published_hash": "57068372c39b4161",
       "source_hash": "54db01ab32c90a0c"
@@ -32,7 +32,7 @@
       "url": "https://claude.ai/artifact/2Z2Z3dMLh5mcAVf4dC3TBB",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.27.5",
+      "reflects_version": "0.27.6",
       "published_version": "0.27.5",
       "published_hash": "9cd7dc6c61d1b5cc",
       "source_hash": "54db01ab32c90a0c"
@@ -44,7 +44,7 @@
       "url": "https://claude.ai/artifact/3wNBnpJUjL95wCioeAMBV8",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.27.5",
+      "reflects_version": "0.27.6",
       "published_version": "0.27.5",
       "published_hash": "4eb30fa08f7c86c2",
       "source_hash": "54db01ab32c90a0c"

@@ -5,7 +5,7 @@ Reconstructed from the working sessions of 22–24 September 2026. Versions befo
 
 ## 0.27.6
 
-From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing calls, four full quote displays and two refused saves. Requirements R105, R107, R108 and R109, and an amendment to R71; R106 is deferred. `ENGINEERING.md` gains H6 and amends G6 and F8.
+From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing calls, four full quote displays and two refused saves. Requirements R105, R107, R108, R109, R110 and R111, and an amendment to R71; R106 is deferred. R109 to R111 and the R71 amendment come from testing the 0.27.6 test build. `ENGINEERING.md` gains H6 and amends G6 and F8.
 
 - **The pickup is accepted inside an arrival window (R105).** The car must reach the airport 0 to 10 minutes before the target, using the drive time Core returned for the pickup priced. The exact match took four pricings on one leg.
 - **Parallel vehicles are not an overlap (R107).** A Sprinter and an SUV on the same date, time and stops are one trip. Recording the answer is deferred until a test shows it is needed.
