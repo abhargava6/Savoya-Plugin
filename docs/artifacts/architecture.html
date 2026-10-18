@@ -393,10 +393,10 @@ sequenceDiagram
     <tr><td>1</td><td><code>discount_pct</code></td><td>always</td><td><b>A Core re-quote</b>, not a document line (C1)</td></tr>
     <tr><td>1a</td><td><code>greeter_cost</code></td><td><b>conditional</b> — only when a client question mentions a greeter or on-site staff</td><td>A Core quote unit at the market rate, or a flat line if the market has no greeter rate</td></tr>
     <tr><td>2</td><td><code>commission_pct</code></td><td>always</td><td><b>New.</b> The PDF heading block, the terms list, one email sentence. <b>No number in the quote changes</b></td></tr>
-    <tr><td>3</td><td><code>cover</code></td><td>dropped when the format can't use one</td><td><code>render_print.py</code> only</td></tr>
-    <tr><td>4</td><td><code>personalization</code></td><td>always</td><td><code>set_personalization.py</code>, which <b>refuses text contradicting the terms</b></td></tr>
-    <tr><td>5</td><td><code>map</code></td><td>dropped when the format can't use one</td><td><code>route_page()</code> in <code>render_print.py</code> only</td></tr>
-    <tr><td>6</td><td><code>format</code></td><td>always</td><td>Which renderers run</td></tr>
+    <tr><td>3</td><td><code>format</code></td><td>always — <b>asked before cover and map</b> (R110)</td><td>Which renderers run, and whether <code>cover</code> and <code>map</code> are asked at all</td></tr>
+    <tr><td>4</td><td><code>cover</code></td><td>dropped when the format can't use one</td><td><code>render_print.py</code> only</td></tr>
+    <tr><td>5</td><td><code>personalization</code></td><td>always</td><td><code>set_personalization.py</code>, which <b>refuses text contradicting the terms</b></td></tr>
+    <tr><td>6</td><td><code>map</code></td><td>dropped when the format can't use one</td><td><code>route_page()</code> in <code>render_print.py</code> only</td></tr>
   </table></div>
   <div class="note"><b>Pricing questions come before presentation questions</b>, so the numbers are settled first — commission sits immediately after discount (and greeter, when asked) for that reason, not for narrative tidiness. <code>cover</code> and <code>map</code> are dropped once the format is known not to use them: users state the format up front often enough ("just draft the email") that asking afterwards reads as not listening, and <code>map</code> also costs 10–20s of geocoding to populate a field nothing will read.</div>
   <div class="note flag"><b>Corrected: the commission amount is computed, in code, on a fixed basis.</b> This page previously said it was stated and never calculated; that stopped being true. The script works the amount out, the model never does (R59, R82), and it changes no total in the quote. <b>No beneficiary is named</b>, because the commission may be earned by the client or by an agency acting for them, and a client-facing document must not assert which. Declining leaves the word absent from all three formats.</div>

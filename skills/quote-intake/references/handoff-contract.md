@@ -36,10 +36,10 @@ handoff/
     "discount_pct": 0,
     "greeter_cost": null,                      // only asked when a client question mentions a greeter
     "commission_pct": 5,                       // or absent/none — stated on the document, changes no number
+    "format": "pdf|email+pdf|html|docx|xlsx",    // asked before cover and map (R110)
     "cover": "event-planners|custom|<uploaded-path>",
     "personalization": {"event_name": "...", "intro_note": "...", "contact": true, "client_logo_url": null, "leg_notes": {}, "closing_note": null},
-    "map": false,
-    "format": "pdf|email+pdf|html|docx|xlsx"
+    "map": false
   },
   "log": [{"ts": "...", "step": "E", "note": "user chose options"}]
 }

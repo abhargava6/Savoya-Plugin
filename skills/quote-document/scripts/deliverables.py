@@ -41,6 +41,20 @@ def chosen_format(quote_path):
     return aliases.get(v.strip().lower()) if isinstance(v, str) else None
 
 
+def includes_pdf(quote_path):
+    """Whether a PDF is part of the job (PRD R111). True when none was recorded, so a quote
+    with no recorded format keeps the wording it always had. PDF_LIKE is READ from decide.py
+    for the same reason chosen_format reads FORMAT_ALIASES: one table, no copy to drift."""
+    fmt = chosen_format(quote_path)
+    if fmt is None:
+        return True
+    import ast
+    src = open(os.path.join(HERE, "decide.py"), encoding="utf-8").read()
+    node = next(n for n in ast.parse(src).body
+                if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "PDF_LIKE")
+    return fmt in ast.literal_eval(node.value)
+
+
 def line_for(fmt):
     if fmt is None:
         return ""

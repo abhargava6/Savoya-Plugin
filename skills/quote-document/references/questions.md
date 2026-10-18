@@ -2,14 +2,14 @@
 
 Loaded at Stage 2. `decide.py --next` drives the order; option labels are in `asking-questions.md`.
 
-Five questions, fixed order, **one per message, wait after each**. Don't decide which to ask — the script does:
+Six questions, plus a greeter question and one per open client request when they apply, in a fixed order, **one per message, wait after each**. Don't decide which to ask — the script does:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py --next          # prints "next: <key>" and the exact question text
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py <key> <answer>  # records it, prints the next one
 ```
 
-Loop: run `--next` → ask its question with **`ask_user_input_v0`** (tappable options — see `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md` for the labels; never bare prose) → wait → record the answer → run `--next` again → until it prints `all answered`. This is what makes the flow consistent: you never skip a question the script lists, never merge two, never ask one it has already marked answered. **The script decides which questions apply** — if the user has already said what they want ("just the email"), record `format` first and `--next` drops the cover and route-map questions, because nothing but the PDF and the printable document reads those answers. If the user answers several at once ("no discount, no commission, PDF"), record each key in turn and still confirm the ones they didn't mention by asking them.
+Loop: run `--next` → ask its question with **`ask_user_input_v0`** (tappable options — see `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md` for the labels; never bare prose) → wait → record the answer → run `--next` again → until it prints `all answered`. This is what makes the flow consistent: you never skip a question the script lists, never merge two, never ask one it has already marked answered. **The script decides which questions apply** — `format` is asked before `cover` and `map` (R110), so `--next` drops those two for any format but the PDF and the printable document, because nothing else reads those answers. If the user has already said what they want ("just the email"), record `format` straight away. If the user answers several at once ("no discount, no commission, PDF"), record each key in turn and still confirm the ones they didn't mention by asking them.
 
 What each answer does:
 1. **discount_pct** — **a Core re-quote, not a document line.** Call
@@ -51,9 +51,10 @@ What each answer does:
      emphasise it in the email** — it moves the needle sometimes, but the client is
      reading a quote, not an offer.
    - On *No*, nothing is recorded and the word does not appear in any format.
-4. **cover** — a catalog key, or a path to their upload → `render_print.py --cover-file`.
-5. **personalization** — set `personalization.*` from the answer; defaults stand for anything not mentioned.
-6. **map** — `true` → run `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py quote.json` before rendering.
+4. **format** — decides the render step, and which of the next questions are asked. Asked before cover and map (R110): only the PDF and the printable document use a cover page or a route map, so for any other format the script stops asking about them.
+5. **cover** — a catalog key, or a path to their upload → `render_print.py --cover-file`.
+6. **personalization** — set `personalization.*` from the answer; defaults stand for anything not mentioned.
+7. **map** — `true` → run `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py quote.json` before rendering.
    - **Say which map they got, in one line at delivery.** The script sets
      `route_map.style`: `tiled` is a street map, `offline` is a schematic of the stops in
      order with straight connecting lines, drawn when the network blocks the mapping
@@ -72,7 +73,6 @@ discount. The old `waive` already told the CSM the booking needed the waiver app
 Savoya, so it was never really ours to give; a CSM who needs it waived does that in Savoya
 first. The `[if:fuel_surcharge]` terms bullet stays, because it reflects what Core actually
 applied.
-7. **format** — decides the render step.
 
 ## Stage 0 — Machine check (once per conversation, before the first render)
 
@@ -97,4 +97,4 @@ Formats and what they need:
 
 ## Confirm before send
 
-After the five questions and the build, `confirm_items.py quote.json --json` lists the items the user must confirm: grouped service-area placeholders, each other placeholder, and each operational client request. Ask one `ask_user_input_v0` question per item (`Right` / `Wrong`), one per message. Gate only. A `Wrong` answer stops the send and asks for the corrected value.
+After the questions and the build, `confirm_items.py quote.json --json` lists the items the user must confirm: grouped service-area placeholders, each other placeholder, and each operational client request. Ask one `ask_user_input_v0` question per item (`Right` / `Wrong`), one per message. Gate only. A `Wrong` answer stops the send and asks for the corrected value.

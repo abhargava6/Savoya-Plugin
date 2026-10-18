@@ -30,7 +30,7 @@ The quoting assistant turns a client's ground-transportation request into an exa
 5. **You get the priced quote.** Every option, every leg, with the positioning time included.
 6. **You refine it.** Different vehicles, headcount or hours, as often as you like.
 7. **It asks one question.** Customize the quote, go on to the client document, or stop at the quote. When you have several options, the same question asks whether to use both or only one, and "both" comes first. "Just the quote" is a complete answer.
-8. **Six quick questions, one at a time.** Discount, commission, cover, personalisation, map, format.
+8. **Six quick questions, one at a time.** Discount, commission, format, cover, personalisation, map. The format comes before the cover and the map because only the PDF uses them.
 9. **You get the files.** The PDF, and the email copy if you asked for it.
 10. **It asks what you would like changed.** Name it and the assistant fixes it, checks it again and hands you the new file.
 

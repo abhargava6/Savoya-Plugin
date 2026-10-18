@@ -1,6 +1,6 @@
 ---
 name: quote-document
-description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, cover, personalization, route map, format). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. Also use it when someone asks whether their setup is working — "check my quoting setup", "is this saving?", "why isn't anything showing up?" — which runs the setup check. This skill does not build quotes from client requests; quote-intake does that.
+description: Turn an existing Savoya quote into a client-facing document — PDF proposal (cover, quote, rate card), email copy, HTML email, Word/DOCX, or Excel — through a fixed sequence of questions (discount, commission, format, cover, personalization, route map). Use when a Savoya ops, sales, or CSM user says "make the PDF", "send it to the client", "client version", "make a proposal", "draft the email", "add a discount", or "make it pretty" after a quote exists — usually right after the quote-intake skill finishes. Also use it when someone asks whether their setup is working — "check my quoting setup", "is this saving?", "why isn't anything showing up?" — which runs the setup check. This skill does not build quotes from client requests; quote-intake does that.
 compatibility: Requires the Savoya MCP connector (resolve_itinerary_stops, preview_rate_batch, calculate_quote_units / calculate_temporary_quote_units) and Python 3 for the bundled scripts. DOCX output uses the docx skill; PDF uses the pdf skill.
 ---
 
@@ -105,7 +105,7 @@ After normalizing, fix any `Stop N` labels (airport stops arrive unlabeled — u
 
 ## Stage 2 — The questions
 
-Five questions, fixed order, **one per message, wait after each**. You don't decide which comes next — the script does:
+Six questions, plus a greeter question and one per open client request when they apply, in a fixed order, **one per message, wait after each**. You don't decide which comes next — the script does:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py --next          # prints "next: <key>" and the exact question text
@@ -114,7 +114,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/decide.py <key> <ans
 
 Ask what it prints using **`ask_user_input_v0` with tappable options** (labels in `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/asking-questions.md`), record the answer, repeat until `all answered`. Never ask one of these in prose and never fold two into one sentence — that is what makes the flow skip questions.
 
-The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· commission_pct · cover · personalization · map · format**. There is no `fuel` key — fuel is Core's and not adjustable here.
+The keys, in order, so you can still run the loop if the script or the reference won't load: **discount_pct · greeter_cost** *(only when the client asked for a greeter or on-site staff)* **· commission_pct · format · cover · personalization · map**. There is no `fuel` key — fuel is Core's and not adjustable here.
 
 **Deliver exactly the format the user chose (R85).** `verify_document.py` prints a `DELIVERABLES:` line from the recorded decision. If it says PDF only, do **not** run `draft_email.py` (it refuses) and do not write or paste an email; after delivering, offer one in a single line. Run it with `--asked` only when the user has since asked for an email.
 
@@ -126,7 +126,7 @@ The keys, in order, so you can still run the loop if the script or the reference
 
 **A no-commission copy (R100).** When the user wants a client version without the commission line next to the agent version, run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/no_commission_copy.py quote.json --pdf <Name>-No-Commission.pdf [--email <Name>-No-Commission.txt]` from the same session. It works on a copy, checks that the total did not move, and records both files in the handoff log. Never re-run the whole flow, never edit `quote.json` by hand, and never send the commission copy to the client.
 
-**If the user has already said which format they want — "just draft the email", "send me the spreadsheet" — record it first: `decide.py format <value>`.** Only the PDF and the printable document use a cover page or a route map, so once the format is known the script stops asking about them. Asking a CSM to pick a cover for an email is not a neutral extra question, and answering the map question costs 10–20 seconds of routing for a field the email never reads.
+**The format is asked before the cover and the route map (R110).** Only the PDF and the printable document use a cover page or a route map, so once the format is known the script stops asking about them. If the user has already said which format they want — "just draft the email", "send me the spreadsheet" — record it straight away: `decide.py format <value>`. Asking a CSM to pick a cover for an email is not a neutral extra question, and answering the map question costs 10–20 seconds of routing for a field the email never reads.
 
 **Read `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/questions.md` now** — it says what each answer does, and it's the only place those details live.
 

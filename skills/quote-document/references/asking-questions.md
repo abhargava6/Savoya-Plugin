@@ -34,10 +34,10 @@ Every question in either skill that has enumerable answers **must** be asked wit
 | fuel (on the quote) | `Keep it` · `Take it off` |
 | fuel (not on the quote) | `Add 5%` · `Leave it off` |
 | greeter_cost *(only when the client asked)* | `Leave it off — note it as arranged separately` · `Add a cost…` (then ask the amount in prose) |
+| format | `Email copy` · `Email copy + PDF` · `PDF` · `Printable document` — with `Word`, `Excel` and `HTML email` behind `Show all`. On a machine with no PDF engine the PDF options silently become the printable document |
 | cover | your recommendation first, then two plausible alternates, then `Show all / upload my own` → if chosen, list the rest in prose |
 | personalization | `Use those defaults` · `Change something` |
 | map | `Add the route map` · `Skip it` |
-| format | `Email copy` · `Email copy + PDF` · `PDF` · `Printable document` — with `Word`, `Excel` and `HTML email` behind `Show all`. On a machine with no PDF engine the PDF options silently become the printable document |
 
 The cover question is the only one that exceeds four options — hence the `Show all` escape hatch rather than cramming.
 

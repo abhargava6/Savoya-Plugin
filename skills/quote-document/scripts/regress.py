@@ -2782,6 +2782,25 @@ def lint_noise_fixes():
                 short = run([os.path.join(HERE, "draft_email.py"), "q.json", "--short"]).stdout
                 if "Option A" in short or "The program comes to" not in short:
                     problems.append("a one-option short email names an option or lacks the program total (R71)")
+                # R110: the format is asked before cover and map, and a format that does not use them drops both
+                order = document_question_order()
+                if not (order.index("commission_pct") < order.index("format") < order.index("cover") < order.index("map")):
+                    problems.append(f"decide.py asks the format after cover or map: {order} (R110)")
+                for k_, v_ in (("discount_pct", "none"), ("commission_pct", "none")):
+                    run([decide, k_, v_, "--dir", "handoff"])
+                if "next: format" not in run([decide, "--next", "--dir", "handoff"]).stdout:
+                    problems.append("with the format unstated, the question after commission is not the format (R110)")
+                run([decide, "format", "email", "--dir", "handoff"])
+                nxt_ = run([decide, "--next", "--dir", "handoff"]).stdout
+                if "next: personalization" not in nxt_ or "next: cover" in nxt_ or "next: map" in nxt_:
+                    problems.append(f"an email-only job was still asked for a cover or a map (R110): {nxt_[:60]!r}")
+                # R111: no PDF in the job, no attached PDF in either email; a PDF job and an unrecorded format keep it
+                mail = run([os.path.join(HERE, "draft_email.py"), "q.json"]).stdout
+                if "attached PDF" in mail or "Pricing holds through" not in mail or "The pricing holds through" not in mail:
+                    problems.append("an email-only job still points to an attached PDF, or lost its validity date (R111)")
+                run([decide, "format", "email+pdf", "--dir", "handoff"])
+                if "attached PDF" not in run([os.path.join(HERE, "draft_email.py"), "q.json"]).stdout:
+                    problems.append("an email + PDF job lost its pointer to the attached PDF (R111)")
     # R109: the header headcount, with and without a confirmed one (4 printed for 14 on the Yerdle Dallas quote)
     sys.path.insert(0, HERE)
     import render_print as _rp
@@ -2799,6 +2818,8 @@ def lint_noise_fixes():
         short = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qo, "--short"], capture_output=True, text=True).stdout
         if "Option A:" not in short or "Option B" not in short:
             problems.append("a two-option short email lost its option labels (R71)")
+        if "attached PDF" not in short:
+            problems.append("a quote with no recorded format lost its pointer to the attached PDF (R111)")
     for rel, needles in (("quote-intake/SKILL.md", ("no more than 10 minutes", "one trip in parallel")),
                          ("quote-intake/references/decision-tree.md", ("0 to 10 minutes", "one trip in parallel")),
                          ("quote-document/SKILL.md", ("Before you normalize, ask the client requests",))):
@@ -2806,7 +2827,7 @@ def lint_noise_fixes():
         for n in needles:
             if n not in t:
                 problems.append(f"{rel} lacks {n!r}")
-    print("  \u2713 noise fixes (arrival window, parallel vehicles are no overlap, client requests asked before the build, header headcount, one-option short email)" if not problems
+    print("  \u2713 noise fixes (arrival window, parallel vehicles are no overlap, client requests asked before the build, header headcount, one-option short email, format asked before cover and map, no attached-PDF line without a PDF)" if not problems
           else "  \u2717 noise fixes\n      " + "\n      ".join(problems))
     return not problems
 

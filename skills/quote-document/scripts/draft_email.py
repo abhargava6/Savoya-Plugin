@@ -18,8 +18,9 @@ def main():
     ap.add_argument("--short", action="store_true"); ap.add_argument("--attachment", default=None); ap.add_argument("--json", default=None)
     ap.add_argument("--asked", action="store_true", help="the user asked for an email even though the recorded format is PDF-only")
     a = ap.parse_args()
-    from deliverables import chosen_format, EMAIL_FORMATS
+    from deliverables import chosen_format, includes_pdf, EMAIL_FORMATS
     fmt = chosen_format(a.quote)
+    pdf = includes_pdf(a.quote)   # R111: no PDF in the job, no 'attached PDF' in the email
     if fmt and fmt not in EMAIL_FORMATS and not a.asked:
         sys.exit(f"The user chose {fmt!r}, not an email. Do not draft or paste one (R85); offer it in one line. "
                  "If they have since asked for one, re-run with --asked.")
@@ -201,7 +202,7 @@ def main():
     closer = ("We'll be standing by at your service!" if register == "sales" else "As always, let us know if you have any questions! We are happy to help.")
     signoff = "Warm Regards," if register == "sales" else "All the best,"
     from client_requests import requests_line
-    body = "\n\n".join(x for x in [greet, opener, requests_line(q), blocks, cx_note, total_line + " The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " + day(m.get('valid_until'), '%B %-d') + ".", commission_block, incl, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
+    body = "\n\n".join(x for x in [greet, opener, requests_line(q), blocks, cx_note, total_line + (" The full line items, rate card, and terms are in the attached PDF, and the pricing holds through " if pdf else " The pricing holds through ") + day(m.get('valid_until'), '%B %-d') + ".", commission_block, incl, tbd_line, closer, signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya') + ("\n" + am['title'] if am.get('title') else "") + ("\n" + am['email'] if am.get('email') else "")] if x)
     # R71: the short email. Option and leg totals, the discount, the commission amount and a
     # pointer to the PDF. Every figure is COPIED from quote.json (Core's engine_net_line_cents,
     # total_cents, option_b.total_cents, commission_line); this script computes none.
@@ -221,7 +222,7 @@ def main():
         "\n\n".join(short_bits),
         short_totals + disc_short,
         commission_block, requests_line(q), tbd_line,
-        f"The full line items and terms are in the attached PDF. Pricing holds through {day(m.get('valid_until'), '%B %-d')}.",
+        ("The full line items and terms are in the attached PDF. " if pdf else "") + f"Pricing holds through {day(m.get('valid_until'), '%B %-d')}.",
         signoff + "\n" + (am.get('name') or m.get('prepared_by') or 'Savoya')] if x)
     out = {"to": a.to, "subject": subject, "body": body, "short_body": short_body, "attachment": a.attachment}
     if a.json:

@@ -2,7 +2,7 @@
 """Drive the document-flow questions from handoff/intake.json → decisions.
   decide.py --next            → prints the next unanswered key and its question text
   decide.py <key> <value>     → records the answer, prints the next key
-Keys, in order: request:<n> (one per operational client request, R72, R108: asked before the document inputs are built), discount_pct, commission_pct, cover, personalization, map, format.
+Keys, in order: request:<n> (one per operational client request, R72, R108: asked before the document inputs are built), discount_pct, commission_pct, format, cover, personalization, map (R110: the format comes before the questions only a PDF uses).
 
 The `fuel` question is gone (C3, 0.23.0). Fuel is market-scoped and engine-applied, and
 nothing in the contract subtracts it: `temporary_discount` is additive and a surcharge is
@@ -11,7 +11,7 @@ in Savoya, so it was never ours to give. Core applies it; we present it as Core 
 it."""
 import argparse, datetime as dt, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
-BASE_ORDER = ["discount_pct", "commission_pct", "cover", "personalization", "map", "format"]
+BASE_ORDER = ["discount_pct", "commission_pct", "format", "cover", "personalization", "map"]
 GREETER_RE = re.compile(r"greeter|on-?site (staff|support|coordinat)|meet (and|&) greet|hostess", re.I)
 
 

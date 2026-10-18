@@ -14,6 +14,8 @@ From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing 
 - **A real Dallas quote is a fixture.** `yerdle-dallas-flat-headcount` (14 passengers, flat headcount, three legs without a passenger count) fails on 0.27.6-test and passes now. It checks the header shows 14 and that no option is named.
 - **A single option is not named (R71).** The short email wrote "Option A" on a quote with one option. It names options only when there are two or more.
 - **`handoff.py write` no longer crashes on a request already in `handoff/`.** It copied `--request`, `--raw` and `--scenarios` onto themselves and raised `SameFileError`. Hit in two test sessions.
+- **The format is asked before the cover and the route map (R110).** `decide.py` asks discount, commission, format, cover, personalization, map. A job that is not a PDF or a printable document no longer gets the cover and map questions, even when the user never named a format. The question lists in the instructions, the help text, the READMEs and the three team diagrams carry the new order.
+- **No "attached PDF" without a PDF (R111).** An email for a job whose format has no PDF says "The pricing holds through <date>." and nothing about an attachment. A job with a PDF, or with no recorded format, reads as before.
 
 ## 0.27.5
 
