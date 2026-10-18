@@ -198,6 +198,16 @@ def cover_page(q):
 </section>"""
 
 
+def header_headcount(q):
+    """R109: the header prints the headcount the user confirmed. Without one it is worked out from
+    the legs. Legs priced without a passenger_count (a vehicle default) carry no count, so the
+    largest count among the rest can be a small fraction of the party (4 printed for 14)."""
+    n = (q.get("meta") or {}).get("headcount")
+    if isinstance(n, int) and not isinstance(n, bool) and n > 0:
+        return n
+    return passenger_total(q["legs"]) if q.get("legs") else 0
+
+
 def passenger_total(legs):
     """How many people this quote moves, for the document header.
 
@@ -269,7 +279,7 @@ def quote_page(q):
         ("Prepared by", m.get("prepared_by")),
         ("Travel coordinator", m.get("travel_coordinator")),
         ("Service area", m.get("service_area")),
-        ("Passengers", str(passenger_total(q["legs"])) if q["legs"] and passenger_total(q["legs"]) else None),
+        ("Passengers", str(header_headcount(q)) if header_headcount(q) else None),
         ("Date", day(m.get("prepared_on"), "%m/%d/%Y")),
         ("Valid until", day(m.get("valid_until"), "%m/%d/%Y")),
         ("Discount", f"{abs(disc):g}%" if disc else None),

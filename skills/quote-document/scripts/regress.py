@@ -2773,6 +2773,32 @@ def lint_noise_fixes():
             r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q.json", "--prepared-by", "G"])
             if r.returncode:
                 problems.append(f"normalize_quote.py refused after the request was answered: {(r.stderr or r.stdout).strip()[:140]}")
+            else:
+                # R109 and R71 on the same one-option quote
+                qj = _json.load(open(os.path.join(d, "q.json"), encoding="utf-8"))
+                if (qj.get("meta") or {}).get("headcount") != 75:
+                    problems.append(f"quote.json meta.headcount is {(qj.get('meta') or {}).get('headcount')!r}, not the confirmed 75 (R109)")
+                run([os.path.join(HERE, "apply_adjustments.py"), "q.json", "--clear"])
+                short = run([os.path.join(HERE, "draft_email.py"), "q.json", "--short"]).stdout
+                if "Option A" in short or "The program comes to" not in short:
+                    problems.append("a one-option short email names an option or lacks the program total (R71)")
+    # R109: the header headcount, with and without a confirmed one (4 printed for 14 on the Yerdle Dallas quote)
+    sys.path.insert(0, HERE)
+    import render_print as _rp
+    dl = lambda pax: {"date": "2026-11-12T10:15:00-06:00", "passenger_count": pax, "stops": [{"label": "A"}, {"label": "B"}]}
+    legs14 = [dl(None), dl(None), dict(dl(4), date="2026-11-12T17:00:00-06:00"), dl(None)]
+    if _rp.header_headcount({"meta": {"headcount": 14}, "legs": legs14}) != 14:
+        problems.append("the header does not show the confirmed headcount (R109)")
+    if _rp.header_headcount({"meta": {}, "legs": legs14}) != _rp.passenger_total(legs14):
+        problems.append("the header does not fall back to the legs when no headcount was confirmed (R109)")
+    with tempfile.TemporaryDirectory() as d2:
+        opt = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
+        qo = os.path.join(d2, "o.json")
+        subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", opt, qo, "--prepared-by", "G"], capture_output=True, text=True)
+        subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), qo, "--clear"], capture_output=True, text=True)
+        short = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), qo, "--short"], capture_output=True, text=True).stdout
+        if "Option A:" not in short or "Option B" not in short:
+            problems.append("a two-option short email lost its option labels (R71)")
     for rel, needles in (("quote-intake/SKILL.md", ("no more than 10 minutes", "one trip in parallel")),
                          ("quote-intake/references/decision-tree.md", ("0 to 10 minutes", "one trip in parallel")),
                          ("quote-document/SKILL.md", ("Before you normalize, ask the client requests",))):
@@ -2780,7 +2806,7 @@ def lint_noise_fixes():
         for n in needles:
             if n not in t:
                 problems.append(f"{rel} lacks {n!r}")
-    print("  \u2713 noise fixes (arrival window, parallel vehicles are no overlap, client requests asked before the build)" if not problems
+    print("  \u2713 noise fixes (arrival window, parallel vehicles are no overlap, client requests asked before the build, header headcount, one-option short email)" if not problems
           else "  \u2717 noise fixes\n      " + "\n      ".join(problems))
     return not problems
 

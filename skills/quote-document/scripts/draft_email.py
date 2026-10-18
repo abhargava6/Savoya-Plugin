@@ -208,10 +208,12 @@ def main():
     def short_line(l):
         net = l.get("engine_net_line_cents")
         return f"  \u2022 {l.get('ref','')} {day(l.get('date'),'%a %-m/%-d')}, {l['vehicle']['quantity']} \u00d7 {l['vehicle']['name']}" + (f": {money(net)}" if net is not None else "")
-    short_bits = ["Option A:\n" + "\n".join(short_line(l) for l in primaries)]
+    # R71: an option is named only when the quote has two or more.
+    short_bits = [("Option A:\n" if ob else "") + "\n".join(short_line(l) for l in primaries)]
     if ob and alts:
         short_bits.append("Option B (in place of " + ", ".join(replaced_refs) + "):\n" + "\n".join(short_line(l) for l in alts))
-    short_totals = f"Option A comes to {money(q['total_cents'])}" + (f" and Option B to {money(ob['total_cents'])}" if ob else "") + "."
+    short_totals = (f"Option A comes to {money(q['total_cents'])} and Option B to {money(ob['total_cents'])}." if ob
+                    else f"The program comes to {money(q['total_cents'])}.")
     disc_short = (f" That includes a {abs(disc['value']):g}% discount" + (f" and the {fuel['value']:g}% fuel surcharge" if fuel else "") + ".") if disc else (f" That includes the {fuel['value']:g}% fuel surcharge." if fuel else "")
     short_body = "\n\n".join(x for x in [
         greet,

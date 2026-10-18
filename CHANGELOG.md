@@ -5,11 +5,13 @@ Reconstructed from the working sessions of 22–24 September 2026. Versions befo
 
 ## 0.27.6
 
-From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing calls, four full quote displays and two refused saves. Requirements R105, R107 and R108; R106 is deferred. `ENGINEERING.md` gains H6 and amends G6 and F8.
+From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing calls, four full quote displays and two refused saves. Requirements R105, R107, R108 and R109, and an amendment to R71; R106 is deferred. `ENGINEERING.md` gains H6 and amends G6 and F8.
 
 - **The pickup is accepted inside an arrival window (R105).** The car must reach the airport 0 to 10 minutes before the target, using the drive time Core returned for the pickup priced. The exact match took four pricings on one leg.
-- **Parallel vehicles are not an overlap (R107).** A Sprinter and an SUV on the same date, time and stops are one trip. The recording half of R107 is held for a decision.
+- **Parallel vehicles are not an overlap (R107).** A Sprinter and an SUV on the same date, time and stops are one trip. Recording the answer is deferred until a test shows it is needed.
 - **Client requests come first (R108).** `decide.py` asks `request:<n>` before the document is built; `normalize_quote.py` refuses while one is open.
+- **The header shows the confirmed headcount (R109).** The Yerdle Dallas test printed 4 passengers for a party of 14, because three Sprinter legs were priced without a passenger count. `quote.json` now carries `meta.headcount` from the intake record and the header prints it; without one, the header works it out from the legs as before.
+- **A single option is not named (R71).** The short email wrote "Option A" on a quote with one option. It names options only when there are two or more.
 
 ## 0.27.5
 

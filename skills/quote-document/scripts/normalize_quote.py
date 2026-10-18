@@ -729,6 +729,9 @@ def main():
             "client": args.client,
             "profile_id": next((u.get("travel_coordination_profile_id") for u in units if u.get("travel_coordination_profile_id")), None),
             "prepared_by": args.prepared_by,
+            # R109: the headcount the user confirmed. The header prints it; legs priced without a
+            # passenger_count (a vehicle default) cannot say how many people the party is.
+            "headcount": (handoff or {}).get("headcount_confirmed"),
             "prepared_on": today.isoformat(),
             "valid_until": (today + dt.timedelta(days=args.valid_days)).isoformat(),
             "estimate_type": raw.get("estimate_type") or raw.get("pricing_summary", {}).get("estimate_type"),
