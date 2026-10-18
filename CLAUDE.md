@@ -153,7 +153,11 @@ record written after it:
   code, not later.
 - `ENGINEERING.md` — what Savoya engineering still owes. The only list of that.
 
-So: write the requirement, then the design, then the code. That order is a gate: the requirement is shown as a diff and approved before any file in this repo changes, and the first edit of a change is preceded by one line, "Requirement: R__, PRD diff approved: yes/no". A fix that restores a behavior an existing requirement states needs only a Notes edit, shown with the fix. When a change lands, the doc
+So: write the requirement, then the design, then the code. That order is a gate: the requirement is shown as a diff and approved before any file in this repo changes, and the first edit of a change is preceded by one line, "Requirement: R__, PRD diff approved: yes/no, code diff approved: yes/no". A fix that restores a behavior an existing requirement states needs only a Notes edit, shown with the fix.
+
+**Second gate: the code diff.** Decided 2026-10-18. Once the requirement is approved, the change is built as a patch and the code diff is shown before anything is written to the plugin repo. Build it in a scratch copy of the repo, run the suite there (with the PDF checks), and show the diff of every file the change touches: scripts, instruction files, guards, fixtures and docs. Each hunk gets one line on what it does and which guard covers it. The suite result goes with the diff. Nothing reaches the repo, and nothing is committed, until the code diff is approved. After approval the same patch is applied, and the applied files are compared by hash with the scratch copy. A change that fails the suite in scratch is fixed in scratch and shown again. Why: on 2026-10-18 PRD approval was enough for code to land (commit `14a54e4`) before Ayush had read it, and he asked to review the code first.
+
+When a change lands, the doc
 update is part of the change rather than a follow-up — the follow-up is the thing that
 doesn't happen. The cost of getting this wrong is already measured twice in this repo: a
 `SKILL.md` that contradicted the code for three days and sent sessions into a hard refusal
