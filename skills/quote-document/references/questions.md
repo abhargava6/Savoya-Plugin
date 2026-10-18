@@ -62,6 +62,7 @@ What each answer does:
      until it has gone. For `offline`: *"The map came out as a stops-in-order overview
      rather than a street map — this network blocks the mapping service. Still accurate,
      just schematic."* Say nothing extra for `tiled`.
+   - **If the map is wrong or missing, the user can say "drop the map" (R104).** Record `decide.py map false`, render again and say the document is complete without it. Add one line: the map needs the laptop set up for it, so ask the product team to enable it for next time.
    - If they want a street map and can't have one, that is the setup check's territory
      (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/setup-check.md`), not a retry.
 

@@ -59,16 +59,16 @@ def order_for(intake):
         o = [k for k in o if k not in ("cover", "map")]
     return o
 QUESTIONS = {
-  "discount_pct": "Any additional discount for this client? A whole percentage, or none. I'll re-quote it through Savoya rather than adjusting the number here.{engine}",
+  "discount_pct": "Any additional discount for this client? A whole percentage, or none. I'll re-quote it through Savoya rather than adjusting the number here.{engine} FYI: an extra discount is not stored in Savoya. The booking prices without it unless you also add it to the client's profile.",
   "commission_pct": "Does this client get a commission on this quote? No, 1%, 5%, or another percentage. It goes on the quote and in the email with its amount, which is computed for you \u2014 it changes none of the totals.",
-  "greeter_cost": "The client asked about a greeter / on-site coordinator. How many hours? I'll price it through Savoya at the market rate. If this market has no greeter rate I'll come back and ask for a cost, or leave it off as arranged separately.",
+  "greeter_cost": "The client asked about a greeter / on-site coordinator. How many hours? I'll price it through Savoya at the market rate. If this market has no greeter rate I'll come back and ask for a cost, or leave it off as arranged separately. FYI: a greeter cost you give me is not in Savoya either. Leave a note on the reservation for billing and operations so the booking carries it.",
   "cover": "Which cover?\n{covers}\n…or upload your own (PDF or image).",
   "personalization": "I'll use: event name \"{event}\", a two-line intro note from you, your contact card at the end, no client logo, no per-leg notes, no closing line. Confirm, or tell me what to change (logo URL, notes, closing line).",
   "map": "Add a route map with drive times? (about 15 seconds)",
   "format": "Email copy on its own, email copy + PDF, PDF, printable document (a web page that prints identically to the PDF), HTML email, Word, or Excel?",
 }
 ap = argparse.ArgumentParser(); ap.add_argument("key", nargs="?"); ap.add_argument("value", nargs="?")
-ap.add_argument("--next", action="store_true"); ap.add_argument("--dir", default="handoff"); ap.add_argument("--quote", default="quote.json")
+ap.add_argument("--next", action="store_true"); ap.add_argument("--fyi", action="store_true"); ap.add_argument("--dir", default="handoff"); ap.add_argument("--quote", default="quote.json")
 a = ap.parse_args()
 b_ = os.path.join(a.dir, "blocked.json")
 if os.path.exists(b_):
@@ -89,6 +89,24 @@ if a.key and a.value is not None:
     d.setdefault("decisions", {})[a.key] = val
     d.setdefault("log", []).append({"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "step": "doc", "note": f"{a.key} = {val!r}"[:120]})
     json.dump(d, open(p, "w", encoding="utf-8"), indent=2)
+def _amount(v):
+    try: return float(str(v).strip().rstrip("%").lstrip("$").replace(",", ""))
+    except ValueError: return 0.0
+if a.fyi:
+    # R103: money that exists only in this quote. Said once more at delivery, in plain words.
+    dec = d.get("decisions") or {}
+    out = []
+    if _amount(dec.get("discount_pct")) > 0:
+        out.append("The extra discount is not in Savoya. Add it to the client's profile, or the booking prices without it.")
+    if d.get("temporary_pricing"):
+        out.append("A custom rate or discount you supplied while quoting is not in Savoya. Add the rate in Savoya, or the discount to the client's profile, or the booking prices differently.")
+    if _amount(dec.get("greeter_cost")) > 0:
+        out.append("The greeter cost is not in Savoya. Leave a note on the reservation for billing and operations.")
+    cl = d.get("client") or {}
+    if cl.get("source") == "stand-in":
+        out.append(f"This quote ran under a stand-in client. Book it under {cl.get('display_name') or 'the real client'}, not the stand-in.")
+    print("\n".join(out) if out else "none")
+    sys.exit(0)
 nxt = next((k for k in order_for(d) if k not in d.get("decisions", {})), None)
 if not nxt:
     print("all answered"); sys.exit(0)

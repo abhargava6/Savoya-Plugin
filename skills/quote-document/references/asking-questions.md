@@ -17,6 +17,7 @@ Every question in either skill that has enumerable answers **must** be asked wit
 |---|---|
 | Ambiguous stop | the 2–4 candidates, labeled by what distinguishes them |
 | Several client profiles | the profile names (+ ids where names repeat) |
+| No client found | `Use a no-discount client` (then ask which) · `Give me another name or id` — with the R101 tip in the lead-in |
 | Blocking gap: missing year | the 2–3 plausible years |
 | Blocking gap: headcount range | the endpoints, e.g. `Size for 75` · `Size for 50` |
 | Blocking gap: flight-derived pickup | `12:30pm — domestic (2h)` · `11:30am — international (3h)` · `Another time` |

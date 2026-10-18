@@ -922,6 +922,7 @@ def main():
         print("PDF output isn't set up on this computer.")
         print(f"Full document written as a web page: {html_path}")
         print(f"  → deliver that file and tell the user: {hint} — it produces the same document.")
+        print("  → also tell the user (R104): PDF needs their laptop set up for it, so ask the product team to enable it for next time.")
         print("  → do NOT show install commands to the user; PDF setup is a one-time IT task (see SETUP.md).")
         sys.exit(3)
     print(f"Wrote {a.pdf} via {eng}, cover={key} (html: {html_path})")

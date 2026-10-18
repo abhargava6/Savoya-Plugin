@@ -87,8 +87,10 @@
   <p class="stamp">Release 0.27.5</p>
   <p class="lede">Paste a client's request and get an exact Savoya quote, then the PDF or email you send. This page shows how it works, what it cannot do yet, and answers the questions people ask most.</p>
   <ul class="toc">
+    <li><a href="#before">Before you start</a></li>
     <li><a href="#flow">How it works</a></li>
     <li><a href="#asks">What it asks you</a></li>
+    <li><a href="#price">Before you promise a price</a></li>
     <li><a href="#limits">What it cannot do yet</a></li>
     <li><a href="#faq">Questions and answers</a></li>
     <li><a href="#wrong">If something looks wrong</a></li>
@@ -96,6 +98,9 @@
 
   <h2 id="what">What it does</h2>
   <div class="plain"><p>The quoting assistant turns a client's ground-transportation request into an exact Savoya quote, then into the document you send: a PDF proposal, email copy, or both. Every number comes from Savoya's own pricing, the same figures the web app shows. The assistant never works out a price itself.</p></div>
+
+  <h2 id="before">Before you start</h2>
+  <div class="plain"><ul><li><strong>Open with "Use savoya plugin to quote".</strong> Put it at the start of your first message, then paste the request. It tells the assistant which tool to use.</li><li><strong>Put the client ID in the request, and full street addresses where you have them.</strong> With both, the assistant matches the client and every stop on the first try and asks you fewer questions. A partial address is the usual reason it stops to ask.</li><li><strong>New client that is not in Savoya yet?</strong> Quote under an existing client that has no discount. Check two places first: no discount on the company, and no discount on that client's profile. The assistant checks the quote too and stops if it shows a contracted discount. The document still says "Prepared for" the real client, so give the assistant the real name. Book under the real client later.</li><li><strong>If the session wanders, start fresh.</strong> When you work from the runbook and a side question pulls the assistant off its steps, open a new chat and paste the request again. That is faster than steering it back.</li></ul></div>
 
   <h2 id="flow">How a quote goes</h2>
   <p>You are asked a question only where a person has to decide. Everything else runs on its own.</p>
@@ -143,6 +148,11 @@ flowchart TD
   <p>After you say you want a client document, the assistant asks six questions, one at a time and always in this order.</p>
   <div class="plain"><ul><li><strong>Discount.</strong> An extra percentage discount is priced again through Savoya, so the new total is Savoya's number. It is not saved in Savoya.</li><li><strong>Commission.</strong> Shows the rate and the commission amount on the document. It does not change any total.</li><li><strong>Cover.</strong> Which cover page the PDF opens with.</li><li><strong>Personalisation.</strong> Event name, a short intro note, your contact details, a closing line.</li><li><strong>Map.</strong> Whether to include a route map in the PDF.</li><li><strong>Format.</strong> PDF, email copy, or both. You get exactly what you choose.</li></ul></div>
 
+  <h2 id="price">Before you promise a price</h2>
+  <div class="plain"><p>Once you ask for the client document, you can change the discount, add a greeter fee and give custom transfer rates. None of these exist in Savoya's system. The quote and the document show them, but the booking is priced from Savoya's records, so it can come out very different. Before you send:</p>
+<ul><li><strong>A discount:</strong> add it to the client's profile in Savoya.</li><li><strong>A custom rate:</strong> add the rate in Savoya.</li><li><strong>A greeter you quoted outside Savoya:</strong> leave a note on the reservation for billing and operations.</li></ul>
+<p>The assistant repeats this when it asks about each one, and again when it hands you the files.</p></div>
+
   <h2 id="limits">What it cannot do yet</h2>
   <p>These are known limits today, not surprises. Plan around them.</p>
   <div class="limits"><ul><li>A quote needs an identified client. Generic market rates with no client are not supported yet.</li><li>A market with no stored rate needs a base rate from you. There is no estimate. The client's discount and fuel are applied to the rate you give, and it is not saved in Savoya.</li><li>Real flight numbers and private-aviation details are kept as notes on the quote. Flight details the client gave print as given; whatever they did not give reads "to be confirmed".</li><li>A passenger manifest with flight and seating detail is not supported yet.</li><li>Vehicle counts for nearby markets are extra vehicles, not date-specific availability, and they are unconfirmed.</li><li>Fuel cannot be changed in the document. To waive it, change it in Savoya and quote again.</li><li>Document adjustments are flat amounts. A percentage change goes through a new quote.</li><li>The email is copy and paste. The assistant does not send mail or create drafts.</li><li>If your network blocks map services, the map falls back to a simple overview that does not show driving routes.</li><li>Word and Excel exports exist but have not yet been proven in real use. Check them before you send.</li><li>It needs the Savoya and Google Drive connections switched on. Saving the session record also needs your one-time agreement.</li></ul></div>
@@ -167,6 +177,11 @@ flowchart TD
 <details class="qa"><summary>Can I get a copy without the commission?</summary><p>Yes. Ask for a no-commission copy after the document is made. It is a separate file with the same totals and without the commission lines. Keep the first one for your own use.</p></details>
 <details class="qa"><summary>Why did it ask about a day block and an airport transfer?</summary><p>When an hourly block runs across an airport transfer on the same day, the assistant asks whether the block should start after the transfer, at the client's time, or at another time, before it prices anything. With several options, each option is checked on its own.</p></details>
 <details class="qa"><summary>What if the client needs more vehicles than Savoya shows?</summary><p>If a vendor has confirmed the extra vehicles, tell the assistant how many, which vendor and who confirmed. It prices the largest number Savoya accepts and then extends the quantity only; every other figure stays Savoya's. The vendor details show on the internal summary and never in a client document.</p></details>
+<details class="qa"><summary>The PDF would not generate. What now?</summary><p>Ask the assistant for the printable document (HTML) instead, open it in your browser and use Print, then Save as PDF. It prints the same as the PDF. PDF generation needs your laptop set up for it, which is most likely the cause. Ask the product team to enable it so the next one works.</p></details>
+<details class="qa"><summary>The map is wrong or missing. What now?</summary><p>Tell the assistant to drop the map. The document is complete without it. Map drawing also needs your laptop set up for it, so ask the product team to enable it for next time.</p></details>
+<details class="qa"><summary>How do I quote a client who is not in Savoya yet?</summary><p>Use an existing client that has no discount, after checking the company and that client's profile for one. The assistant refuses to go on if the quote carries a contracted discount. The document carries the real client's name, which you give the assistant. Book under the real client later.</p></details>
+<details class="qa"><summary>Why can the booking price differ from my quote?</summary><p>A discount, a greeter fee or a custom rate you gave while building the document is not stored in Savoya. Add the discount to the client's profile, add the custom rate in Savoya, or leave a reservation note for billing and operations about the greeter. Otherwise the booking is priced without them.</p></details>
+<details class="qa"><summary>The assistant went off track. What should I do?</summary><p>Start a new chat, open with "Use savoya plugin to quote" and paste the request again. Side questions in the middle of a quote are the usual cause.</p></details>
 <details class="qa"><summary>What do I do when something looks wrong?</summary><p>Tell the assistant "log this session" and say what looked wrong. It saves a record of the session, with or without a document, so the team can see exactly what happened. Then post a short note in the core-ideas Slack channel so someone picks it up.</p></details></div>
   <p id="faq-none" class="none" hidden>Nothing matches. Ask the assistant directly, or see the next section.</p>
 

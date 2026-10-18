@@ -118,7 +118,11 @@ resolve client + stops + vehicle types in one turn (no passenger unless the user
 is the flow: ask the user for a temporary rate or another vehicle, then re-quote through
 `calculate_temporary_quote_units`. A leg with an intermediate stop can only take an
 **hourly** temporary rate — a transfer rate needs exactly two stops and Core rejects it
-otherwise. Say the number came from a rate they supplied.
+otherwise. Say the number came from a rate they supplied, and that it is not stored in Savoya: the booking prices differently unless the custom rate is added there (R103).
+
+**A client Savoya does not have (R102).** When `resolve_client` finds nothing after the user's name, email or id, offer a stand-in: an existing client with no discount at the company and none on its profile. The user names it. Quote under it, then `handoff.py write --client-source stand-in --prospect "<real client's name>"`; the write refuses if the quote carries any contracted discount. Tell the user once: quoted under the stand-in, book under the real client.
+
+**One tip when you ask about a client or a stop (R101).** In that same message add: "Next time, start with 'Use savoya plugin to quote' and put the client ID and full street addresses in the request." Once per session.
 
 ## Questions — inline, and not negotiable
 

@@ -526,7 +526,7 @@ def main():
         if not handoff.get("final"):
             sys.exit("Handoff is not final — the quote hasn't been confirmed by the user.")
         args.raw = args.raw or os.path.join(args.from_handoff, "raw_quote.json")
-        args.client = args.client or handoff["client"]["name"]
+        args.client = args.client or handoff["client"].get("display_name") or handoff["client"]["name"]
         sel = handoff.get("selection", {})
         if sel.get("select") and not args.select:
             args.select = ",".join(sel["select"] + list((sel.get("alternatives") or {}).keys()))

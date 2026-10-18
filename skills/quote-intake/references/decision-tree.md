@@ -11,6 +11,8 @@ Every node resolves to **call**, **skip**, or **ask**. **Every "ask" uses `ask_u
 **A · Client** — `resolve_client`
 - Name in `~/.savoya-quoting/config.json → known_clients` → **skip**, use the cached profile id.
 - Else **call**. One hit → proceed, cache it. Several → **ask** (batched with D). None → **ask** for a name, email, or profile id. Never guess.
+- **Still none: the client is new to Savoya (R102).** Offer a stand-in: an existing client with no discount, on its company and on its profile. Ask which client to use; do not choose one. Quote under it, and write the handoff with `--client-source stand-in --prospect "<the real client's name>"`. `write` refuses when the quote carries any contracted discount, and the document says "Prepared for" the real name. Say once: *"Quoted under <stand-in>. Book it under <real client>."*
+- **A tip goes with the first client or stop question (R101):** *"Next time, start with 'Use savoya plugin to quote' and put the client ID and full street addresses in the request. It saves these questions."* Say it once, in the same message, when you ask the user to settle a client or a stop.
 
 **B · Passenger** — `resolve_passengers`
 - **Skip unless the user named a passenger.** That is the whole rule. `passenger_id` is optional on every pricing tool, and when it is omitted Core deterministically attaches an eligible passenger to the unsaved calculation.
@@ -79,7 +81,7 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 - **No stored rate in the market** is not a dead end and never an estimate. Core's own
   recovery wording is the flow: **ask the user for a temporary rate, or pick another
   vehicle.** Then re-quote through `calculate_temporary_quote_units`. Say plainly that the
-  number came from a rate they supplied, not from Savoya's rate sheet.
+  number came from a rate they supplied, not from Savoya's rate sheet. **And say it exists only in this quote (R103):** *"This rate is not stored in Savoya. Add it there before booking, or the booking prices differently."*
 - **▲ A temporary rate is a BASE rate — the client's discount comes off it.** Verified
   8 Oct: $250.00/hr supplied became **$192.50/hr** effective after the 30% contracted
   discount and 10% fuel. So when asking, say so: *"this is a base rate before the client's

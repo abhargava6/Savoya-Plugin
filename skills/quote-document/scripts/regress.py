@@ -2606,6 +2606,103 @@ def lint_review_fixes():
     return True
 
 
+def lint_user_guidance():
+    """FYI guidance for the user (PRD R101-R104): the help page carries the seven tips, the
+    questions warn about money Savoya does not hold, a stand-in client is checked for a
+    discount and named correctly on the document, and the delivery reminder lists only what
+    applies."""
+    import copy
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    skills = os.path.join(HERE, "..", "..")
+    def rd(*p):
+        return open(os.path.join(skills, *p), encoding="utf-8").read()
+    help_ = rd("quote-intake", "references", "help.md")
+    for needle in ('Use savoya plugin to quote', "client ID", "full street addresses", "no discount on the company",
+                   "runbook", "Print, then Save as PDF", "drop the map", "product team", "reservation for billing and operations",
+                   "client's profile", "custom rate"):
+        if needle.lower() not in help_.lower():
+            problems.append(f"help.md does not carry {needle!r}")
+    if "## Before you start" not in help_ or "## Before you promise a price" not in help_:
+        problems.append("help.md lacks the 'Before you start' or 'Before you promise a price' section")
+    dec = rd("quote-document", "scripts", "decide.py")
+    for key in ("discount_pct", "greeter_cost"):
+        m = re.search(r'"%s": "([^"]*)"' % key, dec)
+        if not m or "FYI" not in m.group(1) or "not " not in m.group(1):
+            problems.append(f"the {key} question does not warn that the money is not in Savoya")
+    for rel, needle in ((("quote-intake", "SKILL.md"), "stand-in"), (("quote-intake", "SKILL.md"), "Use savoya plugin to quote"),
+                        (("quote-intake", "references", "decision-tree.md"), "R102"), (("quote-intake", "references", "decision-tree.md"), "not stored in Savoya"),
+                        (("quote-document", "SKILL.md"), "decide.py --fyi"), (("quote-document", "references", "questions.md"), "drop the map"),
+                        (("quote-document", "references", "format-print.md"), "Save as PDF")):
+        if needle not in rd(*rel):
+            problems.append(f"{'/'.join(rel)} lacks {needle!r}")
+    if "product team" not in rd("quote-document", "scripts", "render_print.py"):
+        problems.append("the no-PDF-engine message does not tell the user to ask the product team")
+    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
+    decide = os.path.join(HERE, "decide.py")
+    fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
+    raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
+    units = [copy.deepcopy(u) for u in raw["quote_units"][0:1]]
+    for u in units:
+        u["passenger_count"] = 75
+        (u.setdefault("pricing_summary", {}).setdefault("adjustments", {})).pop("discount_basis_points", None)
+    base = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
+    def pkg(us):
+        return dict(base, quote_units=us, aggregate_total=sum(u["line_total"] for u in us))
+    with tempfile.TemporaryDirectory() as d:
+        def run(args, stdin=None):
+            return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
+        shutil.copy(os.path.join(fx, "request.md"), os.path.join(d, "request.md"))
+        w = [intake, "write", "--client", "Standin Co", "--profile-id", "1", "--request", "request.md", "--package", "A",
+             "--headcount", "75", "--final", "--client-source", "stand-in"]
+        run([intake, "ingest", "--name", "A"], _json.dumps(pkg(units)))
+        r = run(w)
+        if r.returncode == 0 or "prospect" not in (r.stderr + r.stdout):
+            problems.append("a stand-in client was accepted without the real client's name")
+        disc = copy.deepcopy(units)
+        disc[0]["pricing_summary"]["adjustments"]["discount_basis_points"] = 1000
+        run([intake, "ingest", "--name", "D"], _json.dumps(pkg(disc)))
+        wd = list(w); wd[wd.index("A")] = "D"
+        r = run(wd + ["--prospect", "Real Client Inc"])
+        if r.returncode == 0 or "contracted discount" not in (r.stderr + r.stdout):
+            problems.append("a stand-in client whose quote carries a discount was accepted")
+        r = run(w + ["--prospect", "Real Client Inc"])
+        if r.returncode:
+            problems.append(f"a no-discount stand-in with a prospect name was refused: {(r.stderr or r.stdout).strip()[:160]}")
+        else:
+            c = _json.load(open(os.path.join(d, "handoff", "intake.json")))["client"]
+            if c.get("display_name") != "Real Client Inc" or c.get("source") != "stand-in":
+                problems.append("the stand-in client and the real client's name were not both recorded")
+            r = run([os.path.join(HERE, "normalize_quote.py"), "--from-handoff", "handoff", "q.json", "--prepared-by", "G"])
+            qp = os.path.join(d, "q.json")
+            if r.returncode or not os.path.exists(qp):
+                problems.append(f"normalize of a stand-in handoff failed: {(r.stderr or r.stdout).strip()[:140]}")
+            elif _json.load(open(qp))["meta"].get("client") != "Real Client Inc":
+                problems.append("the document would say 'Prepared for' the stand-in, not the real client")
+            ip = os.path.join(d, "handoff", "intake.json")
+            doc = _json.load(open(ip))
+            r = run([decide, "--fyi", "--dir", "handoff"])
+            if "stand-in" not in r.stdout or "Real Client Inc" not in r.stdout:
+                problems.append("the delivery reminder does not tell the user to book under the real client")
+            doc.setdefault("decisions", {}).update({"discount_pct": 10, "greeter_cost": 400})
+            doc["temporary_pricing"] = {"rate": True}
+            _json.dump(doc, open(ip, "w"))
+            r = run([decide, "--fyi", "--dir", "handoff"]).stdout
+            for needle in ("discount is not in Savoya", "custom rate", "greeter cost is not in Savoya"):
+                if needle not in r:
+                    problems.append(f"the delivery reminder lacks {needle!r} when it applies")
+            doc["decisions"].update({"discount_pct": 0, "greeter_cost": "leave off"}); doc["temporary_pricing"] = None
+            doc["client"]["source"] = "resolve"
+            _json.dump(doc, open(ip, "w"))
+            if run([decide, "--fyi", "--dir", "handoff"]).stdout.strip() != "none":
+                problems.append("the delivery reminder says something when nothing applies")
+    print("  ✓ user guidance (seven tips in help, FYI on discount/greeter/custom rate, stand-in client, delivery reminder)" if not problems
+          else "  ✗ user guidance\n      " + "\n      ".join(problems))
+    return not problems
+
+
 def lint_copy_rules():
     """PRD R62 and R74. The fuel surcharge belongs to the whole quote: it is in the header and
     the terms and in no leg row, email line or note. A flight the client supplied prints as
@@ -4220,6 +4317,7 @@ def main():
     lint_ok = lint_notes_and_no_commission() and lint_ok
     lint_ok = lint_copy_rules() and lint_ok
     lint_ok = lint_review_fixes() and lint_ok
+    lint_ok = lint_user_guidance() and lint_ok
     lint_ok = lint_confirm_items() and lint_ok
     lint_ok = lint_capture_at_delivery() and lint_ok
     lint_ok = lint_handoff_packages() and lint_ok

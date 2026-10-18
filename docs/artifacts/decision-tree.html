@@ -122,6 +122,7 @@
         <span class="tag call">call</span><span>otherwise. One hit → proceed and cache it</span>
         <span class="tag ask">ask</span><span>several profiles, or none. Never guess</span>
       </div>
+      <div class="why new"><b>A client Savoya does not have gets a stand-in (R102).</b> The user names an existing client with no discount on its company and none on its profile. The quote runs under it, and <code>handoff.py write --client-source stand-in --prospect "&lt;real name&gt;"</code> refuses if the quote carries any contracted discount. The document says "Prepared for" the real name, and the delivery reminder says to book under the real client. When it asks about a client or a stop, it adds one tip: start with "Use savoya plugin to quote" and put the client ID and full street addresses in the request (R101).</div>
       <div class="note"><b>A resolved client is still mandatory on every path.</b> There is no rack-rate or no-client route — not in the plugin, not in the MCP, and not in Core's in-progress work either. That is PRD R9, the oldest unaddressed gap in the product, and PRD R4 (a standalone client-facing rate sheet) sits behind it.</div>
     </div></div>
     <div class="arrow">↓</div>
@@ -168,7 +169,7 @@
       <h3>Questions <em>· one per message, wait after each</em></h3>
       <div class="branch">
         <span class="tag ask">ask 0</span><span><b>Blocking gaps</b> — missing year or ambiguous date, headcount range, unresolvable location, unsettled service shape. Batched with D's stop ambiguities</span>
-        <span class="tag ask">ask 1</span><span>Rate sheet first, or straight to the quote?</span>
+        <span class="tag ask">ask 1</span><span>Rate sheet first, or straight to the quote? <b>FYI on the question (R103): an extra discount is not stored in Savoya, so the booking prices without it unless it is added to the client's profile.</b></span>
         <span class="tag ask">ask 2</span><span>Best value · options · you name the vehicles</span>
       </div>
       <div class="note">1 and 2 are asked on <b>every</b> quote, never skipped because the request looks self-evident. Client questions that don't change pricing (tax, gratuity, cancellation, on-site staff) are recorded with <code>--client-question</code> for the document stage — <b>don't ask, don't block</b>. "go" means no rate sheet, best value.</div>

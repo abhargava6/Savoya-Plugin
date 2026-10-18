@@ -153,7 +153,7 @@ record written after it:
   code, not later.
 - `ENGINEERING.md` — what Savoya engineering still owes. The only list of that.
 
-So: write the requirement, then the design, then the code. When a change lands, the doc
+So: write the requirement, then the design, then the code. That order is a gate: the requirement is shown as a diff and approved before any file in this repo changes, and the first edit of a change is preceded by one line, "Requirement: R__, PRD diff approved: yes/no". A fix that restores a behavior an existing requirement states needs only a Notes edit, shown with the fix. When a change lands, the doc
 update is part of the change rather than a follow-up — the follow-up is the thing that
 doesn't happen. The cost of getting this wrong is already measured twice in this repo: a
 `SKILL.md` that contradicted the code for three days and sent sessions into a hard refusal

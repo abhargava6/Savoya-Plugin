@@ -848,6 +848,19 @@ def write(a):
                 break
     if vprob:
         refuse(a, "R74", "; ".join(vprob), "Record supplied flight details with --flight and the venue name with --venue; use --placeholder only for what the client did not give.")
+    # R102: a stand-in client carries no discount, and the document names the real client.
+    if a.client_source == "stand-in":
+        sprob = []
+        if not (a.prospect or "").strip():
+            sprob.append("a stand-in client needs --prospect with the real client's name; the document says 'Prepared for' that name")
+        found = sorted({(u.get("pricing_summary") or {}).get("adjustments", {}).get("discount_basis_points")
+                        for u in units_src
+                        if ((u.get("pricing_summary") or {}).get("adjustments") or {}).get("discount_basis_points")})
+        if found:
+            sprob.append(f"the stand-in client's quote carries a {max(found)/100:g}% contracted discount, so this client is not a no-discount stand-in")
+        if sprob:
+            refuse(a, "R102", "; ".join(sprob),
+                   "Pick an existing client with no discount on its company and none on its profile, then quote again; or quote under the real client. Give the real name with --prospect.")
     overlap, oprob = overlap_decisions(a.overlap, units_src, osets)
     if oprob:
         refuse(a, "R97", "; ".join(oprob), "Put the question to the user, record the answer with --overlap, then write again.")
@@ -888,7 +901,8 @@ def write(a):
     intake = {
         "contract": 3,
         "written_by": "handoff.py write",
-        "client": {"name": a.client, "profile_id": a.profile_id, "source": a.client_source},
+        "client": dict({"name": a.client, "profile_id": a.profile_id, "source": a.client_source},
+                       **({"display_name": a.prospect.strip()} if (a.prospect or "").strip() else {})),
         # Set only when the USER named a passenger. Omitted from the call otherwise:
         # Core attaches an eligible passenger to the unsaved calculation itself. The old
         # note here read "required by the reservation builder" — true against the previous
@@ -1016,6 +1030,8 @@ def main():
                    help="KEY|the question you asked|the user's answer: a fact Core does not return, such as a vehicle length (R35)")
     w.add_argument("--time-reading", dest="time_reading", action="append", default=[],
                    help="KEY|flight_departure|HH:MM|lead_hours, KEY|airport_arrival_target|HH:MM or KEY|pickup|HH:MM (R18/R34)")
+    w.add_argument("--prospect", default=None,
+                   help="R102: the real client's name when the quote ran under a stand-in client (--client-source stand-in)")
     w.add_argument("--final", action="store_true"); w.add_argument("--client-source", default="resolve")
     w.add_argument("--passenger-id", type=int, default=None); w.add_argument("--passenger-name", default=None)
     ig = sub.add_parser("ingest"); ig.add_argument("--name", required=True); ig.add_argument("--dir", default="handoff")

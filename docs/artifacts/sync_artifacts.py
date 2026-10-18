@@ -121,6 +121,8 @@ def render():
     rep = {
         "{{release}}": release(),
         "<!--WHAT-->": blocks(secs["What it does"]),
+        "<!--BEFORE-->": blocks(secs["Before you start"]),
+        "<!--PRICE-->": blocks(secs["Before you promise a price"]),
         "<!--STEPS-->": blocks(secs["How a quote goes"]),
         "<!--QUESTIONS-->": blocks(secs["The questions it asks, and why"]),
         "<!--LIMITS-->": blocks(secs["What it cannot do yet"]),

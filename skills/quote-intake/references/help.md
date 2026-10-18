@@ -14,6 +14,13 @@ internal systems (PRD R88). Edit the answers here; the page is rendered from thi
 
 The quoting assistant turns a client's ground-transportation request into an exact Savoya quote, then into the document you send: a PDF proposal, email copy, or both. Every number comes from Savoya's own pricing, the same figures the web app shows. The assistant never works out a price itself.
 
+## Before you start
+
+- **Open with "Use savoya plugin to quote".** Put it at the start of your first message, then paste the request. It tells the assistant which tool to use.
+- **Put the client ID in the request, and full street addresses where you have them.** With both, the assistant matches the client and every stop on the first try and asks you fewer questions. A partial address is the usual reason it stops to ask.
+- **New client that is not in Savoya yet?** Quote under an existing client that has no discount. Check two places first: no discount on the company, and no discount on that client's profile. The assistant checks the quote too and stops if it shows a contracted discount. The document still says "Prepared for" the real client, so give the assistant the real name. Book under the real client later.
+- **If the session wanders, start fresh.** When you work from the runbook and a side question pulls the assistant off its steps, open a new chat and paste the request again. That is faster than steering it back.
+
 ## How a quote goes
 
 1. **You paste the client's request.** An itinerary, an RFP, a forwarded email. Anything the client sent.
@@ -35,6 +42,16 @@ The quoting assistant turns a client's ground-transportation request into an exa
 - **Personalisation.** Event name, a short intro note, your contact details, a closing line.
 - **Map.** Whether to include a route map in the PDF.
 - **Format.** PDF, email copy, or both. You get exactly what you choose.
+
+## Before you promise a price
+
+Once you ask for the client document, you can change the discount, add a greeter fee and give custom transfer rates. None of these exist in Savoya's system. The quote and the document show them, but the booking is priced from Savoya's records, so it can come out very different. Before you send:
+
+- **A discount:** add it to the client's profile in Savoya.
+- **A custom rate:** add the rate in Savoya.
+- **A greeter you quoted outside Savoya:** leave a note on the reservation for billing and operations.
+
+The assistant repeats this when it asks about each one, and again when it hands you the files.
 
 ## What it cannot do yet
 
@@ -102,6 +119,21 @@ When an hourly block runs across an airport transfer on the same day, the assist
 
 ### What if the client needs more vehicles than Savoya shows?
 If a vendor has confirmed the extra vehicles, tell the assistant how many, which vendor and who confirmed. It prices the largest number Savoya accepts and then extends the quantity only; every other figure stays Savoya's. The vendor details show on the internal summary and never in a client document.
+
+### The PDF would not generate. What now?
+Ask the assistant for the printable document (HTML) instead, open it in your browser and use Print, then Save as PDF. It prints the same as the PDF. PDF generation needs your laptop set up for it, which is most likely the cause. Ask the product team to enable it so the next one works.
+
+### The map is wrong or missing. What now?
+Tell the assistant to drop the map. The document is complete without it. Map drawing also needs your laptop set up for it, so ask the product team to enable it for next time.
+
+### How do I quote a client who is not in Savoya yet?
+Use an existing client that has no discount, after checking the company and that client's profile for one. The assistant refuses to go on if the quote carries a contracted discount. The document carries the real client's name, which you give the assistant. Book under the real client later.
+
+### Why can the booking price differ from my quote?
+A discount, a greeter fee or a custom rate you gave while building the document is not stored in Savoya. Add the discount to the client's profile, add the custom rate in Savoya, or leave a reservation note for billing and operations about the greeter. Otherwise the booking is priced without them.
+
+### The assistant went off track. What should I do?
+Start a new chat, open with "Use savoya plugin to quote" and paste the request again. Side questions in the middle of a quote are the usual cause.
 
 ### What do I do when something looks wrong?
 Tell the assistant "log this session" and say what looked wrong. It saves a record of the session, with or without a document, so the team can see exactly what happened. Then post a short note in the core-ideas Slack channel so someone picks it up.

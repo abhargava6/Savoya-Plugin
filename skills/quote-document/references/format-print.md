@@ -51,6 +51,7 @@ It is an **offered format**, not only a fallback — choose it when the user wan
 - On screen it renders as a stack of pages on a grey backdrop, with a sticky print bar at the top that explains how to save it as a PDF (worded for macOS or Windows by a small inline script).
 - The bar is `display:none` in print, so the saved PDF is clean.
 - Hand it over whenever the machine has no PDF engine, or whenever a user wants something they can open without a PDF reader.
+- **When PDF generation fails, the user can simply ask for this (R104):** open it in the browser, Print, Save as PDF. Tell them once that PDF needs their laptop set up for it and that the product team can enable it for next time.
 
 **Sharing it.** It's a file. There is no hosted URL for quote documents yet, so "send them a link" isn't available — attaching it works, but many corporate mail systems quarantine `.html` attachments, so the PDF is the safer external send. Say that plainly if asked rather than implying a link exists.
 
