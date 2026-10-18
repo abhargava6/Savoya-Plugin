@@ -38,6 +38,7 @@ Acceptance criteria
 | Open | **A4** | Rate sheet ignores "Waive All Incidentals" | Defect | **High** | GREEN-382 |
 | Open | **H4** | Quote tools can't price a vehicle sourced from a nearby market (Seattle → Whistler) | Defect | **High** | GREEN-388 |
 | Open | **H5** | Allow quoting a quantity above Savoya's inventory when the CSM has vendor confirmation | Feature | **High** | — |
+| Open | **H6** | `display: show \| internal` on `calculate_quote_units` | Feature | **High** | — |
 | Open | **B7b** | No FBO resolver, so private flights are unreachable | Feature | Medium | — |
 | Open | **G4** | Quote response lacks the no-local-provider warning | Feature | Medium | GREEN-383 |
 | Open | **G1** | `greeter_fee` fields exist but no tool sets them | Decision | Medium | — |
@@ -108,6 +109,9 @@ A 43-vehicle request would be several times larger.
 2. Compact mode returns only the chosen option per unit and omits `presentation` and duplicated vehicle options.
 3. The 16-unit `yerdle-world-cup-2027` package is readable in one call per tool, within the size tier set in the spec, without the chat compacting the conversation.
 4. `aggregate_total` in compact mode equals `aggregate_total` in full mode for the same input.
+5. A priced result reaches the plugin as a file with the exact bytes Core returned (saved by the connector, a `result_path` in the response, or a fetch by id). The plugin never retypes a response.
+
+**Added 2026-10-18 (Yerdle Dallas, plugin 0.27.5):** a 7-unit response was retyped into `raw_response.json` and then edited with `str.replace` to move a pickup from 15:06 to 15:07. The money check passed because both sides came from the edited text. Comment posted on GREEN-380.
 
 ---
 
@@ -321,6 +325,29 @@ The session multiplied that unit by 7 by hand (line total 540078 cents) and the 
 3. Core writes an audit record of the override: who asserted it, the vendor statement, the time.
 4. Pricing at the larger quantity is Core's own calculation, so any quantity-dependent rule is applied.
 5. The plugin workaround is removed when this ships.
+
+---
+
+## H6 — `display: show | internal` on `calculate_quote_units`
+**Type:** Feature · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R105, R106
+
+**Problem statement**
+`preview_rate_batch` accepts `display`; `calculate_quote_units` does not and always renders the "Exact quote" card.
+
+**Impact**
+- A re-price is sometimes required: the pickup time depends on the drive time Core returns (PRD R18, R34). Yerdle Dallas leg 4 was priced at 15:40, 15:06, 15:08 and 15:07. Five cards rendered for one finished quote.
+- Plugin meanwhile: accept an arrival window on the pickup rule (R105). Re-pricing only the units that depend on the time (R106) is deferred until engineering answers G6 and H6. One card still renders per re-price.
+
+**Steps to reproduce**
+Call `calculate_quote_units` with any quote unit. The tool schema has no `display` argument and the card renders.
+
+**Reference**
+- G6 (compact mode), H2 and H3 (card UI). The Savoya connector instruction already says to use `display=internal` for checks.
+- Evidence: `Yerdle Dallas Noise Analysis 2026-10-18` in the vault project folder.
+
+**Acceptance criteria**
+1. `calculate_quote_units` accepts `display: show | internal`; default `show`.
+2. With `internal`, no card renders and the response body is unchanged.
 
 ---
 
@@ -546,6 +573,7 @@ Run `preview_rate_batch` for a market where greeter types 12 and 13 are priceabl
 
 **Acceptance criteria**
 1. Greeter vehicle types appear in `vehicle_rate_evaluations`, or are listed in `missing_vehicle_type_ids` when unrated.
+2. A greeter type with no inventory returns a short status without rendering a quote card. A greeter attempt in a market with zero inventory (`market_inventory_shortfall`, DFW 2026-11-12, `available_vehicle_count` 0) currently renders a card for each attempt; the plugin makes two (type 13, then 12). Added 2026-10-18.
 
 ---
 
