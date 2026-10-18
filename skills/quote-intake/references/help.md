@@ -38,10 +38,10 @@ The quoting assistant turns a client's ground-transportation request into an exa
 
 - **Discount.** An extra percentage discount is priced again through Savoya, so the new total is Savoya's number. It is not saved in Savoya.
 - **Commission.** Shows the rate and the commission amount on the document. It does not change any total.
+- **Format.** PDF, email copy, or both. Asked before cover and map, because only the PDF uses them. You get exactly what you choose.
 - **Cover.** Which cover page the PDF opens with.
 - **Personalisation.** Event name, a short intro note, your contact details, a closing line.
 - **Map.** Whether to include a route map in the PDF.
-- **Format.** PDF, email copy, or both. You get exactly what you choose.
 
 ## Before you promise a price
 

@@ -70,7 +70,7 @@
 <div class="wrap">
   <h1>Quoting MCP — architecture diagrams</h1>
   <p class="sub">Companion to <code>PRD_TDD_Quoting_MCP.md</code> — the same diagrams, rendered large. Source of truth for the logic itself is <code>skills/quote-intake/references/decision-tree.md</code>; this page is the system-level picture around it.</p>
-  <p class="ver">plugin v0.27.5 · twelve-tool contract · refreshed 17 Oct 2026 against the plugin source</p>
+  <p class="ver">plugin v0.27.6 · twelve-tool contract · refreshed 18 Oct 2026 against the plugin source</p>
 
   <ul class="toc">
     <li><a href="#arch">1 · System architecture</a></li>
@@ -87,7 +87,7 @@
   </ul>
 
   <div class="note new"><b>What changed since v0.23.6, which this page previously described.</b> The server went from nine tools to <b>twelve</b> and the plugin gained cross-market sourcing (§6), a commission question, and a money-ownership contract that is now the strongest constraint in the system (§3). The question set went from five to <b>six plus one conditional</b>. The capture stopped being a single arrow to Drive (§8). Nothing here is inferred from the previous revision of this page — where the two disagreed, the source won.</div>
-  <div class="note new"><b>What changed from v0.26.1 to v0.27.5 (PRD R76–R100).</b> Two new gates stop a quote that cannot be trusted before any document exists: <b>a refusal is final</b> (<code>blocked.json</code>, R92) and <b>a split headcount must add up per trip</b> (R91). The user is asked <b>one question</b> after the quote, not two (R93). Saved records hold the <b>real files</b>, checksummed (R94). The commission note on this page was wrong and is corrected in §7. The guard suite grew from 28 guards and 10 fixtures to <b>45 guards and 12 fixtures</b>.</div>
+  <div class="note new"><b>What changed from v0.26.1 to v0.27.6 (PRD R76–R111).</b> Two new gates stop a quote that cannot be trusted before any document exists: <b>a refusal is final</b> (<code>blocked.json</code>, R92) and <b>a split headcount must add up per trip</b> (R91). The user is asked <b>one question</b> after the quote, not two (R93). Saved records hold the <b>real files</b>, checksummed (R94). The commission note on this page was wrong and is corrected in §7. The guard suite grew from 28 guards and 10 fixtures to <b>46 guards and 13 fixtures</b>.</div>
 
   <h2 id="arch">1 · System architecture</h2>
   <p class="sub">Three tiers: the Claude plugin (chat-native UI and orchestration), the Savoya MCP server, and Savoya Core.</p>
@@ -96,7 +96,7 @@
 flowchart TB
     USER(["Savoya ops / sales / CSM user"])
 
-    subgraph PLUGIN["Claude plugin — savoya-quoting v0.27.5"]
+    subgraph PLUGIN["Claude plugin — savoya-quoting v0.27.6"]
         QI["quote-intake skill<br/>nodes A–J"]
         QD["quote-document skill<br/>nodes K–Q"]
         HANDOFF[("handoff/ folder — contract 3<br/>request.md · intake.json · raw_quote.json")]
@@ -501,5 +501,5 @@ flowchart LR
   <div class="note"><b>The setup check is the only thing that closes this.</b> It runs in two halves because neither can see the other's world: a local script reports identity, which copy is in use, the capture folder, the backlog and what the map can do here; the session then <i>calls</i> the connectors rather than assuming them — including writing a small test entry to the shared folder, since Editor access and view-only look identical until something tries to write. That entry is left in place deliberately, so the folder's owner can see whose setup is verified. Reachable by the words a CSM would actually use: <i>"check my quoting setup"</i>, <i>"is this saving?"</i>, <i>"why isn't anything showing up?"</i></div>
   <div class="note"><code>preflight.py</code> is a different thing and does not help here — it checks local Python packages for PDF, verification and maps, and never touches a connector, the folder, or identity. Neither ever shows a CSM an install command: the only technical instruction a CSM receives is Print → Save as PDF, worded for their operating system.</div>
 
-  <footer>Quoting MCP · savoya-quoting v0.27.5 · companion to <code>PRD_TDD_Quoting_MCP.md</code> in the Quoting MCP project · refreshed 17 Oct 2026 · regenerate when the architecture changes</footer>
+  <footer>Quoting MCP · savoya-quoting v0.27.6 · companion to <code>PRD_TDD_Quoting_MCP.md</code> in the Quoting MCP project · refreshed 18 Oct 2026 · regenerate when the architecture changes</footer>
 </div>

@@ -67,7 +67,7 @@
 <div class="wrap">
   <h1>Savoya quoting — flow diagrams</h1>
   <p class="sub">Three views of the same system: what the seller experiences, what actually runs in intake, and what runs in the document flow. The logic itself lives in <code>decision-tree.md</code>; these are drawn from it.</p>
-  <p class="ver">v0.27.5 · twelve-tool contract · refreshed 17 Oct 2026</p>
+  <p class="ver">v0.27.6 · twelve-tool contract · refreshed 18 Oct 2026</p>
 
   <div class="stats">
     <div class="stat"><b>4</b><span>tools that can price a quote — all of them exact</span></div>
@@ -93,7 +93,7 @@ flowchart TD
     F --> GQ(["One question: customize it,<br/>go on to the client document<br/>(both options first),<br/>or just the quote?"])
     GQ -->|customize| F
     GQ -->|just the quote| DONE1(["Done — you have the number"])
-    GQ -->|client document| J(["Six quick questions<br/>discount · commission · cover ·<br/>personalisation · map · format"])
+    GQ -->|client document| J(["Six quick questions<br/>discount · commission · format ·<br/>cover · personalisation · map"])
     J --> K["<b>PDF + email copy</b><br/>ready to paste and send"]
     K --> LQ{"Anything you'd like changed?"}
     LQ -->|yes, fix it| K
@@ -280,5 +280,5 @@ flowchart TD
   <div class="note"><b>The capture goes up twice, and a failed upload asks rather than mentions.</b> A snapshot on the render pass and the full capture after the feedback exchange, under different titles, because Drive's create always creates and because a session that ends at delivery must still leave a record. It is <b>always compressed</b> — about 15× — so there is no size at which a capture stays behind; the old 25 KB ceiling meant the richest sessions were exactly the ones that never arrived. And when the upload fails, the user is the only one who can switch the connector on, so the flow asks them while the session is still alive. Three sessions in a row ended with the record stranded before that changed.</div>
   <div class="note flag"><b><code>~</code> is not the user's computer.</b> On claude.ai the home directory is a cloud container reclaimed with the session; on a linked desktop the shell's home is an isolated VM. Only a <i>connected folder</i> is really their disk. Two real captures — 192 KB and 36 KB — were written there, reported as saved, and lost. The capture now reports whether its local copy is durable, and when it isn't, Drive is the only destination and the upload is not optional.</div>
 
-  <footer>savoya-quoting v0.27.5 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · companion to <code>PRD_TDD_Quoting_MCP.md</code> · regenerate when the tree changes</footer>
+  <footer>savoya-quoting v0.27.6 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · companion to <code>PRD_TDD_Quoting_MCP.md</code> · regenerate when the tree changes</footer>
 </div>

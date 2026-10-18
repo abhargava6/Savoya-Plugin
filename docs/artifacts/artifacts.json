@@ -9,9 +9,9 @@
       "audience": "everyone at Savoya",
       "managed": true,
       "reflects_version": "0.27.6",
-      "published_version": "0.27.5",
-      "published_hash": "746b16be1b0a887e",
-      "source_hash": "fa5406dbe9afe351"
+      "published_version": "0.27.6",
+      "published_hash": "dbb7b9de0b0fd13a",
+      "source_hash": "b76358ef784c43cc"
     },
     {
       "key": "decision-tree",
@@ -21,8 +21,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.27.6",
-      "published_version": "0.27.5",
-      "published_hash": "57068372c39b4161",
+      "published_version": "0.27.6",
+      "published_hash": "3c5635d8d3224a78",
       "source_hash": "54db01ab32c90a0c"
     },
     {
@@ -33,8 +33,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.27.6",
-      "published_version": "0.27.5",
-      "published_hash": "9cd7dc6c61d1b5cc",
+      "published_version": "0.27.6",
+      "published_hash": "5c1f20227e2c7622",
       "source_hash": "54db01ab32c90a0c"
     },
     {
@@ -45,8 +45,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.27.6",
-      "published_version": "0.27.5",
-      "published_hash": "4eb30fa08f7c86c2",
+      "published_version": "0.27.6",
+      "published_hash": "3efc03b30df91dc9",
       "source_hash": "54db01ab32c90a0c"
     }
   ]
