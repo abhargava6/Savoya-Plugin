@@ -1,0 +1,215 @@
+{
+ "contract": 3,
+ "written_by": "handoff.py write",
+ "client": {
+  "name": "Yerdle",
+  "profile_id": 201890,
+  "source": "resolve"
+ },
+ "passenger": {
+  "id": null,
+  "name": null,
+  "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"
+ },
+ "tool": "calculate_temporary_quote_units",
+ "estimate_type": "exact",
+ "quote_mode": "define",
+ "selected_option": null,
+ "option_keys": [],
+ "units": [
+  {
+   "key": "leg1_arrival",
+   "label": "Arrival DFW to The Joule",
+   "date": "2026-11-12T10:15:00-06:00",
+   "passenger_count": null,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 26,
+    "name": "Mercedes Sprinter Van",
+    "quantity": 1
+   },
+   "line_total": 38500,
+   "pricing_method": "transfer",
+   "adjustments": {
+    "discount_basis_points": 3000,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 1000,
+    "temporary_rate_used": true
+   }
+  },
+  {
+   "key": "leg2_hourly",
+   "label": "Hourly service from The Joule, 8 hours",
+   "date": "2026-11-12T13:00:00-06:00",
+   "passenger_count": null,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 26,
+    "name": "Mercedes Sprinter Van",
+    "quantity": 1
+   },
+   "line_total": 142441,
+   "pricing_method": "hourly",
+   "adjustments": {
+    "discount_basis_points": 3000,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 1000,
+    "temporary_rate_used": true
+   }
+  },
+  {
+   "key": "leg3_dal",
+   "label": "The Joule to Dallas Love Field",
+   "date": "2026-11-12T17:00:00-06:00",
+   "passenger_count": 4,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 8,
+    "name": "SUV",
+    "quantity": 1
+   },
+   "line_total": 23100,
+   "pricing_method": "transfer",
+   "adjustments": {
+    "discount_basis_points": 3000,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 1000,
+    "temporary_rate_used": true
+   }
+  },
+  {
+   "key": "leg4_dfw",
+   "label": "Plano office to DFW departure",
+   "date": "2026-11-13T15:10:00-06:00",
+   "passenger_count": null,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 26,
+    "name": "Mercedes Sprinter Van",
+    "quantity": 1
+   },
+   "line_total": 38500,
+   "pricing_method": "transfer",
+   "adjustments": {
+    "discount_basis_points": 3000,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 1000,
+    "temporary_rate_used": true
+   }
+  }
+ ],
+ "rate_sheet_shown": true,
+ "headcount_confirmed": 14,
+ "stop_resolution": [
+  {
+   "stop": "DFW",
+   "query": "DFW",
+   "result": "resolved"
+  },
+  {
+   "stop": "DAL",
+   "query": "DAL",
+   "result": "resolved"
+  },
+  {
+   "stop": "The Joule",
+   "query": "The Joule Hotel, 1530 Main St, Dallas, Texas",
+   "result": "resolved"
+  },
+  {
+   "stop": "Dallas as directed",
+   "query": "Dallas, Texas",
+   "result": "resolved"
+  },
+  {
+   "stop": "Plano pickup",
+   "query": "Legacy West, 5908 Headquarters Dr, Plano, Texas",
+   "result": "resolved"
+  }
+ ],
+ "ambiguities": [],
+ "placeholders": [
+  "Scenario reading: Leg 1,2,4: one Mercedes Sprinter each, 14 pax, at supplied custom rates (assumed to carry all 14); leg 3: one SUV, 4 pax; greeter not priced"
+ ],
+ "quantity_extensions": [],
+ "time_readings": [
+  {
+   "unit": "leg4_dfw",
+   "kind": "flight_departure",
+   "client_time": "18:40",
+   "lead_hours": 3.0,
+   "airport_target": "15:40",
+   "drive_minutes": 29,
+   "pickup": "15:10",
+   "computed_pickup": "15:11",
+   "priced_pickup": "15:10",
+   "arrival": "15:39",
+   "window_min": 10
+  }
+ ],
+ "overlap_decisions": [
+  {
+   "block": "leg2_hourly",
+   "transfer": "leg3_dal",
+   "decision": "client_time"
+  }
+ ],
+ "placeholder_stops": [
+  {
+   "unit": "leg4_dfw",
+   "stop": "Legacy West",
+   "label": "Plano office (pickup address to be confirmed)"
+  }
+ ],
+ "flight_details": [
+  {
+   "unit": "leg1_arrival",
+   "text": "AA 1234 arriving 10:15 AM"
+  }
+ ],
+ "venue_names": [],
+ "user_supplied_facts": [],
+ "client_questions": [
+  "Wi-Fi on board",
+  "Bottled water for everyone",
+  "Child seat on leg 3",
+  "Meet and greet inside the terminal on arrival at DFW",
+  "Greeter with a name sign on every leg; driver waits at arrivals or the curb",
+  "Confirm 14 people with 14 carry-on bags fit in one Sprinter"
+ ],
+ "final": true,
+ "selection": {
+  "select": [
+   "leg1_arrival",
+   "leg2_hourly",
+   "leg3_dal",
+   "leg4_dfw"
+  ],
+  "alternatives": {}
+ },
+ "decisions": {
+  "request:0": "confirm",
+  "request:1": "included",
+  "request:2": "included",
+  "request:5": "We will be booking an executive van instead, which can hold all 14 passengers and their carry-on bags",
+  "discount_pct": "none",
+  "greeter_cost": "none",
+  "commission_pct": 1,
+  "cover": "executive-assistants",
+  "personalization": "defaults",
+  "map": "skip",
+  "format": "email copy + pdf"
+ },
+ "source_tool": "calculate_temporary_quote_units",
+ "persisted": false,
+ "aggregate_total": 242541,
+ "temporary_pricing": {
+  "rate": 38500,
+  "discount": null,
+  "label": null
+ }
+}

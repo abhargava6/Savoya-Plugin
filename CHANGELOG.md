@@ -11,6 +11,7 @@ From the Yerdle Dallas session on 0.27.5: one finished quote cost seven pricing 
 - **Parallel vehicles are not an overlap (R107).** A Sprinter and an SUV on the same date, time and stops are one trip. Recording the answer is deferred until a test shows it is needed.
 - **Client requests come first (R108).** `decide.py` asks `request:<n>` before the document is built; `normalize_quote.py` refuses while one is open.
 - **The header shows the confirmed headcount (R109).** The Yerdle Dallas test printed 4 passengers for a party of 14, because three Sprinter legs were priced without a passenger count. `quote.json` now carries `meta.headcount` from the intake record and the header prints it; without one, the header works it out from the legs as before.
+- **A real Dallas quote is a fixture.** `yerdle-dallas-flat-headcount` (14 passengers, flat headcount, three legs without a passenger count) fails on 0.27.6-test and passes now. It checks the header shows 14 and that no option is named.
 - **A single option is not named (R71).** The short email wrote "Option A" on a quote with one option. It names options only when there are two or more.
 
 ## 0.27.5
