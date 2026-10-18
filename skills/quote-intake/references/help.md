@@ -1,7 +1,7 @@
 ---
 title: Savoya quoting assistant — help
 page_url: "https://claude.ai/artifact/QTmf31aDH5hn7o6pMdHYXm"
-describes_release: 0.27.4
+describes_release: 0.27.5
 audience: everyone at Savoya
 ---
 
@@ -22,7 +22,7 @@ The quoting assistant turns a client's ground-transportation request into an exa
 4. **It checks vehicle availability in the city.** If the city has too few vehicles, it shows the three nearest markets and what each can add, and you choose. It never picks for you.
 5. **You get the priced quote.** Every option, every leg, with the positioning time included.
 6. **You refine it.** Different vehicles, headcount or hours, as often as you like.
-7. **It asks one question.** Customize the quote, go on to the client document, or stop at the quote. "Just the quote" is a complete answer.
+7. **It asks one question.** Customize the quote, go on to the client document, or stop at the quote. When you have several options, the same question asks whether to use both or only one, and "both" comes first. "Just the quote" is a complete answer.
 8. **Six quick questions, one at a time.** Discount, commission, cover, personalisation, map, format.
 9. **You get the files.** The PDF, and the email copy if you asked for it.
 10. **It asks what you would like changed.** Name it and the assistant fixes it, checks it again and hands you the new file.
@@ -40,7 +40,7 @@ The quoting assistant turns a client's ground-transportation request into an exa
 
 - A quote needs an identified client. Generic market rates with no client are not supported yet.
 - A market with no stored rate needs a base rate from you. There is no estimate. The client's discount and fuel are applied to the rate you give, and it is not saved in Savoya.
-- Real flight numbers and private-aviation details are kept as notes on the quote. Flights go in as "time to be confirmed".
+- Real flight numbers and private-aviation details are kept as notes on the quote. Flight details the client gave print as given; whatever they did not give reads "to be confirmed".
 - A passenger manifest with flight and seating detail is not supported yet.
 - Vehicle counts for nearby markets are extra vehicles, not date-specific availability, and they are unconfirmed.
 - Fuel cannot be changed in the document. To waive it, change it in Savoya and quote again.
@@ -90,6 +90,18 @@ Say "check my quoting setup". The assistant tests the connections and tells you 
 
 ### Can I add a discount in the PDF?
 Yes. Tell the assistant the percentage and it prices the quote again through Savoya, so the document carries Savoya's own figures. Flat amounts, such as a coordinator fee, can be added as lines. The assistant does not apply percentages to a document by hand.
+
+### What happens when the client asks for something Savoya cannot confirm, such as Wi-Fi on board or bottled water?
+The assistant asks you, once for each request, how the document should answer: included, not included, available at extra cost, or that you will confirm. Your answer is printed beside the request. It never decides for you. Tax, gratuity and cancellation are answered by the terms already on the document.
+
+### Can I get a copy without the commission?
+Yes. Ask for a no-commission copy after the document is made. It is a separate file with the same totals and without the commission lines. Keep the first one for your own use.
+
+### Why did it ask about a day block and an airport transfer?
+When an hourly block runs across an airport transfer on the same day, the assistant asks whether the block should start after the transfer, at the client's time, or at another time, before it prices anything. With several options, each option is checked on its own.
+
+### What if the client needs more vehicles than Savoya shows?
+If a vendor has confirmed the extra vehicles, tell the assistant how many, which vendor and who confirmed. It prices the largest number Savoya accepts and then extends the quantity only; every other figure stays Savoya's. The vendor details show on the internal summary and never in a client document.
 
 ### What do I do when something looks wrong?
 Tell the assistant "log this session" and say what looked wrong. It saves a record of the session, with or without a document, so the team can see exactly what happened. Then post a short note in the core-ideas Slack channel so someone picks it up.

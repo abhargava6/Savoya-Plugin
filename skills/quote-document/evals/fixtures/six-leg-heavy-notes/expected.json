@@ -1,5 +1,5 @@
 {
-  "_note": "Height-aware pagination must keep every ref and line total on the page. | pdf_pages went 5 -> 6 in 0.23.9. Its notes measure 57 cost units against a 53-unit page budget, so they now split across two pages. At 5 pages a subtotal row overlapped the footer border by 2px -- it fit, barely. The budget is deliberately conservative because the two failure modes are not equal: too loose clips content silently, too tight costs a visible page. We pay the page.",
+  "_note": "Height-aware pagination must keep every ref and line total on the page. | pdf_pages went 5 -> 6 in 0.23.9. Its notes measure 57 cost units against a 53-unit page budget, so they now split across two pages. At 5 pages a subtotal row overlapped the footer border by 2px -- it fit, barely. The budget is deliberately conservative because the two failure modes are not equal: too loose clips content silently, too tight costs a visible page. We pay the page. | R99 (0.27.5): identical notes collapse, short notes print inline and the totals sit on the first summary page; pages 6 -> 4. Checked by eye and by the browser measure: nothing clipped.",
   "adjustments": [],
   "leg_count": 6,
   "engine_subtotal_cents": 4374000,
@@ -11,5 +11,5 @@
   "not_contains": [
     "Stop 2"
   ],
-  "pdf_pages": 6
+  "pdf_pages": 4
 }

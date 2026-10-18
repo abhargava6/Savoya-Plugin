@@ -14,7 +14,9 @@ vehicle.
 > and it omitted seven types entirely — MPV, Premier European Touring, three armored
 > classes, and both greeters. A saved call against a wrong answer is not a saving.
 
-## Dimensions — the one thing only this file knows
+## Dimensions — internal screening only (R35)
+
+**Never state a figure from this table in a reply or a document, and never use it to say a vehicle fits or does not fit.** Core returns no length or clearance, and a figure from this file is not a Core fact. It can narrow the candidates before you ask. When a client's constraint hinges on a dimension (a parking pass, a low clearance), **ask the user** for the vehicle's actual figure and record the answer with `handoff.py write --fact "KEY|question asked|answer"`. A user-supplied figure is the only one a document may print, and it prints labelled as supplied.
 
 | id | Type | Approx. length × width |
 |---|---|---|

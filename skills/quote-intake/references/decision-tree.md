@@ -59,8 +59,13 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 - **Present, then stop.** A lookup is not a choice. **Ask** which market or mix the CSM wants, and the vehicle type and quantity for each. Never pick a source market for them, and never read a lookup or a preview as consent.
 - `market_ref` is valid **24 hours**. `sourcing_reference_expired` → look up again from the same market and date, swap in the new ref for the same service area, retry. Don't re-ask; they already chose. Only if that market is no longer returned do you show the new options and ask again.
 - `market_inventory_shortfall` → **no price**. State, per returned market or market group, the vehicle type, the requested count and the available count. Markets returned together **share vendors**, so their combined distinct vehicles can fall short even when each looks sufficient alone. Then ask for a new split.
+- **The CSM has the vehicles from a vendor (R95).** Ask how many, which vendor, who confirmed. Price the largest quantity Core accepts, `ingest` it, then `handoff.py extend-quantity`. Never multiply a unit by hand; the step refuses anything but the quantity and its totals. Internal only, and removed once Core allows the quantity (`ENGINEERING.md` H5).
 
 **G · Quote** — **one call**, all units
+
+- **Overlap and held-open stops (R97, R98).** After the legs are split, compare each hourly block with the airport transfers on its date; a transfer that starts inside the block is one question (start the block after the transfer, at the client's time, or another time) and is recorded with `--overlap`. A stop the user is holding open is priced at its resolved location and recorded with `--placeholder-stop`, so every document prints the neutral label.
+- **What the client supplied (R74, R62, R35).** A supplied flight is recorded with `--flight` and prints as given; a venue the client named is kept with `--venue`; a dimension Core does not return is asked of the user and recorded with `--fact`. None of them is logged as a placeholder.
+- **Time reading (R18/R34).** Before pricing an airport leg, classify the client's time: flight departure, pickup, or airport arrival target (wording decides; confirm with the user only if it does not). For a departure or a target, price once at the target, read `travel_times`, set pickup = target minus drive time (a departure first loses the 2h domestic / 3h international lead), and re-price once at the pickup. Write it with `--time-reading`; the write refuses a unit not priced at the computed pickup.
 
 - **Every price in a reply comes from a tool response.** No arithmetic of ours: no totals, no per-vehicle splits, no "roughly", no comparison between a priced option and an unpriced one. If a number is worth saying, it is worth a call.
 
@@ -92,7 +97,7 @@ Client questions that don't change pricing (tax, gratuity, cancellation, on-site
 - Core sizes the fleet from `passenger_count` and picks the cheapest candidate **per unit**, so a value option may mix vehicles across legs. That's correct — don't override it. Prefer `passenger_count` and omit `quantity` unless the user fixed a vehicle count.
 - **Hours are Core's too.** `duration` is the lever, not the answer: an as-directed stop sent `duration: 2` billed **3.25** hours and `duration: 4` billed **5.25** — a constant +1.25h of positioning. Send what the user asked for, show what Core billed, and say which is which. Never back-solve the duration.
 
-**G2 · Detail card** — after the user picks an option (or accepts the recommendation in best mode), **call** `calculate_quote_units` with that option's chosen vehicle per unit. Identical numbers; it renders the full detail card that `scenario_comparison` shows condensed. **Skip** in define mode — already that shape.
+**G2 · Detail card** — no longer a question (R93, 0.27.5): the choice of option is part of node I. **Call** `calculate_quote_units` with an option's chosen vehicle per unit only when the user asks to see that option's detail card while customizing. Identical numbers; it renders the full detail card that `scenario_comparison` shows condensed. **Skip** otherwise, and always in define mode — already that shape.
 
 **G3 · Greeter / on-site staff** — a Core quote unit, never a number a human invents
 
@@ -128,6 +133,8 @@ The rate check is the constant; the *location* follows who raised it. Something 
 - Unquoteable candidates inside a priced unit → shown as `✗`, no action needed.
 
 **I · Refine and hand off** — one question, the only one after the quote (R93): *"Customize this — different vehicles, headcount, hours, another scenario — go on to the client document, or is the quote all you need?"*
+- **Two or more options on screen:** the same question leads with the choice of options. Picker, in order: `Both options → client document` (`All N options` when there are more than two; recommended), `Option A only → client document` and one entry per other option, `Customize first`, `Just the quote`. With more than four options: `All options`, `Choose which` (the user names them), `Customize first`, `Just the quote`. It replaces the old detail-card question (G2); there is no second question.
+- **Both or all** → `ingest` the options response once (it saves each option as a package), then `write --package` for every option. **One option** → `write` with that option's package alone; no new pricing call.
 - **Customize** → back to **G** with the same stop refs. Loop until they say it's final.
 - Stop refs older than ~24h → back to **D** first. Never retry a rejected stop ref.
 

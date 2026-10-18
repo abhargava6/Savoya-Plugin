@@ -94,7 +94,16 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
               "scheduled_time": "2027-07-01T08:40:00+01:00"}}
   ```
   Always `commercial_tbd: true` — never an airline or flight number (see below). A missing flight *time* is fine: use a placeholder, record it, disclose it as "flight details to be confirmed". It doesn't change the price.
-- **Departure leg with a flight time but no pickup time → compute it and confirm.** Assume **2 hours before departure for domestic, 3 for international**, then ask (one picker, Step 3): the computed domestic time, the international time, or another time. Never quote a guessed pickup silently — it changes billable hours and therefore the price.
+- **Read every client time as one of three things (R18/R34).** A flight number or "departs at" is a **flight departure**. "Pick us up at" is a **pickup**. "Drop off at", "be there by" or "arrive at the airport" is an **airport arrival target**. Infer from the wording and ask the user to confirm only when the wording does not settle it (one picker, Step 3). Never price a flight departure as if it were the pickup.
+  - **Flight departure** → target = departure minus the lead time (**2 hours domestic, 3 international**, or the client's own). Pickup = target minus Core's drive time.
+  - **Airport arrival target** → pickup = target minus Core's drive time.
+  - **Pickup** → the pickup, as given.
+  - Drive time comes from `travel_times`, never from a guess. Price the unit once at the target to read it, then re-price once at the computed pickup. If Core returns no travel time, ask the user for the pickup.
+  - Record the reading with `write --time-reading KEY|flight_departure|HH:MM|lead_hours` (or `airport_arrival_target`, `pickup`). The write refuses when the unit is not priced at the computed pickup. The quote prints both times: "Pickup 11:55 AM · airport arrival 12:50 PM". Never quote a guessed pickup silently; it changes billable hours.
+- **An hourly block that runs across an airport transfer is put to the user (R97).** After you split the legs, compare each hourly or full-day block with the airport transfers on the same date. If a transfer starts inside the block, ask one question in the pickup picker: *start the block after the transfer*, *start it at the client's time*, or *another time*. Nothing is priced on the overlap until they answer. Record it with `write --overlap "BLOCK|TRANSFER|start_after_transfer"` (or `client_time`, `other:HH:MM`). `write` refuses an unanswered overlap and refuses `start_after_transfer` while the block is still priced before the transfer ends.
+- **A stop the user is holding open gets a neutral label (R98).** When the client has not given an address yet (a pickup "in White Plains, to be confirmed"), price with the resolved location and record `write --placeholder-stop "UNIT|stop name|White Plains, NY (pickup address to be confirmed)"`. The PDF, the email and the map print that label and never the resolved name or address.
+- **A fact Core does not return is asked for, never inferred (R35).** Core returns no vehicle length, width or clearance. When a client's constraint hinges on one (an 18 ft parking pass, a low garage), **ask the user** for the figure; do not take it from the class, the name or `vehicle-types.md`, and do not tell the user a vehicle fits or does not fit. Record the answer with `write --fact "KEY|the question you asked|their answer"`. Only a recorded fact may appear in a document, and it prints labelled as supplied.
+- **What the client supplied prints as given; only what they did not supply is "to be confirmed" (R74, R62).** When the client gives a flight number or time, record it with `write --flight "UNIT|BA2612 departing 2:50 PM"`. The document prints it and drops "Flight details to be confirmed" for that leg. Never log a supplied flight as a placeholder; `write` refuses that. When the client names a venue ("the Hyatt Regency"), keep that name: `write --venue "UNIT|the stop name Core returned|Hyatt Regency Boston Harbor"`. The fuel surcharge is the system's and belongs to the whole quote: it appears in the header and the terms only, never beside a leg, market or region, in the PDF or the email.
 - **Flight numbers are not usable yet.** Always send `commercial_tbd: true` with the flight time, even when the client gave an airline and flight number. The engine requires a resolved airline object with an id and there's no tool to resolve one, so a flight number makes the call fail. Keep the number as a client-facing line note ("AA 1234, departing 2:30pm") and tell the user once that it's recorded on the quote but not yet linked to flight tracking.
 - **The client's own questions that don't change pricing** (tax, gratuity, cancellation, on-site staff, signage) never block anything — record them with `--client-question` and let the document stage answer them.
 - Write the client's message verbatim to `request.md` now.
@@ -103,7 +112,7 @@ Decide unit structure **here**, with a one-line rationale per unit (it goes in t
 
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/references/decision-tree.md` is the **single source** for what to call, skip and ask at every node (A–J here, K–Q in the document skill). Read it once at the start of a quote; don't re-read it mid-flow. The shape in one paragraph so you know what you're reading:
 
-resolve client + stops + vehicle types in one turn (no passenger unless the user named one) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → (*which detailed quote?* only when intake itself generated options the request did not name) → refine loop → *customize it, go on to the client document, or just the quote?* → handoff
+resolve client + stops + vehicle types in one turn (no passenger unless the user named one) → ambiguities and blocking gaps in one picker → *rate sheet?* → *best / options / define?* → **one** quote call → scripted summary → refine loop → **one** question: *customize it, go on to the client document, or just the quote?* With two or more options the same question also settles which go to the document, **both options** first (R93) → handoff
 
 **When a unit has no stored rate in the market**, that is not a dead end. Core's recovery
 is the flow: ask the user for a temporary rate or another vehicle, then re-quote through
@@ -120,8 +129,7 @@ otherwise. Say the number came from a rate they supplied.
 | 0 | Only if something is genuinely ambiguous | Blocking gaps **and** stop ambiguities, batched into **one** message — missing year, headcount range, a location that didn't resolve, unsettled service shape |
 | 1 | **Every quote, no exceptions** | Rate sheet first, or straight to the quote? |
 | 2 | **Every quote, no exceptions** | Best value, a few options side by side, or you name the vehicles? |
-| 3 | After options intake generated itself are presented (never when the request named its own scenarios: price and show every one of them, write them all with `--package`) | Which one do you want in detail? |
-| 4 | After the quote | Customize it, go on to the client document, or just the quote? (One question; if they go on, quote-document asks the format.) |
+| 3 | After the quote (the only question after it) | Customize it, go on to the client document, or just the quote? (One question; if they go on, quote-document asks the format.) **With two or more options on screen the same picker leads with `Both options → client document` (all N when there are more than two), then `Option A only → client document` and one entry per other option, then `Customize first`, then `Just the quote`.** With more than four options: `All options`, `Choose which`, `Customize first`, `Just the quote`, and the user names them. "Both" writes every option with `--package`; one option writes only that option's saved package, and needs no new pricing call. |
 
 **Never ask the user about the product's own working (R93):** how a file is written, how the handoff is saved, which of the scenarios you just showed to keep. A CSM cannot answer these and every one is a chance to answer wrongly.
 
@@ -151,6 +159,8 @@ JSON
 ```
 It prints `SAVED … units add up to the response's own total`, or `REJECTED` with the reason (not JSON, no priced units, totals do not add up — the paste was cut or changed). On `REJECTED`, paste the response again, whole; never patch it to pass. One `ingest` per priced package; `--name` is any short label (`A`, `B`).
 
+**A `generate_quote_options` response (2–5 options) goes through the same `ingest`, whole and untouched.** It checks each option as a package and saves each one as `<name>_<option key>` (for example `A_value`, `A_elevated`); one failed option saves none. It prints the `--package` flags to pass to `write`. Never save it by hand or re-run `ingest` per option. A re-price that follows (for example a time reading) is a new `calculate_quote_units` call for that unit, ingested again under the same name.
+
 **Two or more separately priced packages become options in one document (R79).** When scenarios are separate packages (sourced vehicles are quoted one package at a time), ingest each, then:
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py write --dir handoff … \
@@ -159,6 +169,15 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py write --dir
 The first `--package` is Option A; the others' units become alternatives. A unit priced identically in both (the same Jun 10 shuttle) is declared with `--shared` and counted once. Each option keeps the pricing system's own total; nothing is summed. A single document with both scenarios is possible and is the default; never tell the user it is not.
 
 If the data cannot be saved or the document flow stops for any reason, intake still leaves a record: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py --blocked "<what stopped it>" --slug <slug> --client "<Client>" --request handoff/request.md` (R80).
+
+## A quantity above Core's inventory (R95)
+Core returns `market_inventory_shortfall` when more vehicles of a type are requested than it shows. If the CSM says the vendor has confirmed more, there is one product path, and no other. **Never scale a unit by hand.**
+
+1. Run the nearby-market check first (node F2). Use this path only when the CSM states they have the vehicles from a vendor.
+2. Ask in one message: how many, which vendor confirmed, and who at the vendor. The CSM's name is the approver.
+3. Price the **largest quantity Core accepts** for that unit and `ingest` the response as usual.
+4. Run `handoff.py extend-quantity --name <package> --unit <key> --quantity <N> --shortfall "<Core's exact message>" --vendor "<what the vendor confirmed, and who>" --approved-by "<CSM>"`. It changes the unit's quantity and the totals that follow, and nothing else; `write` checks that again. If it refuses, tell the user why. Do not edit the response.
+5. Say it in the summary, internal only: "7 Sprinters: 3 in Savoya's inventory, 4 confirmed by [vendor]". Never in a client document.
 
 ## What intake never does
 Discounts beyond the client's contracted rate, fuel surcharge, covers, personalization, maps, formats, mail. Those are document-flow questions. The number presented is the client's contracted pricing, and the summary says so.

@@ -3,7 +3,25 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
-## 0.27.4 (unreleased)
+## 0.27.5
+
+From the five 0.27.4 sessions (London/Sicily/Milan, Bangkok, Irvine, MetLife, IOL Whistler), the review that followed, and the first 0.27.5 test session (Yerdle Dallas, 17 Oct 2026). Requirements R95-R100 and the amendments to R18, R34, R35, R62, R72-R74, R78, R93 and R97 are in the PRD first.
+
+- **One question settles the options and the client document (R93).** With two or more options the post-quote picker leads with "Both options" and also offers each alone, customize and just the quote. The separate "which one in detail?" question is gone; choosing one option writes only its saved package.
+- **An options response is saved (R78).** `handoff.py ingest` takes a `generate_quote_options` response, checks each option as a package and saves each one; alternatives pair with the Option A unit that has the same key. Before, `ingest` rejected the response and named a flag that belongs to another step.
+- **A quantity above inventory has a product path (R95).** `handoff.py extend-quantity`, with the shortfall message, the vendor statement and the approver. Internal only. `ENGINEERING.md` H5 asks Core for the real thing.
+- **The record says whether the feedback question was reached (R96).** Snapshots carry `pending` until the second pass.
+- **A client's time has a kind (R18, R34).** Flight departure, pickup or airport arrival target; pickup is the target minus Core's drive time, the unit must be priced at it, and both times print.
+- **Dimensions come from the user (R35).** `--fact`; the vehicle-types reference is internal screening only. Fit and luggage questions are asked and never answered as a fit.
+- **Client requests Core cannot answer are asked, one each (R72, R73).** Answers print as "Re: <request> - <answer>". Tax, gratuity, cancellation and fuel display are boilerplate. A greeter is asked once.
+- **What the client supplied is printed as supplied (R62, R74).** Venue names, flight details; a supplied flight is never a placeholder. The fuel surcharge is whole-quote only: header and terms, never a leg, note or email line.
+- **Day blocks that overlap an airport leg are a question (R97)**, asked within one option only. **Placeholder stops print a neutral label (R98).**
+- **Notes collapse, short ones print inline, totals sit on the first summary page (R99).** The six-leg fixture drops from 6 pages to 4 and the sixteen-leg fixture from 9 to 8.
+- **A no-commission copy (R100).** `no_commission_copy.py`.
+- Suite: new guards for time readings, client-request answers, supplied facts, overlaps and placeholders, notes and the no-commission copy, copy rules, and the 0.27.5 test-review fixes.
+- The four Claude artifacts are refreshed to 0.27.5.
+
+## 0.27.4
 
 Keeps the Claude artifacts current and adds a help page for CSMs (PRD R86–R90).
 

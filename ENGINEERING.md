@@ -37,6 +37,7 @@ Acceptance criteria
 | Open | **F4** | No-client / rack-only quoting unbuilt on every path | Feature | **High** | GREEN-381 |
 | Open | **A4** | Rate sheet ignores "Waive All Incidentals" | Defect | **High** | GREEN-382 |
 | Open | **H4** | Quote tools can't price a vehicle sourced from a nearby market (Seattle → Whistler) | Defect | **High** | GREEN-388 |
+| Open | **H5** | Allow quoting a quantity above Savoya's inventory when the CSM has vendor confirmation | Feature | **High** | — |
 | Open | **B7b** | No FBO resolver, so private flights are unreachable | Feature | Medium | — |
 | Open | **G4** | Quote response lacks the no-local-provider warning | Feature | Medium | GREEN-383 |
 | Open | **G1** | `greeter_fee` fields exist but no tool sets them | Decision | Medium | — |
@@ -282,6 +283,44 @@ Issue 3, resolver gaps (minor):
 2. `calculate_temporary_quote_units` with `source_market_ref` returns a priced quote, or an error that names the cause. `core_contract_violation` with empty `issues` no longer occurs.
 3. Engineering states in writing which market's rate a sourced vehicle bills, and reconciles it with B10.
 4. Minor: `as_directed` "Whistler, BC" resolves to a stop, and `resolve_vehicle_types` with query "motorcoach" returns Coach Bus (id 6).
+
+---
+
+## H5 — Allow quoting a quantity above Savoya's inventory
+**Type:** Feature · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R95
+
+**Problem statement**
+Core returns `market_inventory_shortfall` when the requested quantity of a vehicle type exceeds the inventoried count. CSMs often confirm availability with vendors and can provide more than Savoya's inventory shows. Today they cannot get a priced quote for that quantity.
+
+**Impact**
+- A quote for more vehicles than the inventory shows cannot be produced from Core.
+- Plugin workaround, in place until this ships: the plugin prices the largest quantity Core accepts, checks that the line total equals Core's `per_vehicle_total_amount` times the quantity, and extends the quantity only. The CSM's approval, the vendor statement and the shortfall message are recorded. The extended figure is not a Core-returned figure.
+- Residual risk: Core might price the larger quantity differently from a straight multiple (a volume rule, for example). The plugin cannot see that.
+
+**Steps to reproduce**
+Yerdle Irvine, session `yerdle-irvine-mar20` on plugin 0.27.4, 2026-10-17. Pickup 2027-03-20 7:40am, 18000 Von Karman Ave to 6001 Oak Canyon, primary market Orange County, CA (service area id 11554). 80 passengers. Requested 7 x Mercedes Sprinter Van (vehicle type id 26, capacity 13). Core returned `market_inventory_shortfall` with 3 inventoried (as recorded in the session's workaround note; the verbatim response is not in the readable part of the capture).
+
+One Sprinter, priced by Core:
+
+```
+unit_total 77154 (cents) · pricing_method hourly · billable_hours 2 · minimum_hours 2
+base_rate_amount 50100 · effective_rate_amount 38577
+discount_basis_points 3000 · fuel_surcharge_basis_points 1000
+temporary_rate_used true · limited_availability true
+```
+
+The session multiplied that unit by 7 by hand (line total 540078 cents) and the CSM approved it in chat.
+
+**Reference**
+- Related: H4 and B10 (sourcing), G6 (large responses), PRD R48–R50, R54, R78, R92, R95.
+- The CSM states the quantity, the vendor and who confirmed it; the plugin records that statement with the extension.
+
+**Acceptance criteria**
+1. Core accepts a requested quantity above inventory when the caller asserts vendor confirmation, and returns a priced quote.
+2. The response carries `inventory_override` with `requested` and `inventoried`, at unit level and in the aggregate.
+3. Core writes an audit record of the override: who asserted it, the vendor statement, the time.
+4. Pricing at the larger quantity is Core's own calculation, so any quantity-dependent rule is applied.
+5. The plugin workaround is removed when this ships.
 
 ---
 

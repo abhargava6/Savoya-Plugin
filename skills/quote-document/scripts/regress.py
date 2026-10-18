@@ -2276,6 +2276,420 @@ def lint_client_requests():
     return True
 
 
+def lint_client_request_answers():
+    """PRD R72/R73. A request Core cannot answer is put to the user, and the answer reaches the document.
+    Tax, gratuity and cancellation are answered by the terms and are never asked."""
+    import json as _json
+    import subprocess
+    import tempfile
+    sys.path.insert(0, HERE)
+    import client_requests as cr
+    problems = []
+    for text, kind in (("Is tax and driver gratuity included?", "boilerplate"),
+                       ("Cancellation policy: please provide", "boilerplate"),
+                       ("Onsite staff support in the hotel lobby to direct customers", "operational"),
+                       ("Do you have an electric vehicle?", "operational")):
+        if cr.classify(text) != kind:
+            problems.append(f"{text!r} classed {cr.classify(text)}, wanted {kind}")
+    qs = ["Is tax included?", "Do you have an electric vehicle?", "Signage on the vehicles"]
+    if cr.request_keys(qs) != ["request:1", "request:2"]:
+        problems.append(f"request keys wrong: {cr.request_keys(qs)}")
+    items = cr.carry(qs, {"request:1": "not included", "request:2": "Yes, signage is fine."})
+    quote = {"client_requests": items, "personalization": {}}
+    line = cr.requests_line(quote)
+    if "electric vehicle \u2014 We are not able to provide this." not in line or "Signage on the vehicles \u2014 Yes, signage is fine." not in line:
+        problems.append(f"answers not printed beside their requests: {line!r}")
+    if "will confirm" in line:
+        problems.append(f"an answered request still says it will be confirmed: {line!r}")
+    unanswered = cr.requests_line({"client_requests": cr.carry(qs), "personalization": {}})
+    if "will confirm" not in unanswered or cr.FORBIDDEN.search(unanswered):
+        problems.append(f"unanswered fallback wrong: {unanswered!r}")
+    import confirm_items as ci
+    if [i for i in ci.items(quote) if i["kind"] == "client_request"]:
+        problems.append("an answered request is still a confirm item")
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(os.path.join(d, "handoff"))
+        _json.dump({"client": {"name": "T"}, "client_questions": qs, "decisions": {}}, open(os.path.join(d, "handoff", "intake.json"), "w"))
+        def dec(*a):
+            return subprocess.run([sys.executable, os.path.join(HERE, "decide.py")] + list(a), capture_output=True, text=True, cwd=d)
+        r = dec("discount_pct", "none")
+        if "next: request:1" not in r.stdout:
+            problems.append(f"decide.py did not ask the electric-vehicle request next: {r.stdout[:120]!r}")
+        r = dec("request:1", "not included")
+        if "next: request:2" not in r.stdout:
+            problems.append(f"decide.py did not go on to the second request: {r.stdout[:120]!r}")
+        r = dec("request:2", "extra cost")
+        if "next: commission_pct" not in r.stdout:
+            problems.append(f"decide.py did not return to the base questions: {r.stdout[:120]!r}")
+    skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    if "request:<n>" not in skill:
+        problems.append("SKILL.md does not teach the request:<n> questions (R72/R73)")
+    if problems:
+        print("  \u2717 client request answers")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 client request answers (asked per request, tax/gratuity/cancellation never asked, answer printed beside the request)")
+    return True
+
+
+def lint_user_supplied_facts():
+    """PRD R35. A dimension appears in a document only if Core returned it or the user supplied it.
+    Core returns none, so the generated documents of every fixture print none unless the quote
+    carries it in user_supplied_facts; the instruction files tell the session to ask."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    dim = re.compile(r"\b\d{1,2}(\.\d)?\s?(ft|feet|foot)\b|\b\d{1,2}\s?'\s?(long|length)|\b(length|clearance)\b", re.I)
+    with tempfile.TemporaryDirectory() as d:
+        for name in sorted(os.listdir(DEFAULT_FIXTURES)):
+            fx = os.path.join(DEFAULT_FIXTURES, name, "handoff")
+            if not os.path.isdir(fx):
+                continue
+            q = os.path.join(d, name + ".json")
+            r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                               capture_output=True, text=True)
+            if r.returncode:
+                continue
+            quote = _json.load(open(q, encoding="utf-8"))
+            if "user_supplied_facts" not in quote:
+                problems.append(f"{name}: quote does not carry user_supplied_facts")
+            supplied = " ".join(str(f.get("answer", "")) for f in quote.get("user_supplied_facts", []))
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q, "--clear"], capture_output=True, text=True)
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q], capture_output=True, text=True).stdout or ""
+            for m in dim.finditer(mail):
+                if m.group(0).lower() not in supplied.lower():
+                    problems.append(f"{name}: the email prints {m.group(0)!r}, which no user supplied")
+    vt = open(os.path.join(HERE, "..", "..", "quote-intake", "references", "vehicle-types.md"), encoding="utf-8").read()
+    if "Never state a figure from this table" not in vt:
+        problems.append("vehicle-types.md still lets a session state its dimensions")
+    sk = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    if "--fact" not in sk or "never inferred" not in sk:
+        problems.append("quote-intake SKILL.md does not tell the session to ask for a missing dimension (R35)")
+    if problems:
+        print("  \u2717 user-supplied facts")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 user-supplied facts (no unsupplied dimension in any fixture email; the instructions say ask)")
+    return True
+
+
+def lint_overlap_and_placeholders():
+    """PRD R97 and R98. An hourly block across an airport transfer is a question; a held-open stop
+    prints its neutral label and never the resolved name or address."""
+    import json as _json
+    import shutil
+    import subprocess
+    import tempfile
+    problems = []
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "quote-intake", "scripts"))
+    import importlib
+    h = importlib.import_module("handoff")
+
+    def unit(key, method, start, hours=0, airport=False, drive=(30,)):
+        return {"key": key, "pickup_date": f"2027-03-20T{start}:00-07:00", "travel_times": list(drive),
+                "stops": [{"name": "LAX", "stop_type": "airport"}] if airport else [{"name": "Hotel"}],
+                "pricing_summary": {"pricing_method": method, "calculation": {"billable_hours": hours}}}
+    day = unit("day", "hourly", "08:00", 10)
+    xfer = unit("xfer", "transfer", "14:00", airport=True, drive=(45,))
+    early = unit("early", "transfer", "06:00", airport=True, drive=(45,))
+    after = unit("after", "transfer", "19:00", airport=True)
+    if h.overlaps([day, xfer]) != [("day", "xfer")]:
+        problems.append("a transfer inside the block was not found")
+    if h.overlaps([day, early, after]):
+        problems.append("a transfer outside the block was reported")
+    _, probs = h.overlap_decisions([], [day, xfer])
+    if not any("Ask the user" in x for x in probs):
+        problems.append("an unanswered overlap does not produce the question")
+    got, probs = h.overlap_decisions(["day|xfer|client_time"], [day, xfer])
+    if probs or got != [{"block": "day", "transfer": "xfer", "decision": "client_time"}]:
+        problems.append(f"an answered overlap was not accepted: {probs}")
+    _, probs = h.overlap_decisions(["day|xfer|start_after_transfer"], [day, xfer])
+    if not any("still starts before" in x for x in probs):
+        problems.append("start_after_transfer accepted while the block still starts first")
+    _, probs = h.overlap_decisions(["day|xfer|whenever"], [day, xfer])
+    if not any("bad --overlap" in x for x in probs):
+        problems.append("a bad overlap answer was accepted")
+    # R98
+    with tempfile.TemporaryDirectory() as d:
+        fx = os.path.join(DEFAULT_FIXTURES, "boston-offsite-handoff", "handoff")
+        q0 = os.path.join(d, "q0.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, q0, "--prepared-by", "Regress"], capture_output=True, text=True)
+        if r.returncode:
+            problems.append("could not normalize the base fixture")
+        else:
+            base = _json.load(open(q0, encoding="utf-8"))
+            every = [s["label"] for l in base["legs"] for s in l["stops"]]
+            leg = next(l for l in base["legs"] if any(s.get("kind") == "address" and every.count(s["label"]) == 1 for s in l["stops"]))
+            stop = next(s for s in leg["stops"] if s.get("kind") == "address" and every.count(s["label"]) == 1)
+            real, neutral = stop["label"], "Boston, MA (pickup address to be confirmed)"
+            fx2 = os.path.join(d, "handoff")
+            shutil.copytree(fx, fx2)
+            ip = os.path.join(fx2, "intake.json")
+            intake = _json.load(open(ip, encoding="utf-8"))
+            intake["placeholder_stops"] = [{"unit": leg["key"], "stop": real, "label": neutral}]
+            _json.dump(intake, open(ip, "w"))
+            q1 = os.path.join(d, "q1.json")
+            subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx2, q1, "--prepared-by", "Regress"], capture_output=True, text=True)
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q1, "--clear"], capture_output=True, text=True)
+            q = _json.load(open(q1, encoding="utf-8"))
+            st = next(s for l in q["legs"] if l["key"] == leg["key"] for s in l["stops"] if s.get("placeholder"))
+            if st["label"] != neutral or "address" in st:
+                problems.append(f"the held-open stop did not take its neutral label: {st}")
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q1], capture_output=True, text=True).stdout or ""
+            if neutral not in mail:
+                problems.append("the email does not print the neutral label")
+            if real in mail.replace(neutral, ""):
+                problems.append("the email still prints the resolved stop name")
+    sk = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    if "--overlap" not in sk or "--placeholder-stop" not in sk:
+        problems.append("quote-intake SKILL.md does not teach --overlap and --placeholder-stop")
+    if problems:
+        print("  \u2717 overlap and placeholders")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 overlap and placeholders (overlap asked, never silent; held-open stop prints its neutral label)")
+    return True
+
+
+def lint_notes_and_no_commission():
+    """PRD R99 and R100. Identical notes collapse, short notes print inline, totals follow the
+    subtotals; a no-commission copy is made from the same session without moving the total."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    sys.path.insert(0, HERE)
+    import render_print as rp
+    legs = [{"ref": f"A{i}", "client_notes": ["Meet inside the terminal at baggage reclaim, name board displayed.", "Gate code 4411."]} for i in (1, 2, 3)]
+    legs[1]["client_notes"].append("Child seat requested for this leg only, to be confirmed with dispatch before the day of travel.")
+    out = rp.prep_notes(legs)
+    long_notes = [n for l in out for n in l["client_notes"]]
+    inline = [n for l in out for n in l["inline_notes"]]
+    if sum("Meet inside the terminal" in n for n in long_notes + inline) != 1:
+        problems.append("an identical note was not collapsed to one")
+    if not any(n.startswith("A1, A2 and A3:") for n in long_notes + inline):
+        problems.append(f"the collapsed note does not name its legs: {long_notes + inline}")
+    if "A1, A2 and A3: Gate code 4411." not in inline:
+        problems.append("a short collapsed note did not print inline")
+    if not any("Child seat" in n for n in out[1]["client_notes"]):
+        problems.append("a long one-leg note left the notes block")
+    if any(l["client_notes"] != legs[i]["client_notes"] for i, l in enumerate(out)) is False:
+        problems.append("prep_notes changed nothing")
+    if legs[0]["client_notes"] != ["Meet inside the terminal at baggage reclaim, name board displayed.", "Gate code 4411."]:
+        problems.append("prep_notes changed the quote it was given")
+    with tempfile.TemporaryDirectory() as d:
+        fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options", "handoff")
+        q = os.path.join(d, "q.json")
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, q, "--prepared-by", "Regress"], capture_output=True, text=True)
+        if r.returncode:
+            problems.append("could not normalize the base fixture")
+        else:
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q, "--clear", "--commission-pct", "5"], capture_output=True, text=True)
+            had = _json.load(open(q, encoding="utf-8"))
+            if not had.get("commission_pct"):
+                problems.append("the fixture quote did not take a commission; guard tests nothing")
+            else:
+                mail = os.path.join(d, "m.txt")
+                r = subprocess.run([sys.executable, os.path.join(HERE, "no_commission_copy.py"), q, "--email", mail, "--dir", os.path.join(d, "none")], capture_output=True, text=True)
+                if r.returncode:
+                    problems.append(f"no_commission_copy failed: {(r.stderr or r.stdout)[:160]}")
+                else:
+                    cp = _json.load(open(os.path.splitext(q)[0] + ".no-commission.json", encoding="utf-8"))
+                    if cp.get("commission_pct") or cp.get("total_cents") != had.get("total_cents"):
+                        problems.append("the copy kept a commission or moved the total")
+                    if "ommission" in open(mail, encoding="utf-8").read():
+                        problems.append("the no-commission email still says commission")
+                    if not _json.load(open(q, encoding="utf-8")).get("commission_pct"):
+                        problems.append("the original lost its commission")
+    sk = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
+    if "no_commission_copy.py" not in sk:
+        problems.append("SKILL.md does not teach the no-commission copy")
+    if problems:
+        print("  \u2717 notes and no-commission copy")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 notes and no-commission copy (collapse, inline, totals first; copy keeps the total and drops the commission)")
+    return True
+
+
+def lint_review_fixes():
+    """The 17 Oct 2026 test2 session. An options response is ingested, not rejected; overlap
+    questions are asked within one option only; a fuel-display ask is never a client request; a fit
+    question is one; a greeter is asked once; a supplied flight is no placeholder."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    sys.path.insert(0, HERE)
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "quote-intake", "scripts"))
+    import importlib
+    cr = importlib.import_module("client_requests")
+    h = importlib.import_module("handoff")
+    for t, want in (("If a fuel surcharge applies, show it on each leg", "boilerplate"),
+                    ("Confirm that all 14 people with 14 carry-on bags fit in one Sprinter", "operational"),
+                    ("Please include tax, gratuity and your cancellation policy", "boilerplate"),
+                    ("Please send flight details when you have them", "boilerplate"),
+                    ("Confirmation of the booking by email", "boilerplate")):
+        if cr.classify(t) != want:
+            problems.append(f"{t!r} classed {cr.classify(t)}, wanted {want}")
+    qs = ["Wi-Fi on board", "Greeter with name sign", "Meet and greet inside terminal", "Confirm 14 carry-ons fit in one Sprinter", "Fuel surcharge on each leg"]
+    if cr.request_keys(qs) != ["request:0", "request:3"]:
+        problems.append(f"request keys are {cr.request_keys(qs)}; a greeter must be asked once (greeter_cost) and fuel never")
+    items = {i["text"]: i for i in cr.carry(qs, {"request:0": "included"})}
+    if items["Greeter with name sign"].get("answer"):
+        problems.append("a greeter request took a request answer")
+    d_src = open(os.path.join(HERE, "decide.py"), encoding="utf-8").read()
+    if "Never say it fits" not in d_src:
+        problems.append("decide.py does not warn against claiming a fit")
+    # options response
+    def pkg(prefix, rate):     # Core gives every option the same unit keys
+        us = [{"key": "t1", "line_total": rate, "pickup_date": "2027-03-20T08:00:00-07:00", "stops": [{"name": "Hotel"}],
+               "pricing_summary": {"pricing_method": "hourly"}},
+              {"key": "t2", "line_total": rate * 2, "pickup_date": "2027-03-20T14:00:00-07:00", "stops": [{"name": "LAX", "stop_type": "airport"}],
+               "pricing_summary": {"pricing_method": "transfer"}}]
+        return {"quote_units": us, "aggregate_total": rate * 3}
+    resp = {"options": [{"key": "value", "label": "Value", "result": pkg("v", 1000)}, {"key": "elevated", "label": "Elevated", "result": pkg("e", 1500)}]}
+    with tempfile.TemporaryDirectory() as d:
+        r = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py"), "ingest", "--name", "A", "--dir", d],
+                           input=_json.dumps(resp), capture_output=True, text=True)
+        out = r.stdout + r.stderr
+        if r.returncode or "--package A_value --package A_elevated" not in out:
+            problems.append(f"an options response was not ingested as packages: {out[:200]}")
+        for n in ("A_value", "A_elevated"):
+            if not os.path.exists(os.path.join(d, "responses", n + ".json")):
+                problems.append(f"{n}.json was not saved")
+        # the merge pairs each alternative with the Option A unit that has the same key; nothing else is asked
+        ns = type("NS", (), {"package": ["A_value", "A_elevated"], "dir": d, "shared": [], "alt_of": []})()
+        try:
+            merged, pk, alts = h.merge_packages(ns)
+            if alts != {"A_elevated_t1": "t1", "A_elevated_t2": "t2"}:
+                problems.append(f"merged options did not pair by key: {alts}")
+            if len(merged["quote_units"]) != 4 or merged["aggregate_total"] != 3000:
+                problems.append("merged options lost a unit or changed the primary total")
+        except SystemExit as e:
+            problems.append(f"merging ingested options stopped: {e}")
+        bad = _json.loads(_json.dumps(resp))
+        bad["options"][1]["result"]["aggregate_total"] += 1
+        r = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py"), "ingest", "--name", "B", "--dir", d],
+                           input=_json.dumps(bad), capture_output=True, text=True)
+        if r.returncode != 2 or os.path.exists(os.path.join(d, "responses", "B_value.json")):
+            problems.append("an options response with one altered total was partly saved")
+    # overlaps stay inside one option
+    a1 = {"key": "a1", "pickup_date": "2027-03-20T08:00:00-07:00", "travel_times": [30], "stops": [{"name": "LAX", "stop_type": "airport"}],
+          "pricing_summary": {"pricing_method": "hourly", "calculation": {"billable_hours": 10}}}
+    b1 = dict(a1, key="b1")
+    if len(h.overlaps([a1, b1])) != 2:
+        problems.append("the control pair is not found without option sets")
+    if h.overlaps([a1, b1], [{"a1"}, {"b1"}]):
+        problems.append("units in different options were paired as an overlap")
+    merged = {"merged_packages": {"A": {"unit_keys": ["a1", "a3"]}, "B": {"unit_keys": ["b1"]}}}
+    sets = h.option_sets(merged, ["a1", "a3"], {"b1": "a1"})
+    if sets != [{"a1", "a3"}, {"b1", "a3"}]:
+        problems.append(f"option sets are {sets}; an unreplaced Option A unit belongs to both options")
+    n_src = open(os.path.join(HERE, "normalize_quote.py"), encoding="utf-8").read()
+    if "a supplied flight is no placeholder" not in n_src:
+        problems.append("the normalizer still reports a supplied flight as a placeholder")
+    sk = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    if "generate_quote_options" not in sk.split("Saving a pricing response")[1][:3500]:
+        problems.append("quote-intake SKILL.md does not say how to save a generate_quote_options response")
+    if problems:
+        print("  \u2717 review fixes")
+        for x in problems:
+            print("  \u2717", x)
+        return False
+    print("  \u2713 review fixes (options response ingested and merged by key; overlaps within one option; fuel, fit and greeter classes; supplied flight is no placeholder)")
+    return True
+
+
+def lint_copy_rules():
+    """PRD R62 and R74. The fuel surcharge belongs to the whole quote: it is in the header and
+    the terms and in no leg row, email line or note. A flight the client supplied prints as
+    given; a venue the client named prints by that name."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    with tempfile.TemporaryDirectory() as d:
+        for name in sorted(os.listdir(DEFAULT_FIXTURES)):
+            fx = os.path.join(DEFAULT_FIXTURES, name, "handoff")
+            if not os.path.isdir(fx):
+                continue
+            q = os.path.join(d, name + ".json")
+            if subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, q, "--prepared-by", "Regress"],
+                              capture_output=True, text=True).returncode:
+                continue
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q, "--clear"], capture_output=True, text=True)
+            quote = _json.load(open(q, encoding="utf-8"))
+            html = os.path.join(d, name + ".html")
+            subprocess.run([sys.executable, os.path.join(HERE, "render_print.py"), q, os.path.join(d, name + ".pdf"), "--html", html, "--no-cover"], capture_output=True, text=True)
+            if os.path.exists(html):
+                page = open(html, encoding="utf-8").read()
+                for row in re.findall(r"<tr>\s*<td class='ref'>.*?</tr>", page, re.S):
+                    if re.search(r"fuel", row, re.I):
+                        problems.append(f"{name}: a leg row names the fuel surcharge")
+                        break
+                for row in re.findall(r"<tr><td class='ref'>.*?</tr>", page, re.S):
+                    if re.search(r"fuel", row, re.I):
+                        problems.append(f"{name}: a note row names the fuel surcharge")
+                        break
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q], capture_output=True, text=True).stdout or ""
+            places = {str(l.get("service_area")) for l in quote["legs"] if l.get("service_area")}
+            for ln in mail.splitlines():
+                if re.search(r"fuel", ln, re.I):
+                    if re.search(r"\bA\d\b|\bB\d\b", ln) or any(p and p.split(",")[0] in ln for p in places):
+                        problems.append(f"{name}: an email line puts the fuel surcharge beside a leg or market: {ln[:90]!r}")
+            for l in quote["legs"]:
+                for n in l.get("client_notes") or []:
+                    if re.search(r"fuel", str(n), re.I):
+                        problems.append(f"{name}: a leg note names the fuel surcharge")
+        # R74 and R62: supplied flight and venue name
+        fx = os.path.join(DEFAULT_FIXTURES, "boston-offsite-handoff", "handoff")
+        base = os.path.join(d, "b.json")
+        subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx, base, "--prepared-by", "Regress"], capture_output=True, text=True)
+        bq = _json.load(open(base, encoding="utf-8"))
+        leg = next((l for l in bq["legs"] if any(s.get("kind") == "airport" for s in l["stops"])), None)
+        if not leg:
+            problems.append("no airport leg in the base fixture; the flight check tests nothing")
+        else:
+            import shutil
+            fx2 = os.path.join(d, "hf")
+            shutil.copytree(fx, fx2)
+            ip = os.path.join(fx2, "intake.json")
+            it = _json.load(open(ip, encoding="utf-8"))
+            it["flight_details"] = [{"unit": leg["key"], "text": "BA2612 departing 2:50 PM"}]
+            _json.dump(it, open(ip, "w"))
+            q2 = os.path.join(d, "f.json")
+            subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff", fx2, q2, "--prepared-by", "Regress"], capture_output=True, text=True)
+            subprocess.run([sys.executable, os.path.join(HERE, "apply_adjustments.py"), q2, "--clear"], capture_output=True, text=True)
+            h2 = os.path.join(d, "f.html")
+            subprocess.run([sys.executable, os.path.join(HERE, "render_print.py"), q2, os.path.join(d, "f.pdf"), "--html", h2, "--no-cover"], capture_output=True, text=True)
+            page = open(h2, encoding="utf-8").read() if os.path.exists(h2) else ""
+            if "Flight BA2612 departing 2:50 PM" not in page:
+                problems.append("a supplied flight does not print as given")
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), q2], capture_output=True, text=True).stdout or ""
+            if "flight BA2612 departing 2:50 PM" not in mail:
+                problems.append("a supplied flight is missing from the email heading")
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "quote-intake", "scripts"))
+    import importlib
+    h = importlib.import_module("handoff")
+    isk = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    for flag in ("--flight", "--venue"):
+        if flag not in isk or not hasattr(h, "TIME_KINDS"):
+            problems.append(f"quote-intake SKILL.md does not teach {flag}")
+    if problems:
+        print("  \u2717 copy rules")
+        for b in sorted(set(problems)):
+            print(f"      - {b}")
+        return False
+    print("  \u2713 copy rules (fuel only in header and terms; supplied flight and venue print as given)")
+    return True
+
+
 def lint_confirm_items():
     """Every placeholder and operational request reaches the confirm list (PRD R72).
 
@@ -2608,6 +3022,176 @@ def lint_handoff_packages():
     return True
 
 
+def lint_time_reading():
+    """PRD R18/R34. A client time is read as a flight departure, a pickup or an airport arrival
+    target; the pickup follows from Core's drive time and the lead time, and the unit must be
+    priced at it. Shaped on London: departure 14:50 international, 55 min drive."""
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
+    sys.path.insert(0, os.path.dirname(intake))
+    import importlib
+    h = importlib.import_module("handoff")
+
+    def u(pickup, tt=(55,)):
+        return {"key": "L1", "pickup_date": pickup, "travel_times": list(tt)}
+    cases = [
+        ("departure 15:50 +3h lead, 55 min drive -> target 12:50, pickup 11:55", "L1|flight_departure|15:50|3", u("2027-05-01T11:55:00+01:00"), "11:55", "12:50", None),
+        ("departure priced at the airport target is refused", "L1|flight_departure|15:50|3", u("2027-05-01T12:50:00+01:00"), None, None, "priced at 12:50"),
+        ("departure without a lead time is refused", "L1|flight_departure|15:50", u("2027-05-01T11:55:00+01:00"), None, None, "lead time"),
+        ("arrival target 12:50 -> pickup 11:55", "L1|airport_arrival_target|12:50", u("2027-05-01T11:55:00+01:00"), "11:55", "12:50", None),
+        ("pickup stands as given", "L1|pickup|11:30", u("2027-05-01T11:30:00+01:00"), "11:30", None, None),
+        ("no Core travel time -> ask, never estimate", "L1|airport_arrival_target|12:50", u("2027-05-01T11:55:00+01:00", ()), None, None, "no travel time"),
+        ("unknown kind refused", "L1|arrival|12:50", u("2027-05-01T11:55:00+01:00"), None, None, "bad --time-reading"),
+    ]
+    for name, spec, unit, pickup, target, err in cases:
+        out, probs = h.time_readings([spec], [unit])
+        if err:
+            if not any(err in x for x in probs):
+                problems.append(f"{name}: expected a refusal mentioning {err!r}, got {probs}")
+        elif probs or not out or out[0]["pickup"] != pickup or out[0].get("airport_target") != target:
+            problems.append(f"{name}: got {out} {probs}")
+    # the renderer prints both times; the email heading carries both
+    src = open(os.path.join(HERE, "render_print.py"), encoding="utf-8").read()
+    em = open(os.path.join(HERE, "draft_email.py"), encoding="utf-8").read()
+    nq = open(os.path.join(HERE, "normalize_quote.py"), encoding="utf-8").read()
+    if "airport arrival" not in src or "airport arrival" not in em or "airport_target" not in nq:
+        problems.append("the renderer, the email draft and normalize_quote must carry airport_target (R34)")
+    for rel in ("quote-intake/SKILL.md", "quote-intake/references/decision-tree.md", "quote-intake/references/client-questions.md"):
+        t = open(os.path.join(HERE, "..", "..", rel), encoding="utf-8").read()
+        if "time-reading" not in t and "time reading" not in t:
+            problems.append(f"{rel} does not teach the time reading (R18/R34)")
+    for x in problems:
+        print("  FAIL time reading:", x)
+    print(f"{'ok  ' if not problems else 'FAIL'} time reading ({len(cases)} cases)")
+    return not problems
+
+
+def lint_quantity_extension():
+    """PRD R95. A quantity above Core's inventory is extended by a product path that changes the
+    quantity and the totals that follow from it, and nothing else. Built from the shape of the
+    Irvine response (3 Sprinters priced at 77154 each, 5 SUVs at 15399 each)."""
+    import copy
+    import json as _json
+    import subprocess
+    import tempfile
+    problems = []
+    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
+
+    def unit(key, name, q, pv, pickup):
+        line = pv * q
+        return {"key": key, "label": key, "quantity": q, "unit_total": pv, "line_total": line, "currency": "USD",
+                "vehicle_type": {"id": 26, "name": name, "capacity": 13, "classification": "other"},
+                "passenger_count": 80, "pickup_date": pickup, "stops": [],
+                "pricing_summary": {"estimate_type": "exact", "status": "priced", "total_amount": line,
+                                    "per_vehicle_total_amount": pv, "pricing_method": "hourly",
+                                    "adjustments": {"discount_basis_points": 3000, "fuel_surcharge_basis_points": 1000},
+                                    "calculation": {"billable_hours": 2, "passenger_count": 80, "vehicle_capacity": 13,
+                                                    "requested_quantity": q, "required_quantity": 7, "quantity": q}}}
+
+    def response(q=3):
+        us = [unit("t1", "Mercedes Sprinter Van", q, 77154, "2027-03-20T07:40:00-07:00"),
+              unit("t2", "SUV", 5, 15399, "2027-03-20T14:15:00-07:00")]
+        tot = sum(u["line_total"] for u in us)
+        return {"contract_version": 1, "aggregate_total": tot, "quote_units": us,
+                "pricing_summary": {"total_amount": tot, "calculation": {"quote_unit_count": 2}},
+                "merged_packages": {"A": {"aggregate_total": tot, "unit_keys": ["t1", "t2"]}}}
+    SHORT = "Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."
+    GOOD = ["--name", "A", "--unit", "t1", "--quantity", "7", "--shortfall", SHORT,
+            "--vendor", "Coastline Coaches confirmed 4 more Sprinters (Dana, dispatch)", "--approved-by", "Ayush"]
+    with tempfile.TemporaryDirectory() as d:
+        def run(args, stdin=None):
+            return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
+        open(os.path.join(d, "request.md"), "w").write("80 passengers 3/20 7:40am Von Karman to Oak Canyon; 25 passengers back at 2:15pm.\n")
+        run([intake, "ingest", "--name", "A"], _json.dumps(response()))
+        r = run([intake, "extend-quantity"] + GOOD)
+        rp = os.path.join(d, "handoff", "responses", "A.json")
+        if r.returncode:
+            problems.append(f"a valid extension was refused: {(r.stderr or r.stdout).strip()[:200]}")
+        else:
+            ext = _json.load(open(rp))
+            t1 = next(u for u in ext["quote_units"] if u["key"] == "t1")
+            if t1["quantity"] != 7 or t1["line_total"] != 77154 * 7 or t1["unit_total"] != 77154:
+                problems.append("the extended unit is not 7 x Core's per-vehicle amount")
+            want = 77154 * 7 + 15399 * 5
+            if ext["aggregate_total"] != want or ext["pricing_summary"]["total_amount"] != want or ext["merged_packages"]["A"]["aggregate_total"] != want:
+                problems.append("the totals that follow from the quantity were not carried through")
+            if (t1["pricing_summary"]["calculation"]["quantity"], t1["pricing_summary"]["calculation"]["requested_quantity"]) != (7, 7):
+                problems.append("the unit's calculation quantity was not updated")
+            if not os.path.exists(os.path.join(d, "handoff", "responses", "_source", "A.json")):
+                problems.append("the Core response the extension came from was not kept")
+            if "quantity_extension" not in (ext.get("_ingest") or {}):
+                problems.append("the extension was not recorded in the response")
+            w = [intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md", "--package", "A", "--final"]
+            r = run(w)
+            if r.returncode:
+                problems.append(f"write refused a good extension: {(r.stderr or r.stdout).strip()[:200]}")
+            else:
+                ik = _json.load(open(os.path.join(d, "handoff", "intake.json")))
+                if len(ik.get("quantity_extensions") or []) != 1 or not any("Quantity extended" in x for x in ik.get("placeholders", [])):
+                    problems.append("intake.json does not record the extension where the confirm step lists it")
+            # any change beyond the quantity is refused at write, even when the totals still add up
+            for label, edit in (
+                ("a changed discount", lambda x: x["quote_units"][0]["pricing_summary"]["adjustments"].update(discount_basis_points=2000)),
+                ("an inflated line total", lambda x: (x["quote_units"][0].update(line_total=x["quote_units"][0]["line_total"] + 100),
+                                                      x["quote_units"][0]["pricing_summary"].update(total_amount=x["quote_units"][0]["line_total"]),
+                                                      x.update(aggregate_total=x["aggregate_total"] + 100))),
+                ("changed hours", lambda x: x["quote_units"][0]["pricing_summary"]["calculation"].update(billable_hours=3)),
+                ("a different vehicle", lambda x: x["quote_units"][0]["vehicle_type"].update(name="Mini Bus")),
+            ):
+                bad = copy.deepcopy(ext); edit(bad)
+                open(rp, "w").write(_json.dumps(bad))
+                r = run(w)
+                if r.returncode == 0 or "R95" not in r.stderr + r.stdout:
+                    problems.append(f"write accepted an extended response with {label}")
+            open(rp, "w").write(_json.dumps(ext))
+            if run(w).returncode:
+                problems.append("write refused the untouched extension after the tests above")
+            # an extension cannot be smuggled in through --raw
+            open(os.path.join(d, "r.json"), "w").write(_json.dumps(ext))
+            r = run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md", "--raw", "r.json", "--final"])
+            if r.returncode == 0 or "R95" not in r.stderr + r.stdout:
+                problems.append("an extended response was accepted through --raw")
+            r = run([intake, "extend-quantity"] + GOOD)
+            if r.returncode == 0:
+                problems.append("an already extended response was extended again")
+        # refusals, each from a fresh Core response
+        def refused(label, args, resp=None, expect="R95"):
+            run([intake, "ingest", "--name", "A"], _json.dumps(resp or response()))
+            r = run([intake, "extend-quantity"] + args)
+            if r.returncode == 0 or expect not in r.stderr + r.stdout:
+                problems.append(f"extend-quantity did not refuse: {label}")
+        def without(flag):
+            a_ = list(GOOD); i_ = a_.index(flag); del a_[i_:i_ + 2]; return a_
+        def setflag(flag, val):
+            a_ = list(GOOD); a_[a_.index(flag) + 1] = val; return a_
+        refused("no vendor statement", without("--vendor") + ["--vendor", " "])
+        refused("no approver", without("--approved-by") + ["--approved-by", ""])
+        refused("a shortfall message that is not Core's", setflag("--shortfall", "the vendor said it is fine"))
+        refused("a quantity not above Core's", setflag("--quantity", "3"))
+        refused("an unknown unit", setflag("--unit", "nope"))
+        nonlin = response(); nonlin["quote_units"][0]["line_total"] += 5000; nonlin["quote_units"][0]["pricing_summary"]["total_amount"] += 5000
+        nonlin["aggregate_total"] += 5000
+        refused("a price that does not scale per vehicle", GOOD, nonlin)
+        nopv = response(); del nopv["quote_units"][0]["pricing_summary"]["per_vehicle_total_amount"]
+        refused("a unit with no per-vehicle amount from Core", GOOD, nopv)
+        if not os.path.exists(os.path.join(d, "handoff", "blocked.json")):
+            problems.append("a refused extension left no blocked.json (R92)")
+    text = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    for needle in ("extend-quantity", "market_inventory_shortfall", "vendor"):
+        if needle not in text:
+            problems.append(f"quote-intake SKILL.md does not describe the quantity extension (`{needle}` missing)")
+    if problems:
+        print("  \u2717 quantity extension")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 quantity extension (quantity and the totals that follow, nothing else; a hand edit, a non-linear price, a missing vendor statement or approver, or --raw is refused)")
+    return True
+
+
 def lint_capture_at_delivery():
     """Verification writes the snapshot and the marker; the two instruction files agree (R63).
 
@@ -2649,13 +3233,29 @@ def lint_capture_at_delivery():
                 problems.append("verification passed but left no pending-upload marker")
             if v.returncode in (0, 2) and "NOT UPLOADED" not in v.stdout:
                 problems.append("verify does not tell the session the upload is still owed")
+            # R96: the render snapshot says the answer is pending (never "asked: false"); the second pass records what came back
+            snap = os.path.join(cap, "guard-slug.feedback.snapshot.json")
+            if v.returncode in (0, 2):
+                fbs = _json.load(open(snap, encoding="utf-8")).get("feedback", {}) if os.path.exists(snap) else {}
+                if fbs.get("pass") != "render" or fbs.get("status") != "pending" or "asked" in fbs:
+                    problems.append(f"the render snapshot does not say pending without an `asked` flag: {fbs}")
+                for label, extra, want in (("a change request", ["--change", "make it blue"], "answered"),
+                                           ("no changes", ["--worked", "no changes requested"], "no_changes"),
+                                           ("a skip", ["--skipped"], "declined")):
+                    r2 = subprocess.run(cs + ["--slug", "guard-slug", "--client", "Guard", "--deliverable", "pdf", "--quote", q] + extra,
+                                        capture_output=True, text=True, env=env)
+                    fb2 = os.path.join(cap, "guard-slug.feedback.json")
+                    got = (_json.load(open(fb2, encoding="utf-8")).get("feedback", {}) if os.path.exists(fb2) else {})
+                    if got.get("status") != want or got.get("pass") != "feedback" or "asked" in got:
+                        problems.append(f"{label}: the second pass recorded {got.get('status')!r}, wanted {want!r} ({(r2.stderr or r2.stdout)[-120:].strip()})")
             # a failing document writes nothing
             bad = _json.load(open(q, encoding="utf-8"))
             bad["engine_subtotal_cents"] = (bad.get("engine_subtotal_cents") or 0) + 123
             bq = os.path.join(d, "bad.json")
             _json.dump(bad, open(bq, "w"))
             for m in markers:
-                os.remove(m)
+                if os.path.exists(m):   # the second-pass checks above already cleared the snapshot's marker
+                    os.remove(m)
             v2 = subprocess.run([sys.executable, os.path.join(HERE, "verify_document.py"), bq,
                                  "--capture-slug", "bad-slug", "--capture-client", "Bad"],
                                 capture_output=True, text=True, env=env)
@@ -2666,6 +3266,8 @@ def lint_capture_at_delivery():
     skill = open(os.path.join(HERE, "..", "SKILL.md"), encoding="utf-8").read()
     cap_md = open(os.path.join(HERE, "..", "references", "capture.md"), encoding="utf-8").read()
     for name, text in (("SKILL.md", skill), ("capture.md", cap_md)):
+        if "no changes requested" not in text or "R96" not in text:
+            problems.append(f"{name} does not tell the session to record a reply that asks for no change (R96)")
         if "--capture-slug" not in text:
             problems.append(f"{name} does not name verify_document.py --capture-slug")
         if "both" not in text.lower():
@@ -3564,7 +4166,7 @@ def lint_refusals_and_mechanics():
                 problems.append(f"{name} asks which scenario to detail without limiting it to options intake generated (R93): {ln[:80]!r}")
     intake = texts[files[0]]
     doc = texts[files[1]]
-    for needle in ("blocked.json", "R92", "R93", "customize it, go on to the client document, or just the quote"):
+    for needle in ("blocked.json", "R92", "R93", "customize it, go on to the client document, or just the quote", "Both options"):
         if needle not in intake:
             problems.append(f"quote-intake SKILL.md lacks {needle!r}")
     if "blocked.json" not in doc or "R92" not in doc:
@@ -3612,9 +4214,17 @@ def main():
     lint_ok = lint_commission() and lint_ok
     lint_ok = lint_flight_line() and lint_ok
     lint_ok = lint_client_requests() and lint_ok
+    lint_ok = lint_client_request_answers() and lint_ok
+    lint_ok = lint_user_supplied_facts() and lint_ok
+    lint_ok = lint_overlap_and_placeholders() and lint_ok
+    lint_ok = lint_notes_and_no_commission() and lint_ok
+    lint_ok = lint_copy_rules() and lint_ok
+    lint_ok = lint_review_fixes() and lint_ok
     lint_ok = lint_confirm_items() and lint_ok
     lint_ok = lint_capture_at_delivery() and lint_ok
     lint_ok = lint_handoff_packages() and lint_ok
+    lint_ok = lint_quantity_extension() and lint_ok
+    lint_ok = lint_time_reading() and lint_ok
     lint_ok = lint_blocked_capture() and lint_ok
     lint_ok = lint_deliverables() and lint_ok
     lint_ok = lint_client_safe_labels() and lint_ok

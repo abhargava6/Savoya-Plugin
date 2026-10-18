@@ -31,6 +31,39 @@ def notes_of(leg):
 
 
 
+INLINE_NOTE_MAX = 70      # a note this short prints under its route line (R99)
+
+
+def _joined_refs(refs):
+    return refs[0] if len(refs) == 1 else ", ".join(refs[:-1]) + " and " + refs[-1]
+
+
+def prep_notes(legs):
+    """R99. Identical notes collapse into one note that names every leg it covers; short notes
+    print inline under the route; what remains is the notes block. Copies the legs: the quote
+    is not changed, and every note's text still reaches the document."""
+    legs = [dict(l) for l in legs]
+    seen = {}
+    for l in legs:
+        for n in notes_of(l):
+            seen.setdefault(" ".join(n.lower().split()), []).append(l)
+    done = set()
+    for l in legs:
+        keep, inline = [], []
+        for n in notes_of(l):
+            k = " ".join(n.lower().split())
+            holders = seen[k]
+            if len(holders) > 1:
+                if k in done:
+                    continue                                   # said once already, on the first leg
+                done.add(k)
+                n = f"{_joined_refs([str(h.get('ref')) for h in holders])}: {n}"
+            (inline if len(n) <= INLINE_NOTE_MAX else keep).append(n)
+        l["client_notes"] = keep
+        l["inline_notes"] = inline
+    return legs
+
+
 LOGO = "https://res.cloudinary.com/dctq8l4sp/image/upload/v1776808626/savoya-logo_dlhiha.png"
 COPPER, COPPER_DARK, AMBER = "#B87333", "#8B4513", "#F59E0B"
 INK, GRAY, MUTED, RULE, TINT = "#1A1A1A", "#5C5650", "#8A837C", "#E6E1DC", "#F7EDE4"
@@ -49,6 +82,13 @@ def day(iso, fmt="%a %m/%d/%Y"):
         return dt.datetime.fromisoformat(iso).strftime(fmt)
     except (ValueError, TypeError):
         return iso or ""
+
+
+def clock12(hhmm):
+    try:
+        return dt.datetime.strptime(hhmm, "%H:%M").strftime("%-I:%M %p")
+    except (TypeError, ValueError):
+        return ""
 
 
 def time_of(iso):
@@ -251,6 +291,7 @@ def option_page(q):
 
 
 def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
+    legs_in = prep_notes(legs_in)
     # group legs by date
     groups = {}
     for l in legs_in:
@@ -260,6 +301,8 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             p, v = l["pricing"], l["vehicle"]
             route = " → ".join(e(s["label"]) for s in l["stops"])
             when = time_of(l.get("date"))
+            if l.get("airport_target") and when:   # R34: the pickup and the airport arrival are different times
+                when = f"Pickup {when} &middot; airport arrival {clock12(l['airport_target'])}"
             basis = "Hourly" if p["method"] == "hourly" else "Transfer"
             _ev = p.get("special_event") or {}
             ev = ("<div class='ev'>&#9888; Event pricing &mdash; "
@@ -277,6 +320,8 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             else:
                 drive = ""
             tbd = "<div class='tbd'>Flight details to be confirmed</div>" if any(s.get("kind") == "airport" and s.get("flight", {}).get("tbd") for s in l["stops"]) else ""
+            if l.get("flight_supplied"):
+                tbd = f"<div class='tbd'>Flight {e(l['flight_supplied'])}</div>"   # R74: as the client gave it
             # Cross-market sourcing (R51). The separate line already exists, because
             # Core returns one source market per unit and each unit is its own leg —
             # so the same vehicle type legitimately appears twice, at two different
@@ -288,10 +333,11 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
                 src = (f"<div class='sourced'>Positioned from our "
                        f"{e(l['service_area'])} partners &middot; additional drive time "
                        f"included in the rate</div>")
+            inl = "".join(f"<div class='inl'>{e(n)}</div>" for n in (l.get("inline_notes") or []))
             return f"""<tr>
   <td class='ref'>{e(l.get('ref'))}</td>
   <td class='svc'><b>{e(v['name'])}</b> <span class='cap'>({v.get('capacity')} pax)</span>
-      <div class='route'>{when}{' · ' if when else ''}{route}{drive}</div>{ev}{src}{tbd}</td>
+      <div class='route'>{when}{' · ' if when else ''}{route}{drive}</div>{ev}{src}{tbd}{inl}</td>
   <td class='num'>{e(basis)}</td>
   <td class='num'>{hrs(p.get('minimum_hours')) if p['method']=='hourly' else '—'}</td>
   <td class='num'>{v['quantity']}</td>
@@ -353,6 +399,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             c += 2                          # the "Positioned from our ... partners" line wraps to two
         if any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") for s in (l.get("stops") or [])):
             c += 1
+        c += sum(1 + len(str(n)) // 60 for n in (l.get("inline_notes") or []))   # R99 inline notes
         return c
 
     # Measured in a browser: the notes column is 326px wide and fits ~23 characters per
@@ -538,7 +585,7 @@ def quote_page_for(q, legs_in, meta_html, pz, m, bar_label, option):
             out.append(f"""
 <section class="page">
   <header class="bar"><img src="{LOGO}" style="height:26px;"><span>{e(bar_label)} · summary{'' if i == 0 else ' · continued'}</span></header>
-  {split_block("".join(rows_html), i == 0, i == len(chunks) - 1)}
+  {split_block("".join(rows_html), i == 0, i == 0)}
   {footer}
 </section>""")
     return "".join(out)
@@ -714,6 +761,7 @@ table.lines tr.group td {{ background:{TINT}; font-weight:600; font-size:9.5pt; 
 table.lines tr.gsub td {{ font-weight:600; background:#FBF8F5; }}
 table.lines .route {{ color:{GRAY}; font-size:9pt; margin-top:3pt; }}
 table.lines .ev {{ color:{AMBER}; font-size:8.5pt; margin-top:3pt; }}
+table.lines .inl {{ color:{GRAY}; font-size:8.5pt; margin-top:2pt; }}
 table.lines .tbd {{ color:{MUTED}; font-size:8.5pt; font-style:italic; margin-top:2pt; }}
 table.lines .sourced {{ color:{COPPER}; font-size:8.5pt; margin-top:2pt; }}
 table.lines.small td, table.lines.small th {{ padding:5pt 6pt; font-size:9.5pt; }}

@@ -22,8 +22,8 @@ Every question in either skill that has enumerable answers **must** be asked wit
 | Blocking gap: flight-derived pickup | `12:30pm — domestic (2h)` · `11:30am — international (3h)` · `Another time` |
 | Rate sheet? | `Rate sheet first` · `Straight to the quote` |
 | Quote mode | `Best — one per leg` · `Options — value & elevated` · `I'll pick the vehicles` |
-| Detail card (node G2) | `Detailed quote for A` · `Detailed quote for B` · `Both` · `Let me define my own mix` (best mode: `Detailed quote` · `Let me define my own mix`) |
-| Refine and hand off (node I) | `Customize it` · `Go on to the client document` · `Just the quote, thanks` — one question; the format (PDF, email copy, …) is asked by the document flow, never here |
+| Refine and hand off (node I), one option or best mode | `Customize it` · `Go on to the client document` · `Just the quote, thanks` — one question; the format (PDF, email copy, …) is asked by the document flow, never here |
+| Refine and hand off (node I), two or more options | `Both options → client document` (recommended; `All N options` past two) · `Option A only → client document` · `Option B only → client document` · `Customize first` · `Just the quote, thanks`. Past four options: `All options` · `Choose which` · `Customize first` · `Just the quote, thanks`. One question; it replaces the old detail-card question (G2) |
 
 **Document** — `decide.py --next` prints the question text; wrap it in the picker:
 

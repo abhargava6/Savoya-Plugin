@@ -50,7 +50,7 @@ def main():
     # TBD. This used to key off ANY placeholder, so a 9:00 AM pickup placeholder on a coach
     # hire with no flights made the email ask the client to "send over the flight details"
     # (Yerdle, 15 Oct 2026; PRD R74).
-    flight_tbd = any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd")
+    flight_tbd = any(s.get("kind") == "airport" and (s.get("flight") or {}).get("tbd") and not l.get("flight_supplied")
                      for l in q["legs"] for s in (l.get("stops") or []))
     subject = f"Savoya quote — {event}" + (f" ({date_txt})" if date_txt else "")
     tc = (m.get("travel_coordinator") or "").split(" (")[0].split()[0] if m.get("travel_coordinator") else None
@@ -111,9 +111,16 @@ def main():
         clock = day(l.get("date"), "%-I:%M%p").lower()
         route = route_of(l, " to ")
         pax = l.get("passenger_count")
+        if l.get("airport_target") and clock:
+            from datetime import datetime as _d
+            try:
+                clock = f"{clock} pickup, airport arrival {_d.strptime(l['airport_target'], '%H:%M').strftime('%-I:%M%p').lower()}"
+            except ValueError:
+                pass
         hdr = (f"{prefix}{l.get('ref','')} – {when}"
                + (f", {clock}" if clock and clock != when else "")
                + (f" – {route}" if route else "")
+               + (f" – flight {l['flight_supplied']}" if l.get("flight_supplied") else "")
                + (f" ({pax} guests)" if pax else "")
                + f" – {v['quantity']} × {v['name']}")
         lines = [hdr, f"Vehicle type: {v['name']} (max capacity: {v.get('capacity')} passengers)"]

@@ -103,7 +103,7 @@
 <div class="wrap">
   <h1>Savoya quoting — decision tree</h1>
   <p class="sub">Every node resolves to one of four outcomes. Anything not listed is skipped. Nodes A–J are <code>quote-intake</code>; K–Q are <code>quote-document</code>. The handoff folder is the seam between them.</p>
-  <div class="ver">v0.27.4 · twelve-tool MCP contract · refreshed 17 Oct 2026</div>
+  <div class="ver">v0.27.5 · twelve-tool MCP contract · refreshed 17 Oct 2026</div>
 
   <div class="legend">
     <span class="pill call">CALL — a tool or script runs</span>
@@ -144,7 +144,7 @@
         <span class="tag call">call</span><span><b>once per quote, every quote.</b> Core owns <code>id</code>, <code>capacity</code>, <code>classification</code>, <code>greeter</code>, <code>bus</code>, <code>limited_availability</code> and <code>client_can_book</code></span>
       </div>
       <div class="why"><b>This reverses an earlier decision.</b> A static table existed to save a per-quote call, and the trade stopped being worth it the moment the table was found <b>wrong</b> rather than merely stale: it said Exec Van "~10" where Core says <b>14</b>, and omitted seven types including both greeters. One call against a wrong answer is not a saving.</div>
-      <div class="note"><code>vehicle-types.md</code> stays for what Core has no concept of: <b>physical dimensions</b> and terminology. Dimensions are what rule a coach out of a venue with a 9×18 ft parking cap. <code>client_can_book: false</code> (Mini Bus, Coach Bus) is a field to read, not a rule to remember — and it is read <i>here</i> rather than from the rate sheet, which omits it even though Core knows it in the same payload (<code>ENGINEERING.md</code> G2, PRD R70).</div>
+      <div class="note"><code>vehicle-types.md</code> stays for what Core has no concept of: <b>physical dimensions</b> and terminology. Since 0.27.5 the dimensions are <b>internal screening only</b> (R35): a figure is never stated to a client, a session asks the user for any dimension a constraint needs, and the answer is recorded as a supplied fact. <code>client_can_book: false</code> (Mini Bus, Coach Bus) is a field to read, not a rule to remember — and it is read <i>here</i> rather than from the rate sheet, which omits it even though Core knows it in the same payload (<code>ENGINEERING.md</code> G2, PRD R70).</div>
     </div></div>
     <div class="arrow">↓</div>
 
@@ -202,6 +202,7 @@
       <div class="why"><b>A sourced vehicle bills the primary market's rates, not its home market's.</b> Confirmed live: an Austin Mini Bus sourced into Dallas billed Dallas's <b>$314.92/hr</b>, not Austin's <b>$244.09/hr</b>. The nearby market supplies the vehicle, not the price. A nearby market's own rate sheet <i>can</i> be shown and a CSM may legitimately want it — but lead with that fact, and when a sourced quote is in play name both numbers.</div>
       <div class="why"><b>The counts are "additional", not totals.</b> Vehicles whose vendors already serve the reference market are excluded, because they are already counted there. A CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four <i>extra</i> ones. They are also <b>unconfirmed</b> and promise nothing about fulfilment — say both when presenting the table.</div>
       <div class="note"><b>A <code>market_ref</code> is scoped to the market it was looked up from</b>, and nearby is not the same as sourceable: Dallas returned only Shreveport, Austin and Oklahoma City while Houston sits in Austin's list. To source into Dallas, look up from Dallas. On <code>sourcing_reference_expired</code>, look up again from the same reference market and swap each ref for the new one — don't ask the CSM again.</div>
+      <div class="why new"><b>The CSM has the vehicles from a vendor (R95).</b> Ask how many, which vendor and who confirmed. Price the largest quantity Core accepts, <code>ingest</code> it, then run <code>handoff.py extend-quantity</code>, which changes the quantity and the totals that follow and nothing else. Never multiply a unit by hand. The extension is internal, never in a client document, and goes away when Core allows the quantity (<code>ENGINEERING.md</code> H5).</div>
       <div class="why"><b>A lookup is not a choice, and never consent.</b> Never pick a source market for the user, and never read a lookup or a rate preview as agreement to source. <b>And never compare an unpriced option:</b> a session did rate-sheet arithmetic and told a CSM sourcing from Austin would save about $80; the real quote came back <b>$707.18 more expensive</b>, because the arithmetic had missed the positioning drive time that sourcing exists to pay for.</div>
     </div></div>
     <div class="arrow">↓</div>
@@ -220,19 +221,22 @@
       <div class="note"><b>No stored rate in the market</b> is never an estimate and never a dead end — <b>there is no approximate path to fall back to</b>. Core's own recovery wording is the flow: ask for a temporary rate, or pick another vehicle, then re-quote. <b>A waiting leg can only take an <i>hourly</i> temporary rate</b> — a <code>transfer</code> rate needs exactly two stops, and our ≲3h out-and-back rule produces three routinely (verified 7 Oct: <code>quote_units_unavailable</code>).</div>
       <div class="note"><b>Every option must contain every trip.</b> Core rejects a duplicate outright — <i>"labels alone do not create an alternative."</i> An option that drops a leg is a cheaper total for a different job. <b><code>strategy</code> is a label, not a lever:</b> the same two options run twice with only the strategy strings swapped returned identical totals, vehicles, quantities and rate ids. The vehicle argument is the only thing that selects.</div>
       <div class="why new"><b>Split the headcount across vehicle groups (R91).</b> 75 passengers on a coach plus two vans is 50 on the coach and 25 on the vans, each priced with its own <code>passenger_count</code>. Core sizes the number of vehicles from a group's count, so 75 on every group prices extra vehicles. <code>handoff.py write</code> refuses a unit with no count, and groups serving one trip whose counts do not add up to the confirmed headcount.</div>
-      <div class="why new"><b>Every pricing response is saved by a checked step, and packages become options (R78, R79).</b> <code>handoff.py ingest --name A</code> checks that the units add up to Core's total and never edits the response. Separately priced packages (one coach all day, or two coaches for four hours) are written together with <code>--package A --package B</code> and become options in one document, each keeping Core's own total, with no combined figure.</div>
+      <div class="why new"><b>Every pricing response is saved by a checked step, and packages become options (R78, R79).</b> <code>handoff.py ingest --name A</code> checks that the units add up to Core's total and never edits the response. A <code>generate_quote_options</code> response goes through the same step: each option is checked and saved as its own package, and alternatives pair with the Option A unit that has the same key. Separately priced packages (one coach all day, or two coaches for four hours) are written together with <code>--package A --package B</code> and become options in one document, each keeping Core's own total, with no combined figure.</div>
       <div class="note"><b>Send <code>requested_stop_count</code> on every unit</b> — the user's own total including pickup, dropoff and every intermediate. It exists so Core can tell it was handed fewer stops than were asked for; silently dropping a stop is the bug class that produced 0-minute drive times in 0.20.0.</div>
       <div class="why"><b>Hours are Core's.</b> <code>duration</code> is the lever, not the answer: an as-directed stop sent <code>duration: 4</code> bills <b>5.25</b> hours — a constant +1.25 h of positioning. Out of market it is larger: <code>duration: 8</code> billed <b>12</b>. Send what the user asked for, show what Core billed, name the difference. Never back-solve the duration.</div>
+      <div class="why new"><b>A client's time has a kind (R18, R34).</b> Classify it as flight departure, pickup or airport arrival target; wording decides, and the user is asked only when it does not. For a departure or a target, price once at the target, read <code>travel_times</code>, set pickup = target minus drive time (a departure first loses the 2 h domestic or 3 h international lead), and re-price at that pickup. <code>write --time-reading</code> refuses a unit not priced at the computed pickup, and the document prints both times.</div>
+      <div class="why new"><b>Overlaps and held-open stops (R97, R98).</b> An hourly block that runs across a same-day airport transfer is one question: start the block after the transfer, at the client's time, or another time. It is recorded with <code>--overlap</code> and asked within one option only. A stop the user is holding open prices at its resolved location and prints a neutral label such as "Plano, TX (pickup address to be confirmed)" (<code>--placeholder-stop</code>).</div>
+      <div class="why new"><b>What the client supplied is printed as supplied (R74, R62, R35).</b> A supplied flight (<code>--flight</code>) prints as given and is never a placeholder; a venue the client named (<code>--venue</code>) keeps that name; a dimension Core does not return is asked of the user (<code>--fact</code>). The fuel surcharge is whole-quote only: header and terms, never a leg, a note or an email line.</div>
     </div></div>
     <div class="arrow">↓</div>
 
     <div class="row"><div class="node sm">G2</div><div class="body">
-      <h3>Detail card <em>· calculate_quote_units</em></h3>
+      <h3>Detail card <em>· calculate_quote_units, on request only</em></h3>
       <div class="branch">
-        <span class="tag call">call</span><span>after the user picks an option (or accepts the recommendation in best mode) — that option's chosen vehicle per unit</span>
-        <span class="tag skip">skip</span><span>in define mode: already that shape</span>
+        <span class="tag call">call</span><span>only when the user asks to see one option's detail card while customizing — that option's chosen vehicle per unit</span>
+        <span class="tag skip">skip</span><span>otherwise, and in define mode: already that shape</span>
       </div>
-      <div class="note">Identical numbers. It renders the full detail card that <code>scenario_comparison</code> shows condensed.</div>
+      <div class="note">No longer a question (R93, 0.27.5): choosing an option is part of the one question at node I. Identical numbers; it renders the full detail card that <code>scenario_comparison</code> shows condensed.</div>
     </div></div>
     <div class="arrow">↓</div>
 
@@ -280,7 +284,12 @@
         <span class="tag loop">loop</span><span>customize → back to <b>G</b> with the same stop refs</span>
         <span class="tag loop">re-resolve</span><span>stop refs older than ~24h → back to <b>D</b> first. Never retry a rejected ref</span>
       </div>
-      <div class="why new"><b>Never ask the user about the product's own working (R93).</b> Not how a file is written, not which of the scenarios just shown to keep. When the request names scenarios, every one is priced, shown and written. "Which one in detail?" (G2) is asked only for options intake generated itself. A CSM cannot answer these questions, and each is a chance to answer wrongly.</div>
+      <div class="branch">
+        <span class="tag ask">options</span><span>two or more options on screen → the same question leads with <b>Both options → client document</b> (all N past two; recommended), then each option alone, <b>Customize first</b>, <b>Just the quote</b>. Past four options: All, Choose which, Customize first, Just the quote</span>
+        <span class="tag call">both</span><span><code>ingest</code> the options response once, then <code>write --package</code> for every option</span>
+        <span class="tag call">one</span><span><code>write</code> with that option's package alone; no new pricing call</span>
+      </div>
+      <div class="why new"><b>One question settles the options and the document (R93, amended 0.27.5).</b> It replaces the old "which one in detail?" question; there is no second question. Never ask the user about the product's own working: not how a file is written, not which scenario to expand. When the request names scenarios, every one is priced, shown and written. A CSM cannot answer these questions, and each is a chance to answer wrongly.</div>
       <div class="note"><code>presentation.actions</code> carries intents (<code>select_scenario</code>, <code>refine_quote</code>). The render names them, but <b>the refine loop is still ours</b> — the intents are undocumented beyond their names, and this node is tested.</div>
     </div></div>
     <div class="arrow">↓</div>
@@ -288,7 +297,7 @@
     <div class="row"><div class="node">J</div><div class="body">
       <h3>Hand off <em>· handoff.py ingest, then write … --final</em></h3>
       <div class="branch">
-        <span class="tag call">call</span><span>after the answer to I: <code>ingest</code> each pricing response, then <code>write</code>. The format (PDF, email copy, …) is asked by the document flow, never here</span>
+        <span class="tag call">call</span><span>after the answer to I: <code>ingest</code> each pricing response (an options response once), then <code>write</code>. The format (PDF, email copy, …) is asked by the document flow, never here</span>
         <span class="tag halt">refuse</span><span>an unresolved stop (R83) · a headcount range with no chosen number, or vehicle groups that do not add up to it (R84, R91) · a unit with no date. The refusal prints the fix and leaves <code>handoff/blocked.json</code> (R92)</span>
         <span class="tag call">just the quote</span><span><code>handoff.py capture</code> → one upload. Done</span>
         <span class="tag call">go on</span><span>document flow. Don't capture here; K–Q captures once at the end</span>
@@ -339,6 +348,7 @@
       <h3>Six questions + one conditional <em>· decide.py --next drives the order</em></h3>
       <div class="branch">
         <span class="tag ask">ask 1</span><span><b><code>discount_pct</code></b> — <b>a Core re-quote, not a document line.</b> <code>calculate_temporary_quote_units</code> with <code>temporary_discount.basis_points</code>, then re-normalize from the response</span>
+        <span class="tag ask">1r</span><span><b><code>request:&lt;n&gt;</code></b> — one per operational client request Core cannot answer (R72, R73): included, not included, extra cost, confirm, or the user's own wording. Tax, gratuity, cancellation and a request to show fuel per leg are boilerplate and never asked; a fit or luggage question is asked and never answered as a fit; a greeter is asked once, through <code>greeter_cost</code></span>
         <span class="tag ask">1a</span><span><b><code>greeter_cost</code></b> — <i>inserted only when a client question mentions a greeter, and only a market with no greeter rate gets this far</i></span>
         <span class="tag ask">ask 2</span><span><b><code>commission_pct</code></b> — No, 1%, 5%, or another percentage. <b>Rate recorded, amount computed in code; changes none of the totals</b></span>
         <span class="tag ask">ask 3</span><span><b><code>cover</code></b> — catalog keys with audiences, recommendation first, or their own upload</span>
@@ -378,6 +388,8 @@
       <div class="why"><b>What the flow asks about, the flow writes.</b> <code>decide.py</code> recorded the personalization answer and nothing carried it into <code>quote.json</code>, so two of three live sessions hand-edited the document to set the event name and intro note — and one of those hand-written notes asserted that tax and driver gratuity were included, contradicting the terms on the final page of the same PDF. A rejected note is a wrong note.</div>
       <div class="note">Read only the one format reference you need. A degraded output is never shipped as if fine: no basemap means the offline overview or no map, never a blank panel. <b>Email headings carry day, clock time, route and headcount</b> — the same four facts the PDF line has always had; before that every heading in one live draft was rewritten by hand before sending, and a heading a CSM has to retype is one that can be retyped wrong.</div>
       <div class="why"><b>A schematic map is a different claim from a street map.</b> The map needs three public services — OSM tiles, the OSRM demo router, Nominatim at 1 req/s — and corporate networks block them routinely. Below 60% tile coverage the map is redrawn from coordinates the engine already resolved: stops in true relative position, joined in order, on a near-white grid. CSMs reported that as <i>"blank with just straight lines"</i>, which is a fair description of a picture nothing on the page explained. The document now titles them differently — <b>Itinerary map</b> versus <b>Itinerary overview · stops in order — not a driving route</b> — and the schematic states that its lines are not driving routes. <b>Tell the CSM which one went out:</b> they decide whether a schematic suits that client and can't see the PDF as the client will until it's sent.</div>
+      <div class="why new"><b>Notes collapse and totals come first (R99).</b> Line notes with identical text print once, naming their legs; notes of 70 characters or fewer print inline under the route; the totals block sits on the first summary page, not behind the notes.</div>
+      <div class="why new"><b>A no-commission copy is a variant (R100).</b> On request, <code>no_commission_copy.py</code> works on a copy, checks that no total moves, renders it under a separate file name and records both files. Keep the first for internal use.</div>
       <div class="why new"><b>Only the formats asked for (R85).</b> A PDF-only job drafts no email; an email is offered in one line. <code>verify_document.py</code> prints the deliverables, and <code>draft_email.py</code> refuses a PDF-only job unless asked. When an email is asked for, two versions come: the full email and a short one that carries each option and leg total, the discount and the commission amount, and points to the PDF (R71). A client request that changes no price becomes one neutral "noted, will confirm" line (R73). The email asks for flight details only when a flight is outstanding (R74).</div>
     </div></div>
     <div class="arrow">↓</div>
@@ -473,5 +485,5 @@
     </div></div>
   </div>
 
-  <footer>savoya-quoting v0.27.4 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · tool names and arguments: <code>references/mcp-contract.md</code> · kept current with the code (PRD R89)</footer>
+  <footer>savoya-quoting v0.27.5 · source of truth: <code>skills/quote-intake/references/decision-tree.md</code> · tool names and arguments: <code>references/mcp-contract.md</code> · kept current with the code (PRD R89)</footer>
 </div>

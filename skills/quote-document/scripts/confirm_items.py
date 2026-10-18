@@ -6,7 +6,7 @@ Usage: confirm_items.py quote.json [--json]
 Items come from quote.internal.placeholders and quote.client_requests:
   service_area   every "NO SAVOYA SERVICE AREA" placeholder, grouped into ONE item
   placeholder    each other placeholder (pickup time, inventory note, ...), one each
-  client_request each operational request carried from the client (R73), one each
+  client_request each operational request the user has not answered (R73), one each; an answered request is in the document already
 
 The session asks one question per item (Right / Wrong). It is a gate only: a "Wrong"
 answer stops the send and asks for the corrected value. Nothing is written to the
@@ -34,7 +34,7 @@ def items(q):
                             + ", ".join(areas) + ". Core priced them from the nearest market."})
     res += out
     for r in q.get("client_requests") or []:
-        if r.get("kind") == "operational":
+        if r.get("kind") == "operational" and not r.get("answer_text"):
             res.append({"kind": "client_request",
                         "text": f"Client asked: {r['text']}. The document says it was noted and will be confirmed."})
     for i, it in enumerate(res, 1):

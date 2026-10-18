@@ -72,7 +72,9 @@ def leg_card(leg):
         line = f"<span style='color:{COPPER};'>{marker}</span>&nbsp; <span style='color:{WHITE};'>{e(s['label'])}</span>"
         if s.get("address"):
             line += f" <span style='color:{MUTED};'>· {e(s['address'])}</span>"
-        if s.get("kind") == "airport" and s.get("flight", {}).get("tbd"):
+        if s.get("kind") == "airport" and leg.get("flight_supplied"):
+            line += f" <span style='color:{MUTED};font-size:11px;'>Flight {e(leg['flight_supplied'])}</span>"
+        elif s.get("kind") == "airport" and s.get("flight", {}).get("tbd"):
             line += f" <span style='color:{AMBER};font-size:11px;'>&#9432; Flight details to be confirmed</span>"
         if s.get("wait_hours"):
             line += f"<br><span style='color:{MUTED};font-size:12px;padding-left:18px;'>{'As directed — ' if s.get('as_directed') else 'Wait on site — approx. '}{hours_txt(s['wait_hours'])}</span>"

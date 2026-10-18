@@ -585,6 +585,35 @@ def main():
     for p in placeholders:
         print(f"PLACEHOLDER: {p}", file=sys.stderr)
 
+    # R98: a stop the user is holding open prints a neutral label, never the resolved name or
+    # address. The resolved location still priced the leg and still places the map pin.
+    for ps_ in ((handoff or {}).get("placeholder_stops") or []):
+        for leg in legs:
+            if leg["key"] != ps_.get("unit"):
+                continue
+            for st in leg["stops"]:
+                if ps_["stop"].lower() in (st.get("label") or "").lower() or ps_["stop"].lower() in (st.get("address") or "").lower():
+                    st["label"] = ps_["label"]
+                    st["placeholder"] = True
+                    st.pop("address", None)
+                    st.pop("needs_label", None)
+    for v_ in ((handoff or {}).get("venue_names") or []):          # R62: the venue the client named, not the address Core resolved
+        for leg in legs:
+            if leg["key"] == v_.get("unit"):
+                for st in leg["stops"]:
+                    if v_["stop"].lower() in (st.get("label") or "").lower():
+                        st["label"] = v_["label"]
+                        st.pop("needs_label", None)
+    fl = {f.get("unit"): f.get("text") for f in ((handoff or {}).get("flight_details") or [])}
+    for leg in legs:
+        if fl.get(leg["key"]):
+            leg["flight_supplied"] = fl[leg["key"]]               # R74: printed as given, never "to be confirmed"
+    placeholders[:] = [p for p in placeholders if not any(p.startswith(k + ":") for k in fl if fl.get(k))]   # R74: a supplied flight is no placeholder
+    tr = {r.get("unit"): r for r in ((handoff or {}).get("time_readings") or [])}
+    for leg in legs:
+        r = tr.get(leg["key"])
+        if r and r.get("airport_target"):
+            leg["airport_target"] = r["airport_target"]   # R34: printed beside the pickup
     for leg in legs:
         if leg["key"] in alt_map:
             leg["alternative_of"] = alt_map[leg["key"]]
@@ -720,7 +749,8 @@ def main():
         },
         "terms": [],  # filled by apply_adjustments (conditional bullets)
         # R73: requests the client made that Core cannot answer. Carried, never resolved here.
-        "client_requests": __import__("client_requests").carry((handoff or {}).get("client_questions")),
+        "user_supplied_facts": list((handoff or {}).get("user_supplied_facts") or []),   # R35: the only dimensions a document may print
+        "client_requests": __import__("client_requests").carry((handoff or {}).get("client_questions"), (handoff or {}).get("decisions")),
         "internal": {
             "rate_ids": sorted(set(r for r in rate_ids if r)),
             "warnings": sorted(set(warnings)),

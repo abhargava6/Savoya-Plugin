@@ -2,7 +2,7 @@
 """Drive the document-flow questions from handoff/intake.json → decisions.
   decide.py --next            → prints the next unanswered key and its question text
   decide.py <key> <value>     → records the answer, prints the next key
-Keys, in order: discount_pct, cover, personalization, map, format.
+Keys, in order: discount_pct, request:<n> (one per operational client request, R72), commission_pct, cover, personalization, map, format.
 
 The `fuel` question is gone (C3, 0.23.0). Fuel is market-scoped and engine-applied, and
 nothing in the contract subtracts it: `temporary_discount` is additive and a surcharge is
@@ -47,6 +47,11 @@ def order_for(intake):
         states the format up front often enough ("just draft the email") that asking
         about cover pages and route maps afterwards reads as not listening."""
     o = list(BASE_ORDER)
+    # R72/R73: one question per operational client request that Core cannot answer. The
+    # tax, gratuity and cancellation questions are answered by the terms block and never asked.
+    sys.path.insert(0, HERE)
+    from client_requests import request_keys
+    o[o.index("discount_pct") + 1:o.index("discount_pct") + 1] = request_keys(intake.get("client_questions"))
     if any(GREETER_RE.search(q or "") for q in (intake.get("client_questions") or [])):
         o.insert(o.index("discount_pct") + 1, "greeter_cost")
     fmt = normalize_format((intake.get("decisions") or {}).get("format"))
@@ -110,4 +115,13 @@ if nxt == "personalization":
     if fmt_now in ("email", "xlsx"):
         QUESTIONS["personalization"] = ('I\'ll use: event name "{event}" and your contact details at the sign-off. '
                                         "Confirm, or tell me what to change.")
+if nxt.startswith("request:"):
+    _qs = d.get("client_questions") or []
+    _txt = _qs[int(nxt.split(":", 1)[1])]
+    print(f"next: {nxt}\nThe client asked: \"{_txt}\". Savoya's pricing can't answer it. How should the document respond? "
+          "included, not included, extra cost, confirm (we'll say it was noted and will be confirmed), or your own wording in a sentence. "
+          "Never answer for the user."
+          + (" This is a fit question: Savoya returns seat capacity but no luggage or interior dimensions. Never say it fits; use confirm, or the user's own wording with a figure they supply (R35)."
+             if re.search(r"\bfit|carry-?on|luggage", _txt, re.I) else ""))
+    sys.exit(0)
 print(f"next: {nxt}\n{QUESTIONS[nxt].format(**ctx)}")

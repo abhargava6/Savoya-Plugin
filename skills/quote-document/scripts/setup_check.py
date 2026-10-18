@@ -156,6 +156,10 @@ def main():
     # used to be "every capture on this machine", which was only right while Drive had
     # never worked at all — and it is the number the Drive nudge quotes out loud.
     pending = sorted(glob.glob(os.path.join(CAPTURES, "*.pending-upload")))
+    # R96: a render snapshot with no feedback pass after it is a delivery whose answer was never
+    # recorded. For the session to act on and the maintainer to count; not shown to the CSM.
+    awaiting_feedback = sorted(os.path.basename(p).split(".")[0]
+                               for p in glob.glob(os.path.join(CAPTURES, "*.feedback.snapshot.json")))
 
     writable = True
     try:
@@ -271,6 +275,7 @@ def main():
         # bare-name path lookup reaches
         "stale_copy_shadows_path_lookup": trap,
         "version_in_use": (newest or {}).get("version"),
+        "awaiting_feedback": awaiting_feedback,
         "never_uploaded": len(pending),
         "never_uploaded_oldest": (ago(min(os.path.getmtime(p) for p in pending))
                                   if pending else None),

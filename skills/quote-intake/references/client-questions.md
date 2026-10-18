@@ -13,7 +13,7 @@ Anything that would **change the quote itself**:
 | Location that resolves to several genuinely different places, or is too vague to resolve ("downtown", "the Marriott") | which one |
 | Service shape the request doesn't settle (one vehicle all day vs. two for half a day, when the client didn't say) | which to quote, or quote both as scenarios |
 | A **physical or access constraint** on vehicles (parking-pass dimensions, low clearance, narrow driveway, no coaches at the venue) | which vehicles it leaves available — see `vehicle-types.md`. Never quote a vehicle the constraint excludes |
-| Departure leg gives a **flight time but no pickup time** | confirm the pickup: 2h before departure (domestic) or 3h (international), or another time. It changes billable hours, so it changes the price |
+| A client time whose **kind** the wording does not settle (flight departure, pickup, or airport arrival target) | which it is. A departure becomes a pickup after the 2h/3h lead time and Core's drive time (time reading, R18/R34). It changes billable hours, so it changes the price |
 
 **Never** paper over these with a placeholder and **never** push them into the document as a client-facing "please confirm". The internal user is in the chat and can answer in one tap; the client is not.
 
@@ -28,7 +28,7 @@ The client's own questions that **don't change the pricing math**. They never bl
 | "Is tax included?" / "Is gratuity included?" | the standard terms block already answers it — no extra work |
 | "What's your cancellation policy?" | the terms block plus the per-leg cancellation column — no extra work |
 | "Can you provide on-site staff / a greeter?" | **Price it through Core — never ask a human for a number Core has.** Greeters are vehicle types (12 Hourly Greeter/Coordinator, 13 Single Greet). Always check the rate first by attempting to price it; where it is then handled depends on who raised it — see the greeter node in `decision-tree.md`. The client asked here, so if a rate exists it belongs in **intake**, as a quote unit. Only a market with no greeter rate falls back to asking the user for a cost. A hand-entered figure on an Irvine quote was **$940** against Core's **$404.20**. |
-| Signage, PA system, luggage vehicle, waiting area | a client-facing line note on the relevant leg |
+| Signage, PA system, luggage vehicle, waiting area, lobby staff, an electric vehicle: anything Core cannot answer | the **document stage asks the user** how to respond (included, not included, extra cost, confirm, or their own words) and prints the answer beside the request (R72/R73). Record the request here with `--client-question`; never answer it at intake |
 
 ## Data-answered — the quote already contains the answer; say it out loud
 

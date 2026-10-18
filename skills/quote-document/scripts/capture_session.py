@@ -378,7 +378,13 @@ def main():
                      "fixed": a.fixed,
                      "workaround": a.workaround,
                      "resolved_in_session": bool(a.fixed),
-                     "asked": not a.auto,
+                     # R96. `asked` used to be `not a.auto`, which says which PASS this is and
+                     # nothing about the question: Irvine and Bangkok (17 Oct 2026) read
+                     # `asked: false` though the question was put. The render snapshot cannot
+                     # know the answer, so it says `pending`; the second pass says what came back.
+                     "pass": "render" if a.auto else "feedback",
+                     "status": ("pending" if a.auto else "declined" if a.skipped else "answered" if a.change
+                                else "no_changes" if a.worked else "pending"),
                      "answered": bool(a.worked or a.change),
                      "declined": bool(a.skipped)},
         "placeholders": q.get("internal", {}).get("placeholders", []),
