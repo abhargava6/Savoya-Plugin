@@ -24,10 +24,12 @@ Owner: Ayush Bhargava. Users: Savoya ops, sales and CSMs.
 # edit under skills/ …
 python3 skills/quote-document/scripts/sync_plugin_root.py  # if you touched a root doc
 python3 skills/quote-document/scripts/regress.py --pdf     # must be green
-python3 skills/quote-document/scripts/rebuild_plugin.py \
-    skills/quote-document /tmp/build --bump patch \
-    --package /tmp/savoya-quoting.plugin
+python3 build.py --bump patch                               # package into build/
 ```
+
+`build.py` reads `SAVOYA_MCP_URL` from `.env` (see `.env.example`): empty builds for
+acceptance, a public HTTPS tunnel builds a `<version>-local.<timestamp>` test package that
+changes nothing in the repo.
 
 **Never hand-edit a version number.** The build reads
 `assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the obvious file to
@@ -112,7 +114,7 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs **46 guards** beyond the thirteen fixtures — 59 checks in all. Run it; the
+`regress.py` runs **47 guards** beyond the thirteen fixtures — 60 checks in all. Run it; the
 list below is for orientation, not for counting:
 
 | Group | Guards |

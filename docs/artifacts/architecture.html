@@ -101,7 +101,7 @@ flowchart TB
         QD["quote-document skill<br/>nodes K–Q"]
         HANDOFF[("handoff/ folder — contract 3<br/>request.md · intake.json · raw_quote.json")]
         SCRIPTS["scripts/*.py<br/>render_presentation · normalize · adjust<br/>render · verify · capture · setup-check"]
-        GUARDS["regress.py — 46 guards<br/>+ 13 fixtures = 59 checks"]
+        GUARDS["regress.py — 47 guards<br/>+ 13 fixtures = 60 checks"]
     end
 
     subgraph MCP["Savoya MCP server — mcp-acceptance.savoya.net"]
@@ -162,7 +162,7 @@ flowchart TB
     <tr><td><code>resolve_service_areas</code></td><td><b>new</b> — when the CSM names a market to anchor a nearby-market lookup to</td></tr>
     <tr><td rowspan="3">Rate discovery<br/>and inventory</td><td><code>preview_rates</code></td><td>one itinerary</td></tr>
     <tr><td><code>preview_rate_batch</code></td><td>up to 40 trips/dates. Capacity-bearing vehicles only — <b>greeters never appear, and are not reported as missing either</b></td></tr>
-    <tr><td><code>lookup_nearby_markets</code></td><td><b>new</b> — the three nearest markets by <b>road</b> distance, each with the vehicles it <i>adds</i>, plus a signed <code>market_ref</code></td></tr>
+    <tr><td><code>lookup_nearby_markets</code></td><td>the three nearest markets by <b>road</b> distance, each with the vehicles it <i>adds</i> and which listed markets share them, plus a signed <code>market_ref</code>; pages to the next three, or returns markets the CSM names at any distance</td></tr>
     <tr><td rowspan="4">Pricing<br/><b>all exact</b></td><td><code>calculate_quote_units</code></td><td>one package bought together; one <code>vehicle_type_id</code> per unit</td></tr>
     <tr><td><code>generate_quote_options</code></td><td>comparisons; <b>2–5</b> options, every trip in each</td></tr>
     <tr><td><code>calculate_sourced_quote_units</code></td><td><b>new</b> — a mixed-market package in one call, primary allocations included. <code>quantity</code> here means <b>vehicle count</b>, not a repeat count</td></tr>
@@ -278,7 +278,7 @@ sequenceDiagram
         Note over QI: skip the sourcing node entirely
     else short, or the CSM asks to explore
         QI->>MCP: F2 · lookup_nearby_markets
-        MCP-->>QI: 3 nearest by ROAD distance, the vehicles<br/>each ADDS, a signed market_ref
+        MCP-->>QI: 3 nearest by ROAD distance (or named markets),<br/>the vehicles each ADDS, a signed market_ref
         QI->>U: present the table, then STOP
         U-->>QI: names the market, type and quantity
     end
@@ -314,14 +314,14 @@ sequenceDiagram
 flowchart TB
     SHORT["The primary market is short of<br/>a vehicle type the request needs"]
     LOOK["lookup_nearby_markets<br/>reference_service_area_id + inventory_date"]
-    TABLE["Three nearest markets by ROAD distance.<br/>Each row: the vehicle types and quantities<br/>it ADDS, and a signed market_ref"]
+    TABLE["Three nearest markets by ROAD distance,<br/>paged three at a time. Each row: the vehicle<br/>types and quantities it ADDS, the listed markets<br/>sharing them, and a signed market_ref"]
     ASK["Present, then STOP.<br/>The CSM names the market(s),<br/>the vehicle type and the quantity"]
     QUOTE["calculate_sourced_quote_units<br/>ONE call: every allocation, including<br/>the primary-market ones"]
     DOC["Each market's vehicles carry their own<br/>line item and their own named source market.<br/>Positioning time is inside the billed hours<br/>and disclosed in words"]
 
     SHORT --> LOOK --> TABLE --> ASK --> QUOTE --> DOC
 
-    NAMED["resolve_service_areas —<br/>anchor the lookup to any<br/>market the CSM names"]
+    NAMED["resolve_service_areas —<br/>anchor the lookup, or look up<br/>a source market at any distance"]
     NAMED -.-> LOOK
 </pre>
   </div>
@@ -336,7 +336,8 @@ flowchart TB
   </table></div>
   <div class="note flag"><b>A sourced vehicle bills the primary market's rates, not its home market's.</b> Confirmed live: an Austin Mini Bus sourced into Dallas billed Dallas's <b>$314.92/hr</b>, not Austin's <b>$244.09/hr</b>. The nearby market supplies the vehicle, not the price — which makes AC #2 actively hazardous. A nearby market's own rate sheet is <i>not</i> what gets charged when sourcing from it, so it can only be shown with that stated first, and when a sourced quote is in play both numbers must be named.</div>
   <div class="note flag"><b>The returned counts are "additional", not totals.</b> Vehicles whose vendors already serve the reference market are excluded, because they are already counted there. A CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four <i>extra</i> ones. The counts are also <b>unconfirmed</b> and promise nothing about fulfilment.</div>
-  <div class="note"><b>Nearby is not the same as sourceable, and a <code>market_ref</code> is market-scoped.</b> Dallas returned only Shreveport, Austin and Oklahoma City while Houston sits in Austin's list; a ref obtained from Austin's lookup is rejected for a Dallas trip. To source into Dallas, look up from Dallas.</div>
+  <div class="note"><b>Any service area is sourceable, and a <code>market_ref</code> is scoped to the trip's primary market.</b> The nearby list is a display aid: a market the CSM names is looked up with <code>service_area_ids</code> at any distance. A ref obtained from Austin's lookup is rejected for a Dallas trip with a <code>source_market_ref_mismatch</code> issue. To source into Dallas, look up from Dallas.</div>
+  <div class="note"><b>A quantity above inventory is Core's to price.</b> After <code>market_inventory_shortfall</code>, a CSM who has the vehicles (a vendor confirmed them by phone) overrides it; the same package goes again with <code>inventory_override: true</code> on the affected units, and Core returns the price with an internal <code>Inventory override</code> warning on each.</div>
   <div class="note new"><b>The schema extension the design predicted was not needed.</b> The earlier design expected a <code>sources[]</code> array under each leg's pricing. In practice each allocation is already its own quote unit, so the existing per-leg structure carries it with only sourcing flags added. <b>A stop in no service area at all</b> turned out to be a real, separate case — and it broke the feature's own verifier, which rejected a sourced leg whose market matched its primary market. That is correct for an override and false by construction here, where Core reports one market as both. The real Sicily legs of a live quote failed verification.</div>
 
   <h2 id="document">7 · quote-document — handoff to deliverable</h2>

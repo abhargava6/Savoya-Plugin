@@ -544,7 +544,7 @@ def lint_presentation_render():
                                        "hourly rate not found", "16 in market",
                                        "limited availability"],
         "comparison-two-options":     ["$346.50", "$418.88", "labelled value",
-                                       "labelled elevated", "select_scenario"],
+                                       "labelled elevated"],
         "capacity-80pax-minibus":     ["2× Mini Bus", "$3,149.20", "5 hrs min"],
         "temporary-rate-execvan":     ["$192.50/hour", "rack $250.00",
                                        "was not saved in Savoya"],
@@ -567,6 +567,10 @@ def lint_presentation_render():
         # Core says this on every unit of every fixture; none of them should show it.
         if "No passenger was selected" in o:
             problems.append(f"{slug}: rendered the suppressed passenger warning")
+        # The presentation no longer offers actions; the plugin asks every question. Older
+        # captures (comparison-two-options) still carry them, and the render ignores them.
+        if "select_scenario" in o or "Core offers" in o:
+            problems.append(f"{slug}: rendered presentation actions")
 
     if problems:
         print("  ✗ presentation render")
@@ -3300,126 +3304,123 @@ def lint_time_reading():
     return not problems
 
 
-def lint_quantity_extension():
-    """PRD R95. A quantity above Core's inventory is extended by a product path that changes the
-    quantity and the totals that follow from it, and nothing else. Built from the shape of the
-    Irvine response (3 Sprinters priced at 77154 each, 5 SUVs at 15399 each)."""
-    import copy
+def lint_nearby_choices():
+    """PRD R48. After every nearby lookup the CSM gets one picker call with two pages: splits for
+    the markets that lookup newly listed, then the follow-up choices (three more, a different
+    split, an override). Live sessions went wrong here: one reused the first lookup's markets
+    after paging, one asked for five options in a picker that fits four, one marked a market
+    "Recommended" and left out more markets, and one made "more choices" a second turn. A script
+    that printed the options fixed the content but added a long wait, so the rule is prose in
+    SKILL.md, which is always loaded. Every file that states it must state the same rule."""
+    root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+    problems = []
+    common = ("newly listed", "None of these", "Use my choice above", "Show 3 more markets", "Split differently")
+    rules = {
+        os.path.join("skills", "quote-intake", "SKILL.md"):
+            common + ("ONE `ask_user_input_v0` call with two questions", "Never offer a market from an earlier lookup",
+                      "never put more than four options on a page", "never mark one as recommended"),
+        os.path.join("skills", "quote-intake", "references", "decision-tree.md"):
+            common + ("one `ask_user_input_v0` call with two questions", "never more than four options a page",
+                      "Never offer a market from an earlier lookup", "never mark an option as recommended",
+                      "shown_service_area_ids"),
+        os.path.join("docs", "artifacts", "decision-tree.html"): common + ("One picker call with two pages",),
+        os.path.join("skills", "quote-document", "references", "asking-questions.md"):
+            common + ("two questions in one call",),
+    }
+    for rel, needles in rules.items():
+        text = open(os.path.join(root, rel), encoding="utf-8").read()
+        for needle in needles:
+            if needle not in text:
+                problems.append(f"{rel} lost `{needle}`")
+    if problems:
+        print("  \u2717 nearby choices")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 nearby choices (one call, two pages: new-market splits then the follow-ups; four options a page, nothing recommended)")
+    return True
+
+
+def lint_inventory_override():
+    """PRD R95, as amended 2026-10-20. A quantity above Core's inventory is quoted by Core itself:
+    after Core reports market_inventory_shortfall and the CSM chooses to override it, the same
+    package is priced again with inventory_override on the affected units. Core returns the
+    price with an "Inventory override" warning on each affected unit. The plugin computes
+    nothing for it, so the guard checks three things: the retired plugin-side extension is gone
+    from every instruction and script, the instructions teach the Core path, and the warning
+    reaches the internal summary and never the client-facing leg."""
+    import importlib.util
     import json as _json
     import subprocess
     import tempfile
     problems = []
+    root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
     intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
 
-    def unit(key, name, q, pv, pickup):
-        line = pv * q
-        return {"key": key, "label": key, "quantity": q, "unit_total": pv, "line_total": line, "currency": "USD",
-                "vehicle_type": {"id": 26, "name": name, "capacity": 13, "classification": "other"},
-                "passenger_count": 80, "pickup_date": pickup, "stops": [],
-                "pricing_summary": {"estimate_type": "exact", "status": "priced", "total_amount": line,
-                                    "per_vehicle_total_amount": pv, "pricing_method": "hourly",
-                                    "adjustments": {"discount_basis_points": 3000, "fuel_surcharge_basis_points": 1000},
-                                    "calculation": {"billable_hours": 2, "passenger_count": 80, "vehicle_capacity": 13,
-                                                    "requested_quantity": q, "required_quantity": 7, "quantity": q}}}
-
-    def response(q=3):
-        us = [unit("t1", "Mercedes Sprinter Van", q, 77154, "2027-03-20T07:40:00-07:00"),
-              unit("t2", "SUV", 5, 15399, "2027-03-20T14:15:00-07:00")]
-        tot = sum(u["line_total"] for u in us)
-        return {"contract_version": 1, "aggregate_total": tot, "quote_units": us,
-                "pricing_summary": {"total_amount": tot, "calculation": {"quote_unit_count": 2}},
-                "merged_packages": {"A": {"aggregate_total": tot, "unit_keys": ["t1", "t2"]}}}
-    SHORT = "Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."
-    GOOD = ["--name", "A", "--unit", "t1", "--quantity", "7", "--shortfall", SHORT,
-            "--vendor", "Coastline Coaches confirmed 4 more Sprinters (Dana, dispatch)", "--approved-by", "Ayush"]
+    # 1. The retired path is gone. Dated history is exempt for the same reason as in the tool
+    #    contract guard: rewriting it would falsify the record.
+    retired = ("extend-quantity", "extend_quantity", "quantity_extension")
+    exempt = {"feedback-archive.md", "CHANGELOG.md", "regress.py"}
+    scanned = 0
+    for base in (os.path.join(root, "skills"), os.path.join(root, "docs", "artifacts")):
+        for dirpath, _dirs, files in os.walk(base):
+            if os.sep + "evals" + os.sep in dirpath + os.sep:
+                continue
+            for f in files:
+                if f in exempt or not f.endswith((".md", ".py", ".html")):
+                    continue
+                scanned += 1
+                text = open(os.path.join(dirpath, f), encoding="utf-8").read()
+                for needle in retired:
+                    if needle in text:
+                        problems.append(f"{os.path.relpath(os.path.join(dirpath, f), root)} still names the retired `{needle}`")
+    if scanned == 0:
+        problems.append("scanned no files; the guard has lost its input")
     with tempfile.TemporaryDirectory() as d:
-        def run(args, stdin=None):
-            return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
-        open(os.path.join(d, "request.md"), "w").write("80 passengers 3/20 7:40am Von Karman to Oak Canyon; 25 passengers back at 2:15pm.\n")
-        run([intake, "ingest", "--name", "A"], _json.dumps(response()))
-        r = run([intake, "extend-quantity"] + GOOD)
-        rp = os.path.join(d, "handoff", "responses", "A.json")
-        if r.returncode:
-            problems.append(f"a valid extension was refused: {(r.stderr or r.stdout).strip()[:200]}")
-        else:
-            ext = _json.load(open(rp))
-            t1 = next(u for u in ext["quote_units"] if u["key"] == "t1")
-            if t1["quantity"] != 7 or t1["line_total"] != 77154 * 7 or t1["unit_total"] != 77154:
-                problems.append("the extended unit is not 7 x Core's per-vehicle amount")
-            want = 77154 * 7 + 15399 * 5
-            if ext["aggregate_total"] != want or ext["pricing_summary"]["total_amount"] != want or ext["merged_packages"]["A"]["aggregate_total"] != want:
-                problems.append("the totals that follow from the quantity were not carried through")
-            if (t1["pricing_summary"]["calculation"]["quantity"], t1["pricing_summary"]["calculation"]["requested_quantity"]) != (7, 7):
-                problems.append("the unit's calculation quantity was not updated")
-            if not os.path.exists(os.path.join(d, "handoff", "responses", "_source", "A.json")):
-                problems.append("the Core response the extension came from was not kept")
-            if "quantity_extension" not in (ext.get("_ingest") or {}):
-                problems.append("the extension was not recorded in the response")
-            w = [intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md", "--package", "A", "--final"]
-            r = run(w)
-            if r.returncode:
-                problems.append(f"write refused a good extension: {(r.stderr or r.stdout).strip()[:200]}")
-            else:
-                ik = _json.load(open(os.path.join(d, "handoff", "intake.json")))
-                if len(ik.get("quantity_extensions") or []) != 1 or not any("Quantity extended" in x for x in ik.get("placeholders", [])):
-                    problems.append("intake.json does not record the extension where the confirm step lists it")
-            # any change beyond the quantity is refused at write, even when the totals still add up
-            for label, edit in (
-                ("a changed discount", lambda x: x["quote_units"][0]["pricing_summary"]["adjustments"].update(discount_basis_points=2000)),
-                ("an inflated line total", lambda x: (x["quote_units"][0].update(line_total=x["quote_units"][0]["line_total"] + 100),
-                                                      x["quote_units"][0]["pricing_summary"].update(total_amount=x["quote_units"][0]["line_total"]),
-                                                      x.update(aggregate_total=x["aggregate_total"] + 100))),
-                ("changed hours", lambda x: x["quote_units"][0]["pricing_summary"]["calculation"].update(billable_hours=3)),
-                ("a different vehicle", lambda x: x["quote_units"][0]["vehicle_type"].update(name="Mini Bus")),
-            ):
-                bad = copy.deepcopy(ext); edit(bad)
-                open(rp, "w").write(_json.dumps(bad))
-                r = run(w)
-                if r.returncode == 0 or "R95" not in r.stderr + r.stdout:
-                    problems.append(f"write accepted an extended response with {label}")
-            open(rp, "w").write(_json.dumps(ext))
-            if run(w).returncode:
-                problems.append("write refused the untouched extension after the tests above")
-            # an extension cannot be smuggled in through --raw
-            open(os.path.join(d, "r.json"), "w").write(_json.dumps(ext))
-            r = run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md", "--raw", "r.json", "--final"])
-            if r.returncode == 0 or "R95" not in r.stderr + r.stdout:
-                problems.append("an extended response was accepted through --raw")
-            r = run([intake, "extend-quantity"] + GOOD)
-            if r.returncode == 0:
-                problems.append("an already extended response was extended again")
-        # refusals, each from a fresh Core response
-        def refused(label, args, resp=None, expect="R95"):
-            run([intake, "ingest", "--name", "A"], _json.dumps(resp or response()))
-            r = run([intake, "extend-quantity"] + args)
-            if r.returncode == 0 or expect not in r.stderr + r.stdout:
-                problems.append(f"extend-quantity did not refuse: {label}")
-        def without(flag):
-            a_ = list(GOOD); i_ = a_.index(flag); del a_[i_:i_ + 2]; return a_
-        def setflag(flag, val):
-            a_ = list(GOOD); a_[a_.index(flag) + 1] = val; return a_
-        refused("no vendor statement", without("--vendor") + ["--vendor", " "])
-        refused("no approver", without("--approved-by") + ["--approved-by", ""])
-        refused("a shortfall message that is not Core's", setflag("--shortfall", "the vendor said it is fine"))
-        refused("a quantity not above Core's", setflag("--quantity", "3"))
-        refused("an unknown unit", setflag("--unit", "nope"))
-        nonlin = response(); nonlin["quote_units"][0]["line_total"] += 5000; nonlin["quote_units"][0]["pricing_summary"]["total_amount"] += 5000
-        nonlin["aggregate_total"] += 5000
-        refused("a price that does not scale per vehicle", GOOD, nonlin)
-        nopv = response(); del nopv["quote_units"][0]["pricing_summary"]["per_vehicle_total_amount"]
-        refused("a unit with no per-vehicle amount from Core", GOOD, nopv)
-        if not os.path.exists(os.path.join(d, "handoff", "blocked.json")):
-            problems.append("a refused extension left no blocked.json (R92)")
-    text = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
-    for needle in ("extend-quantity", "market_inventory_shortfall", "vendor"):
-        if needle not in text:
-            problems.append(f"quote-intake SKILL.md does not describe the quantity extension (`{needle}` missing)")
+        r = subprocess.run([sys.executable, intake, "extend-quantity", "--name", "A"],
+                           capture_output=True, text=True, cwd=d)
+        if r.returncode == 0:
+            problems.append("handoff.py still accepts extend-quantity")
+
+    # 2. The instructions teach Core's override, after the shortfall and on the CSM's say-so.
+    for rel in (os.path.join("skills", "quote-intake", "SKILL.md"),
+                os.path.join("skills", "quote-intake", "references", "decision-tree.md"),
+                os.path.join("skills", "quote-intake", "references", "mcp-contract.md")):
+        text = open(os.path.join(root, rel), encoding="utf-8").read()
+        for needle in ("inventory_override", "market_inventory_shortfall"):
+            if needle not in text:
+                problems.append(f"{rel} does not teach the inventory override (`{needle}` missing)")
+
+    # 3. Core's warning is internal: it reaches internal.warnings and no client-facing field.
+    try:
+        spec = importlib.util.spec_from_file_location("_nq_override", os.path.join(HERE, "normalize_quote.py"))
+        nq = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nq)
+    except Exception as e:
+        problems.append(f"could not import normalize_quote ({e})")
+        nq = None
+    if nq is not None:
+        warning = "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."
+        unit = {"key": "t1", "label": "t1", "quantity": 7, "line_total": 540078, "passenger_count": 80,
+                "pickup_date": "2027-03-20T07:40:00-07:00",
+                "vehicle_type": {"id": 26, "name": "Mercedes Sprinter Van", "capacity": 13},
+                "stops": [{"display_name": "A", "travel_time": 0}, {"display_name": "B", "travel_time": 20}],
+                "warnings": [warning],
+                "pricing_summary": {"status": "priced", "total_amount": 540078, "pricing_method": "hourly",
+                                    "rate": {"effective_rate_amount": 38577, "billing_unit": "hour"},
+                                    "calculation": {"quantity": 7}}}
+        leg, internal = nq.normalize_unit(unit, None)
+        if warning not in internal["warnings"]:
+            problems.append("an Inventory override warning did not reach the internal warnings")
+        if "Inventory override" in _json.dumps(leg):
+            problems.append("an Inventory override warning reached a client-facing leg")
+
     if problems:
-        print("  \u2717 quantity extension")
+        print("  \u2717 inventory override")
         for b in problems:
             print(f"      - {b}")
         return False
-    print("  \u2713 quantity extension (quantity and the totals that follow, nothing else; a hand edit, a non-linear price, a missing vendor statement or approver, or --raw is refused)")
+    print(f"  \u2713 inventory override (Core's path taught, the retired extension gone from {scanned} files, the warning internal only)")
     return True
 
 
@@ -4456,7 +4457,8 @@ def main():
     lint_ok = lint_confirm_items() and lint_ok
     lint_ok = lint_capture_at_delivery() and lint_ok
     lint_ok = lint_handoff_packages() and lint_ok
-    lint_ok = lint_quantity_extension() and lint_ok
+    lint_ok = lint_inventory_override() and lint_ok
+    lint_ok = lint_nearby_choices() and lint_ok
     lint_ok = lint_time_reading() and lint_ok
     lint_ok = lint_blocked_capture() and lint_ok
     lint_ok = lint_deliverables() and lint_ok

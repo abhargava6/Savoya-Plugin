@@ -31,7 +31,7 @@ generate_quote_options
 | Tool | What it does |
 |---|---|
 | `resolve_service_areas` | Find a service area by a name the CSM typed, and return its id. Needed only when the CSM anchors the nearby-market lookup somewhere other than the itinerary's own market. Never infer the id from a city name. |
-| `lookup_nearby_markets` | The three nearest markets **by road distance** (not linear — that correction was the point), each with the vehicle types and quantities it *adds*. Takes `reference_service_area_id` and `inventory_date`. Returns a signed `market_ref` per market. |
+| `lookup_nearby_markets` | The three nearest markets **by road distance** (not linear — that correction was the point), each with the vehicle types and quantities it *adds*, the other listed markets that share some of those vehicles, and a combined distinct count for every market listed so far. Takes `reference_service_area_id` and `inventory_date`; `shown_service_area_ids` pages to the next three nearest, and `service_area_ids` (up to three) returns markets the CSM named at any distance. Returns a signed `market_ref` per market. |
 | `calculate_sourced_quote_units` | The exact-quote path when some or all vehicles come from a non-primary market. One allocation per itinerary × vehicle type × source market; primary-market allocations omit `source_market_ref`. `quantity` is **required** here and means *vehicle count*, which is not what it means on `calculate_quote_units`. |
 
 `calculate_temporary_quote_units` also gained `source_market_ref`, so a sourced package
@@ -40,14 +40,14 @@ included, each carrying the temporary input.
 
 Three things to know that are not in any schema:
 
-- **A `market_ref` is valid for 24 hours, and is scoped to the market it came from.**
-  Core returns `sourcing_reference_expired` past the window; look the markets up again
-  and retry with the new ref for the same market. Scope is the sharper trap: a ref for
-  Houston obtained by looking up from *Austin* is rejected for a Dallas trip. Look up
-  from the market you are sourcing *into*.
-- **Nearby is not sourceable.** Dallas offers only Shreveport, Austin and Oklahoma City,
-  even though Houston appears in Austin's own nearby list. The sourceable set is
-  per-market and is not the same as the three nearest.
+- **A `market_ref` is valid for 24 hours, and is scoped to the trip's primary market.**
+  Core returns `sourcing_reference_expired` past the window; look the same markets up
+  again with `service_area_ids` and retry with the new ref for the same market. A ref
+  obtained by looking up from another market is rejected with a
+  `source_market_ref_mismatch` issue. Look up from the market you are sourcing *into*.
+- **Any service area is sourceable.** The nearby list is a display aid. A market the CSM
+  names that is not among the nearest is looked up with `service_area_ids`, at any
+  distance, and quoted like any other.
 - **Sourced vehicles bill the PRIMARY market's rate**, with the positioning drive time
   inside the line total. Verified live: an Austin Mini Bus sourced into Dallas billed
   Dallas's $314.92/hr, not Austin's $244.09/hr. The nearby market supplies the vehicle,
@@ -55,6 +55,12 @@ Three things to know that are not in any schema:
 - **Core can return `market_inventory_shortfall`.** Markets returned together share
   vendors, so their *combined distinct* vehicles can fall short even when each market
   alone looks sufficient. Never show a price on a shortfall.
+- **Every quote unit takes `inventory_override: true`** (calculate_quote_units, the
+  sourced and temporary paths, and options). Set it only after Core reported the
+  shortfall and the CSM chose to override it, on the units in the shortfalls they
+  overrode. Core then prices the package and puts an `Inventory override: …` warning on
+  each affected unit and on the package, plus `overridden_inventory_shortfalls`.
+  The warning is internal. A shortfall among units without the flag still blocks.
 - **Counts are "unconfirmed"** and exclude vehicles whose vendors already serve the
   reference market — so the number is *additional* supply, not that market's total.
   Say which when presenting it; a CSM reading "SUV 4" will assume four exist there.
@@ -162,12 +168,11 @@ an hourly temporary rate.**
   the winner. A free per-leg comparison, and the nearest thing to the multi-source shape
   GREEN-371 will need.
 - **`presentation`** on every response: a `view` (`rate_preview`, `scenario_comparison`,
-  `quote_result`, `blocked`), a `title`, severity-tagged `warnings`, pre-formatted rows, and
-  `actions` carrying intents (`select_scenario`, `refine_quote`). This is the CSM-facing
+  `quote_result`, `blocked`), a `title`, severity-tagged `warnings` and pre-formatted rows.
+  It carries no actions: the plugin asks every question itself. This is the CSM-facing
   view, rendered by `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py`.
   It is **internal**: it carries rate ids and rack-versus-effective rates, so it never
-  becomes client copy. The `actions` intents are read and named, bound to nothing — the
-  refine loop stays ours until they are documented.
+  becomes client copy.
 - **Blocked responses** carry `status: "blocked"`, a typed `error_type`, a `client_error`
   with `category` and a CSM-ready `user_message`, and a `recovery` block with an actionable
   next step. Surface that wording rather than inventing one.

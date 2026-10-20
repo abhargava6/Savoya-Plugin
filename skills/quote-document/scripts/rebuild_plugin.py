@@ -7,6 +7,11 @@ so the plugin can be rebuilt and repackaged from any environment where the
 skill is mounted — e.g. a claude.ai / Cowork chat doing the weekly pass.
 
 Usage: rebuild_plugin.py <skill_dir> <out_dir> [--bump patch|minor|major] [--package out.plugin]
+                         [--mcp-url https://public-tunnel/mcp] [--package-version x.y.z-local.n]
+
+--mcp-url and --package-version change only the assembled copy, for a local test build:
+the checked-in .mcp.json stays on acceptance and no repo manifest is rewritten.
+`build.py` at the repo root sets both from .env; prefer it over calling this directly.
 """
 import argparse, json, os, shutil, zipfile
 
@@ -21,7 +26,13 @@ ap = argparse.ArgumentParser()
 ap.add_argument("skill_dir"); ap.add_argument("out_dir")
 ap.add_argument("--bump", choices=["patch", "minor", "major"], default=None)
 ap.add_argument("--package", default=None)
+ap.add_argument("--mcp-url", default=None)
+ap.add_argument("--package-version", default=None)
 a = ap.parse_args()
+if a.mcp_url and (not a.mcp_url.startswith("https://") or "localhost" in a.mcp_url or "127.0.0.1" in a.mcp_url):
+    ap.error("--mcp-url must be a public HTTPS URL; Claude cannot reach localhost.")
+if a.package_version and (a.bump or os.environ.get("PLUGIN_VERSION")):
+    ap.error("--package-version labels a test build only; it cannot be combined with --bump or PLUGIN_VERSION.")
 
 root = a.out_dir
 if os.path.exists(root): shutil.rmtree(root)
@@ -43,6 +54,10 @@ for d in siblings:
     print(f"  + skill {name}")
 pr = os.path.join(skill_dst, "assets", "plugin-root")
 shutil.copy(os.path.join(pr, ".mcp.json"), os.path.join(root, ".mcp.json"))
+if a.mcp_url:
+    mcp = json.load(open(os.path.join(root, ".mcp.json")))
+    mcp["mcpServers"]["savoya"]["url"] = a.mcp_url
+    json.dump(mcp, open(os.path.join(root, ".mcp.json"), "w"), indent=2)
 shutil.copy(os.path.join(pr, "README.md"), os.path.join(root, "README.md"))
 shutil.copy(os.path.join(pr, "CONTRIBUTING.md"), os.path.join(root, "CONTRIBUTING.md"))
 for extra in ("RUNBOOK.md", "SETUP.md"):
@@ -75,6 +90,8 @@ if ap_version or a.bump:
                 json.dump(manifest, fh, indent=2)
         except OSError:
             pass  # installed mounts are read-only; the packaged copy carries the version
+if a.package_version:
+    manifest["version"] = a.package_version   # the packaged copy only; nothing in the repo moves
 json.dump(manifest, open(os.path.join(root, ".claude-plugin", "plugin.json"), "w"), indent=2)
 print(f"Rebuilt {root} at version {manifest['version']}")
 if a.package:

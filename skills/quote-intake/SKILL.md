@@ -53,6 +53,7 @@ Never work around a missing reference by improvising the flow from memory — th
 ## Context budget
 - One `tool_search` at the start for the five tools a quote actually uses: `resolve_client resolve_itinerary_stops resolve_vehicle_types generate_quote_options calculate_quote_units`. Never search per tool.
 - **Cross-market sourcing adds three more**, searched only when node F2 fires: `resolve_service_areas lookup_nearby_markets calculate_sourced_quote_units`. Most quotes never need them, so they stay out of the opening search.
+- **After every `lookup_nearby_markets` call, ask ONE `ask_user_input_v0` call with two questions**, so the follow-up choices page in the picker with no second turn. **Page 1:** one ready-made split per **newly listed** market that covers the gap alone, nearest first, at most three (`3 Orange County + 2 Los Angeles`), then `None of these`; with no vehicle count, or a primary market that is not short, name the new markets instead; leave page 1 out when no new market covers the gap alone. **Page 2:** `Use my choice above` (only with page 1) · `Show 3 more markets` (while fewer than twelve have been shown) · `Split differently` · `Override <primary> inventory` (only when the primary market is short). A page-2 answer other than `Use my choice above` wins. Never offer a market from an earlier lookup as its own option, never put more than four options on a page, and never mark one as recommended.
 - `resolve_passengers` is **not** in that set — load it only when the user named a passenger, which is the only time we call it.
 - Never open a raw engine response to read it. Save it to a file, then run `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py` — it renders Core's own `presentation` block, which is what a CSM should see. Exit 3 means there was no such block; fall back to `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/handoff.py summarize`. Post the output as-is; rewording it is the drift this replaced.
 - **Call `resolve_vehicle_types` once per quote.** Core owns ids, capacity, `greeter`, `bus`,
@@ -175,13 +176,12 @@ The first `--package` is Option A; the others' units become alternatives. A unit
 If the data cannot be saved or the document flow stops for any reason, intake still leaves a record: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/capture_session.py --blocked "<what stopped it>" --slug <slug> --client "<Client>" --request handoff/request.md` (R80).
 
 ## A quantity above Core's inventory (R95)
-Core returns `market_inventory_shortfall` when more vehicles of a type are requested than it shows. If the CSM says the vendor has confirmed more, there is one product path, and no other. **Never scale a unit by hand.**
+Core returns `market_inventory_shortfall` when more vehicles of a type are requested than its unconfirmed inventory shows. The CSM may know better: a vendor confirmed the vehicles by phone, which Savoya's data does not reflect. Core prices that case itself once the CSM overrides the shortfall. **Never scale a unit by hand, and never price a smaller quantity in its place.**
 
-1. Run the nearby-market check first (node F2). Use this path only when the CSM states they have the vehicles from a vendor.
-2. Ask in one message: how many, which vendor confirmed, and who at the vendor. The CSM's name is the approver.
-3. Price the **largest quantity Core accepts** for that unit and `ingest` the response as usual.
-4. Run `handoff.py extend-quantity --name <package> --unit <key> --quantity <N> --shortfall "<Core's exact message>" --vendor "<what the vendor confirmed, and who>" --approved-by "<CSM>"`. It changes the unit's quantity and the totals that follow, and nothing else; `write` checks that again. If it refuses, tell the user why. Do not edit the response.
-5. Say it in the summary, internal only: "7 Sprinters: 3 in Savoya's inventory, 4 confirmed by [vendor]". Never in a client document.
+1. **No price on a shortfall.** State, per returned market or market group, the vehicle type, the requested count and the available count.
+2. **Ask what they want**, with `ask_user_input_v0`: `Split differently` · `Show 3 more markets` (node F2) · `Override inventory`, because they have the vehicles. Ask no reason and no vendor details; the decision is theirs. After a nearby lookup the same override is on page 2 of the market choice.
+3. **On "override"**, send the same package to the same tool again with `"inventory_override": true` on every unit in each shortfall they overrode. Only after Core reported the shortfall and the CSM chose it; never preemptively, never on your own.
+4. **Core prices it** and puts an `Inventory override: …` warning on each affected unit. `ingest` and `write` as usual; the warning stays internal. Say it in the summary ("7 Sprinters: 3 in Savoya's inventory, inventory overridden"), never in a client document.
 
 ## What intake never does
 Discounts beyond the client's contracted rate, fuel surcharge, covers, personalization, maps, formats, mail. Those are document-flow questions. The number presented is the client's contracted pricing, and the summary says so.

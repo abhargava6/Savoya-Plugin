@@ -11,8 +11,8 @@ shape from B4.
   renderer's presentation/units cross-check correctly stays silent here rather than
   comparing against a number that doesn't exist.
 - `presentation.actions` carries **one `select_scenario` per option** with a
-  `selection_key`. The renderer prints each distinct intent once; before that it read
-  "select_scenario, select_scenario".
+  `selection_key`. The MCP no longer sends actions, so this capture is now the check that
+  the renderer ignores them.
 - **`vehicle_options[]` shows the candidate that lost**: Sedan $346.50 priced against SUV
   $372.68 within the value option. Core prices every candidate and keeps the lowest — and
   returns all of them. That is a free per-leg comparison we currently discard, and the

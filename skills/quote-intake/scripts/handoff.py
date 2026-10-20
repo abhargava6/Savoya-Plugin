@@ -21,22 +21,11 @@
         Option A; every other package's units become alternatives. Each package keeps its own
         Core total; nothing is summed or averaged.
 
-  handoff.py extend-quantity --name A --unit KEY --quantity N --shortfall "<Core's message>" \
-      --vendor "<who confirmed what>" --approved-by "<CSM>" [--dir handoff]       (R95)
-      → when Core blocked a quantity above its inventory and the CSM has the vehicles confirmed with
-        a vendor: takes the saved response (priced at the largest quantity Core accepts) and
-        extends THAT UNIT'S QUANTITY ONLY. The line total becomes Core's per-vehicle amount x N and
-        nothing else may differ from what Core returned; `write` re-derives the extension from the
-        saved source and refuses if the file differs in any other way. Internal only. Interim
-        until Core allows it (ENGINEERING.md H5).
-
   handoff.py client "Yerdle"                 → cached profile id, else exit 1
   handoff.py capture --dir handoff [--slug ...] [--worked ...] [--change ...]
 """
 import argparse
-import copy
 import datetime as dt
-import hashlib
 import json
 import os
 import re
@@ -347,141 +336,11 @@ def ingest(a):
     print(f"SAVED {path}: {len(units)} units, total {money(total)} (units add up to the response's own total)")
 
 
-def _sha(text):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def _isint(x):
-    return isinstance(x, int) and not isinstance(x, bool)
-
-
-def build_extension(src, key, n):
-    """R95. Return (extended_response, info): the saved response with ONE unit's quantity raised
-    to n and nothing else changed except the figures that follow from it arithmetically. Raises
-    ValueError, saying why, when the price does not scale per vehicle. Pure: `write` calls it
-    again on the saved source and compares, so a hand-edited extension cannot pass."""
-    raw = copy.deepcopy(src)
-    unit = next((u for u in raw.get("quote_units") or [] if u.get("key") == key), None)
-    if unit is None:
-        raise ValueError(f"no unit {key!r} in the response")
-    ps = unit.get("pricing_summary") or {}
-    calc = ps.get("calculation") or {}
-    pv, q = ps.get("per_vehicle_total_amount"), calc.get("quantity")
-    if not (_isint(pv) and _isint(q) and _isint(n)):
-        raise ValueError("the unit carries no per_vehicle_total_amount and quantity from Core, so its price cannot be shown to scale per vehicle")
-    if unit.get("quantity") != q:
-        raise ValueError(f"unit quantity {unit.get('quantity')} disagrees with Core's calculation quantity {q}")
-    if unit.get("line_total") != pv * q:
-        raise ValueError(f"line total {unit.get('line_total')} is not Core's per-vehicle amount {pv} x {q}: this price does not scale per vehicle, so it is not extended")
-    if "unit_total" in unit and unit["unit_total"] != pv:
-        raise ValueError(f"unit_total {unit['unit_total']} is not Core's per-vehicle amount {pv}")
-    if "total_amount" in ps and ps["total_amount"] != unit["line_total"]:
-        raise ValueError("the unit's total_amount does not equal its line total")
-    if n <= q:
-        raise ValueError(f"the new quantity {n} must be above the {q} Core priced")
-    old_line, new_line = unit["line_total"], pv * n
-    delta = new_line - old_line
-    unit["quantity"], unit["line_total"] = n, new_line
-    if "total_amount" in ps:
-        ps["total_amount"] = new_line
-    calc["quantity"] = n
-    if "requested_quantity" in calc:
-        calc["requested_quantity"] = n
-    agg = raw.get("aggregate_total")
-    raw["aggregate_total"] = agg + delta
-    top = raw.get("pricing_summary")
-    if isinstance(top, dict) and top.get("total_amount") == agg:
-        top["total_amount"] = agg + delta
-    for v in (raw.get("merged_packages") or {}).values():
-        if isinstance(v, dict) and v.get("aggregate_total") == agg:
-            v["aggregate_total"] = agg + delta
-    info = {"unit": key, "vehicle": (unit.get("vehicle_type") or {}).get("name"),
-            "core_quantity": q, "extended_quantity": n, "per_vehicle_cents": pv,
-            "core_line_total_cents": old_line, "extended_line_total_cents": new_line,
-            "scaling_proof": "multi_vehicle" if q >= 2 else "single_vehicle"}
-    return raw, info
-
-
-def _strip_ingest(raw):
-    return {k: v for k, v in raw.items() if k != "_ingest"}
-
-
-def verify_extension(a, name, raw):
-    """Return the quantity_extension block when the saved response `name` carries one and it
-    re-derives exactly from the saved source; None when it carries none. A mismatch refuses (R95)."""
-    prev_ingest = raw.get("_ingest") or {}
-    ext = prev_ingest.get("quantity_extension")
-    if not ext:
-        return None
-    sp = os.path.join(a.dir, "responses", "_source", f"{name}.json")
-    if not os.path.exists(sp):
-        refuse(a, "R95", f"response {name} says its quantity was extended but the Core response it came from is not saved.",
-               "Ingest the Core response again and run extend-quantity again. Never edit a saved response.")
-    text = open(sp, encoding="utf-8").read()
-    if _sha(text) != ext.get("source_sha256"):
-        refuse(a, "R95", f"response {name}: the saved Core response does not match the one the extension was made from.",
-               "Ingest the Core response again and run extend-quantity again.")
-    for f in ("vendor_statement", "approved_by", "shortfall_message"):
-        if not str(ext.get(f) or "").strip():
-            refuse(a, "R95", f"response {name}: the extension record has no {f}.", "Run extend-quantity again with every flag.")
-    try:
-        expected, _info = build_extension(json.loads(text), ext["unit"], ext["extended_quantity"])
-    except (ValueError, KeyError) as e:
-        refuse(a, "R95", f"response {name}: the extension does not re-derive from Core's response ({e}).", "Ingest again and extend again, or quote the quantity Core accepts.")
-    if _strip_ingest(raw) != _strip_ingest(expected):
-        refuse(a, "R95", f"response {name} differs from Core's response in more than the extended unit's quantity and the totals that follow from it.",
-               "Only the quantity may change. Ingest the Core response again and run extend-quantity again; never edit the saved response.")
-    return ext
-
-
-def extend_quantity(a):
-    """R95: the one product-provided way to quote more vehicles than Core's inventory shows."""
-    from types import SimpleNamespace
-    sh = SimpleNamespace(dir=a.dir, client=None, headcount=None, package=[a.name], stop_note=[], selected=None)
-    path = os.path.join(a.dir, "responses", f"{a.name}.json")
-    if not os.path.exists(path):
-        sys.exit(f"No saved response {path}. Run: handoff.py ingest --name {a.name}")
-    text = open(path, encoding="utf-8").read()
-    raw = json.loads(text)
-    problems, _units, _total = check_response(raw)
-    if problems:
-        sys.exit(f"Saved response {a.name} no longer checks out: {problems}")
-    if (raw.get("_ingest") or {}).get("quantity_extension"):
-        sys.exit(f"Response {a.name} is already extended. Ingest the Core response again to start over.")
-    for f, v in (("--shortfall", a.shortfall), ("--vendor", a.vendor), ("--approved-by", a.approved_by)):
-        if not (v or "").strip():
-            refuse(sh, "R95", f"{f} is empty.", "State Core's shortfall message, what the vendor confirmed, and who approved it.")
-    if not re.search(r"inventor|shortfall", a.shortfall, re.I):
-        refuse(sh, "R95", "--shortfall is not a Core inventory message.",
-               "Pass the exact text Core returned when it blocked the quantity (it names the inventoried count).")
-    try:
-        ext_raw, info = build_extension(raw, a.unit, a.quantity)
-    except ValueError as e:
-        refuse(sh, "R95", str(e), "Quote the quantity Core accepts, or stop and tell the user.")
-    src_dir = os.path.join(a.dir, "responses", "_source")
-    os.makedirs(src_dir, exist_ok=True)
-    with open(os.path.join(src_dir, f"{a.name}.json"), "w", encoding="utf-8") as fh:
-        fh.write(text)
-    info.update({"vendor_statement": a.vendor.strip(), "approved_by": a.approved_by.strip(),
-                 "shortfall_message": a.shortfall.strip(), "source_sha256": _sha(text),
-                 "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
-    ing = dict(ext_raw.get("_ingest") or {}); ing["quantity_extension"] = info
-    ext_raw["_ingest"] = ing
-    problems, _u, total = check_response(ext_raw)
-    if problems:
-        sys.exit(f"Internal error: the extended response does not add up: {problems}")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(json.dumps(ext_raw))
-    print(f"EXTENDED {a.name}: unit {info['unit']} {info['core_quantity']} -> {info['extended_quantity']} x {info['vehicle']} "
-          f"at Core's {money(info['per_vehicle_cents'])} per vehicle = {money(info['extended_line_total_cents'])}; package total {money(total)}. "
-          f"Scaling proof: {info['scaling_proof']}. Internal only: say so in the summary, never in a client document.")
-
-
 def merge_packages(a):
     """Build raw_quote.json from separately priced packages. The first is the primary; the
     others' units become alternatives. Unit objects are copied verbatim; only bookkeeping is added."""
     import copy
-    pk, exts = [], []
+    pk = []
     for name in a.package:
         path = os.path.join(a.dir, "responses", f"{name}.json")
         if not os.path.exists(path):
@@ -490,9 +349,6 @@ def merge_packages(a):
         problems, units, total = check_response(raw)
         if problems:
             sys.exit(f"Saved response {name} no longer checks out: {problems}")
-        ext = verify_extension(a, name, raw)
-        if ext:
-            exts.append(dict(ext, package=name))
         pk.append((name, raw, units, total))
     shared = dict(x.split("=", 1) for x in a.shared)        # other_key=primary_key
     alt_of = dict(x.split("=", 1) for x in a.alt_of)
@@ -534,7 +390,6 @@ def merge_packages(a):
         meta[name] = {"aggregate_total": total, "unit_keys": [u["key"] for u in kept], "renamed_keys": dict(renamed),
                       "shared_with_primary": {k: v for k, v in shared.items() if k in {x["key"] for x in units}}}
     merged["merged_packages"] = meta
-    merged["quantity_extensions"] = exts
     return merged, [u["key"] for u in prim_units], alternatives
 
 
@@ -844,10 +699,6 @@ def write(a):
     if a.scenarios:
         copy_into(a.scenarios, os.path.join(a.dir, "scenarios.json"))
     raw = load_json(a.raw, {}) or {}
-    if not a.package and (raw.get("_ingest") or {}).get("quantity_extension"):
-        refuse(a, "R95", "the raw quote carries a quantity extension but was not written from a saved response.",
-               "Save the Core response with ingest, run extend-quantity, and write with --package.")
-    exts = raw.get("quantity_extensions") or []
     pkgs = packages(raw)
     chosen = next((p for p in pkgs if p[0] == a.selected), pkgs[0])
     units_src = chosen[3]
@@ -957,10 +808,7 @@ def write(a):
         "rate_sheet_shown": a.rate_sheet_shown,
         "headcount_confirmed": a.headcount, "stop_resolution": stop_notes,
         "ambiguities": a.ambiguity,
-        "placeholders": a.placeholder + [f"Scenario reading: {r}" for r in a.reading]
-                        + [f"Quantity extended on {e['unit']}: {e['extended_quantity']} x {e.get('vehicle')} against {e['core_quantity']} inventoried "
-                           f"in the pricing system; availability confirmed by the vendor ({e['vendor_statement']}), approved by {e['approved_by']}" for e in exts],
-        "quantity_extensions": exts,
+        "placeholders": a.placeholder + [f"Scenario reading: {r}" for r in a.reading],
         "time_readings": readings,
         "overlap_decisions": overlap,
         "placeholder_stops": pstops,
@@ -1080,11 +928,6 @@ def main():
     ig.add_argument("--file", default=None)
     ig.add_argument("--without-presentation", dest="without_presentation", action="store_true",
                     help="drop Core's presentation block when the response is too large to paste (recorded in the file)")
-    ex = sub.add_parser("extend-quantity"); ex.add_argument("--name", required=True); ex.add_argument("--dir", default="handoff")
-    ex.add_argument("--unit", required=True); ex.add_argument("--quantity", type=int, required=True)
-    ex.add_argument("--shortfall", default="", help="the exact text Core returned when it blocked the quantity")
-    ex.add_argument("--vendor", default="", help="what the vendor confirmed, and who at the vendor")
-    ex.add_argument("--approved-by", dest="approved_by", default="", help="the CSM who approved the extension")
     c = sub.add_parser("client"); c.add_argument("name")
     cp = sub.add_parser("capture"); cp.add_argument("--dir", default="handoff"); cp.add_argument("--slug", default=None)
     cp.add_argument("--worked", default=None); cp.add_argument("--change", default=None)
@@ -1094,8 +937,6 @@ def main():
         print(summarize(load_json(a.raw, {}) or {}, a.select))
     elif a.cmd == "ingest":
         ingest(a)
-    elif a.cmd == "extend-quantity":
-        extend_quantity(a)
     elif a.cmd == "write":
         write(a)
     elif a.cmd == "capture":
