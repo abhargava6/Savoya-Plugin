@@ -4,7 +4,8 @@
   render_presentation.py <raw.json>
 
 Every MCP response now carries a `presentation` block: a `view`, a `title`,
-severity-tagged `warnings`, pre-formatted rows, and `actions` carrying intents. Core is
+severity-tagged `warnings` and pre-formatted rows. It offers no actions: the plugin asks every
+question itself. Core is
 proposing the UI. We render it rather than composing our own table, for two reasons:
 
   1. Consistency. A table the model writes fresh each session varies between sessions;
@@ -337,20 +338,6 @@ def render(raw):
         lines += _generic(data)
 
     lines += _warn_lines(pres.get("warnings"), seen)
-
-    # One line per distinct intent. A comparison returns select_scenario once per option,
-    # which printed as "select_scenario, select_scenario" before this.
-    acts, seen_acts = [], set()
-    for a in pres.get("actions") or []:
-        name = a.get("intent") or a.get("id")
-        if name and name not in seen_acts:
-            seen_acts.add(name)
-            acts.append(name)
-    if acts:
-        # Read, recorded, bound to nothing. These look like the intended way to drive the
-        # refine loop, but they are undocumented beyond their names and our loop is
-        # tested. When that changes, this is the seam.
-        lines += ["", f"_Core offers: {', '.join(acts)}._"]
 
     lines += cross_check(raw, pres)
     return "\n".join(lines).rstrip() + "\n", 0

@@ -168,12 +168,11 @@ an hourly temporary rate.**
   the winner. A free per-leg comparison, and the nearest thing to the multi-source shape
   GREEN-371 will need.
 - **`presentation`** on every response: a `view` (`rate_preview`, `scenario_comparison`,
-  `quote_result`, `blocked`), a `title`, severity-tagged `warnings`, pre-formatted rows, and
-  `actions` carrying intents (`select_scenario`, `refine_quote`). This is the CSM-facing
+  `quote_result`, `blocked`), a `title`, severity-tagged `warnings` and pre-formatted rows.
+  It carries no actions: the plugin asks every question itself. This is the CSM-facing
   view, rendered by `${CLAUDE_PLUGIN_ROOT}/skills/quote-intake/scripts/render_presentation.py`.
   It is **internal**: it carries rate ids and rack-versus-effective rates, so it never
-  becomes client copy. The `actions` intents are read and named, bound to nothing — the
-  refine loop stays ours until they are documented.
+  becomes client copy.
 - **Blocked responses** carry `status: "blocked"`, a typed `error_type`, a `client_error`
   with `category` and a CSM-ready `user_message`, and a `recovery` block with an actionable
   next step. Surface that wording rather than inventing one.

@@ -544,7 +544,7 @@ def lint_presentation_render():
                                        "hourly rate not found", "16 in market",
                                        "limited availability"],
         "comparison-two-options":     ["$346.50", "$418.88", "labelled value",
-                                       "labelled elevated", "select_scenario"],
+                                       "labelled elevated"],
         "capacity-80pax-minibus":     ["2× Mini Bus", "$3,149.20", "5 hrs min"],
         "temporary-rate-execvan":     ["$192.50/hour", "rack $250.00",
                                        "was not saved in Savoya"],
@@ -567,6 +567,10 @@ def lint_presentation_render():
         # Core says this on every unit of every fixture; none of them should show it.
         if "No passenger was selected" in o:
             problems.append(f"{slug}: rendered the suppressed passenger warning")
+        # The presentation no longer offers actions; the plugin asks every question. Older
+        # captures (comparison-two-options) still carry them, and the render ignores them.
+        if "select_scenario" in o or "Core offers" in o:
+            problems.append(f"{slug}: rendered presentation actions")
 
     if problems:
         print("  ✗ presentation render")
@@ -3301,33 +3305,39 @@ def lint_time_reading():
 
 
 def lint_nearby_choices():
-    """PRD R48. After every nearby lookup the CSM gets ready-made splits for the markets that
-    lookup newly listed, then "More choices" (three more, a different split, an override). Two
-    live sessions went wrong here: one reused the first lookup's markets after paging, and one
-    never offered more markets, because the set asked for five options in a picker that fits
-    four, so the session improvised and marked a market "Recommended". The decision tree, its
-    published mirror and the question table must name the same set, within four options."""
+    """PRD R48. After every nearby lookup the CSM gets one picker call with two pages: splits for
+    the markets that lookup newly listed, then the follow-up choices (three more, a different
+    split, an override). Live sessions went wrong here: one reused the first lookup's markets
+    after paging, one asked for five options in a picker that fits four, one marked a market
+    "Recommended" and left out more markets, and one made "more choices" a second turn. A script
+    that printed the options fixed the content but added a long wait, so the rule is prose in
+    SKILL.md, which is always loaded. Every file that states it must state the same rule."""
     root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
     problems = []
-    needles = ("newly listed", "More choices", "Show 3 more markets", "Split differently", "Override")
-    for rel in (os.path.join("skills", "quote-intake", "references", "decision-tree.md"),
-                os.path.join("docs", "artifacts", "decision-tree.html"),
-                os.path.join("skills", "quote-document", "references", "asking-questions.md")):
+    common = ("newly listed", "None of these", "Use my choice above", "Show 3 more markets", "Split differently")
+    rules = {
+        os.path.join("skills", "quote-intake", "SKILL.md"):
+            common + ("ONE `ask_user_input_v0` call with two questions", "Never offer a market from an earlier lookup",
+                      "never put more than four options on a page", "never mark one as recommended"),
+        os.path.join("skills", "quote-intake", "references", "decision-tree.md"):
+            common + ("one `ask_user_input_v0` call with two questions", "never more than four options a page",
+                      "Never offer a market from an earlier lookup", "never mark an option as recommended",
+                      "shown_service_area_ids"),
+        os.path.join("docs", "artifacts", "decision-tree.html"): common + ("One picker call with two pages",),
+        os.path.join("skills", "quote-document", "references", "asking-questions.md"):
+            common + ("two questions in one call",),
+    }
+    for rel, needles in rules.items():
         text = open(os.path.join(root, rel), encoding="utf-8").read()
         for needle in needles:
             if needle not in text:
-                problems.append(f"{rel} does not name the nearby choices (`{needle}` missing)")
-    tree = open(os.path.join(root, "skills", "quote-intake", "references", "decision-tree.md"), encoding="utf-8").read()
-    for rule in ("Never offer a market from an earlier lookup as its own option",
-                 "never more than four options", "Never mark an option as recommended", "shown_service_area_ids"):
-        if rule not in tree:
-            problems.append(f"decision-tree.md lost the rule: {rule}")
+                problems.append(f"{rel} lost `{needle}`")
     if problems:
         print("  \u2717 nearby choices")
         for b in problems:
             print(f"      - {b}")
         return False
-    print("  \u2713 nearby choices (new-market splits then More choices, four options at most, nothing recommended)")
+    print("  \u2713 nearby choices (one call, two pages: new-market splits then the follow-ups; four options a page, nothing recommended)")
     return True
 
 

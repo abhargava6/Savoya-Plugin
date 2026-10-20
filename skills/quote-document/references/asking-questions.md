@@ -23,8 +23,7 @@ Every question in either skill that has enumerable answers **must** be asked wit
 | Blocking gap: flight-derived pickup | `12:30pm — domestic (2h)` · `11:30am — international (3h)` · `Another time` |
 | Rate sheet? | `Rate sheet first` · `Straight to the quote` |
 | Quote mode | `Best — one per leg` · `Options — value & elevated` · `I'll pick the vehicles` |
-| Nearby markets (F2), after every lookup | one ready-made split per **newly listed** market that covers the gap alone, nearest first, at most three (`3 Orange County + 5 Los Angeles`), then `More choices`. No stated vehicle count → the market names instead. Never a market from an earlier lookup, and never marked recommended |
-| Nearby markets → `More choices` | `Show 3 more markets` · `Split differently` · `Override <primary> inventory` — the first only while fewer than twelve markets have been shown, the last only when the primary market is short |
+| Nearby markets (F2), after every lookup | **two questions in one call.** Page 1: one ready-made split per **newly listed** market that covers the gap alone, nearest first, at most three (`3 Orange County + 2 Los Angeles`), then `None of these`. Page 2: `Use my choice above` · `Show 3 more markets` · `Split differently` · `Override <primary> inventory`. Never a market from an earlier lookup, and never marked recommended |
 | Core returned `market_inventory_shortfall` (R95) | `Split differently` · `Show 3 more markets` · `Override inventory` |
 | Refine and hand off (node I), one option or best mode | `Customize it` · `Go on to the client document` · `Just the quote, thanks` — one question; the format (PDF, email copy, …) is asked by the document flow, never here |
 | Refine and hand off (node I), two or more options | `Both options → client document` (recommended; `All N options` past two) · `Option A only → client document` · `Option B only → client document` · `Customize first` · `Just the quote, thanks`. Past four options: `All options` · `Choose which` · `Customize first` · `Just the quote, thanks`. One question; it replaces the old detail-card question (G2) |
@@ -46,3 +45,5 @@ The cover question is the only one that exceeds four options — hence the `Show
 
 ## Multi-part questions
 The tool takes up to three questions in one call. **Don't use that** for the quoting or document flows — both are deliberately one at a time. The only acceptable multi-part call is a batch of stop ambiguities, which is one decision the user makes in one pass.
+
+The one other exception is the nearby-market choice (F2): two questions in one call, so the follow-up choices page in the picker without another turn.
