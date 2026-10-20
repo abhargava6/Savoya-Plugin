@@ -87,7 +87,7 @@ flowchart TD
     C --> D(["Rate sheet first,<br/>or straight to the quote?"])
     D --> E(["Best value, options,<br/>or you name the vehicles?"])
     E --> SHORT{"Enough vehicles<br/>in that city?"}
-    SHORT -->|no| NEAR(["Here are the 3 nearest markets<br/>and what each can add.<br/>Which one, and how many?"])
+    SHORT -->|no| NEAR(["Here are the 3 nearest markets<br/>and what each can add. More, or<br/>any market you name? Which one,<br/>and how many?"])
     SHORT -->|yes| F
     NEAR --> F["<b>Priced quote</b><br/>every option, per leg,<br/>positioning cost included"]
     F --> GQ(["One question: customize it,<br/>go on to the client document<br/>(both options first),<br/>or just the quote?"])
@@ -119,7 +119,7 @@ flowchart TD
   <div class="note"><b>Six questions on the document side, not five.</b> A <b>commission</b> question was added on 10 October, after discount and before the presentation questions, so the numbers are settled first. It asks No, 1%, 5% or another percentage, states the rate on the document and in the email, and <b>changes none of the numbers</b>. <b>There is still no fuel question</b> — fuel is market-scoped and applied by the engine, so the document presents what Savoya charged rather than offering to change it. A CSM told to expect one will wait for a question that never comes.</div>
   <div class="note"><b>One question after the quote, not two.</b> "Happy with it?" and "Want a client document?" are a single question now (R93), and with several options it also settles which options go to the document, both first, and the seller is never asked how the product itself works. If a stop cannot be resolved, or a passenger range or a split group does not add up, the flow stops and asks for the missing piece instead of guessing (R83, R84, R91).</div>
   <div class="note new"><b>Warnings sit at the step where the mistake happens (R101–R104).</b> A client or stop question carries one tip (open with "Use savoya plugin to quote", include the client ID and full street addresses). A client Savoya does not have is quoted under a no-discount stand-in, and the handoff refuses if the quote shows a discount. The discount and greeter questions, and a supplied rate, say the figure is not stored in Savoya, and the delivery reply repeats it for what was used. If PDF or the map fails, the user is told to take the printable document or drop the map, and to ask the product team to enable it.</div>
-  <div class="note"><b>The nearby-market step is new, and it only appears when it is needed.</b> An inventory check runs before every quote, silently. If the city covers the request, the seller never sees this branch at all. If it doesn't, they get the three nearest markets by <i>driving</i> distance and what each can add — and they choose. The system never picks a market for them.</div>
+  <div class="note"><b>The nearby-market step is new, and it only appears when it is needed.</b> An inventory check runs before every quote, silently. If the city covers the request, the seller never sees this branch at all. If it doesn't, they get the three nearest markets by <i>driving</i> distance and what each can add, can ask for the next three or name any market, and they choose. If they know they have the vehicles, they can override Savoya's inventory count. The system never picks a market for them.</div>
 
   <h2>2 · quote-intake — request to priced quote</h2>
   <p class="sub">Nodes A–J. Dark blue is an MCP tool call or a bundled script; brown is a question put to the user, one per message; a diamond is a branch the flow decides on its own; green is something deliberately <i>not</i> done, with the reason.</p>
@@ -149,7 +149,7 @@ flowchart TD
     INV[["inventory check — preview with<br/>display: internal. Requested count<br/>against the market count"]] --> SHORT
     SHORT{Primary market<br/>covers it?}
     SHORT -->|yes| GQ
-    SHORT -->|"short, or the CSM<br/>asks to explore"| F2[["F2 · lookup_nearby_markets<br/>3 nearest by ROAD distance, the<br/>vehicles each ADDS, a signed ref"]]
+    SHORT -->|"short, or the CSM<br/>asks to explore"| F2[["F2 · lookup_nearby_markets<br/>3 nearest by ROAD distance, the<br/>vehicles each ADDS, a signed ref;<br/>pages on, or any named market"]]
     F2 --> ASKMKT{{"Which market or mix, and<br/>how many of which type?<br/>A lookup is NOT a choice"}}
     ASKMKT --> GS[["G · calculate_sourced_quote_units<br/>one call, every allocation —<br/>primary-market ones included"]]
     GS --> NORATE

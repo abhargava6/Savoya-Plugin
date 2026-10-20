@@ -26,7 +26,7 @@ The quoting assistant turns a client's ground-transportation request into an exa
 1. **You paste the client's request.** An itinerary, an RFP, a forwarded email. Anything the client sent.
 2. **It finds the client and the stops.** If a client or a place is ambiguous, it asks you once, in one message.
 3. **It asks two short questions.** Whether you want a rate sheet first, and whether you want it to pick the best value, show options, or price the vehicles you name.
-4. **It checks vehicle availability in the city.** If the city has too few vehicles, it shows the three nearest markets and what each can add, and you choose. It never picks for you.
+4. **It checks vehicle availability in the city.** If the city has too few vehicles, it shows the three nearest markets and what each can add, and you choose. Ask for more and it shows the next three. You can also name any market, however far. It never picks for you.
 5. **You get the priced quote.** Every option, every leg, with the positioning time included.
 6. **You refine it.** Different vehicles, headcount or hours, as often as you like.
 7. **It asks one question.** Customize the quote, go on to the client document, or stop at the quote. When you have several options, the same question asks whether to use both or only one, and "both" comes first. "Just the quote" is a complete answer.
@@ -118,7 +118,7 @@ Yes. Ask for a no-commission copy after the document is made. It is a separate f
 When an hourly block runs across an airport transfer on the same day, the assistant asks whether the block should start after the transfer, at the client's time, or at another time, before it prices anything. With several options, each option is checked on its own.
 
 ### What if the client needs more vehicles than Savoya shows?
-If a vendor has confirmed the extra vehicles, tell the assistant how many, which vendor and who confirmed. It prices the largest number Savoya accepts and then extends the quantity only; every other figure stays Savoya's. The vendor details show on the internal summary and never in a client document.
+The assistant tells you how many Savoya shows and how many were asked for, and gives no price yet. If you know you have the vehicles, for example because a vendor confirmed them by phone, tell it to override. Savoya then prices the full quantity. You do not need to give a reason. The override shows on the internal summary and never in a client document.
 
 ### The PDF would not generate. What now?
 Ask the assistant for the printable document (HTML) instead, open it in your browser and use Print, then Save as PDF. It prints the same as the PDF. PDF generation needs your laptop set up for it, which is most likely the cause. Ask the product team to enable it so the next one works.

@@ -448,7 +448,7 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 
 - **One question settles the options and the document (R93).** With two or more options on screen the post-quote picker leads with `Both options → client document` (all N past two), then each option alone, `Customize first` and `Just the quote`. "Both" writes every option with `--package`; one option writes only its saved package, with no new pricing call.
 - **An options response is saved by `ingest` (R78).** `handoff.py ingest --name A` takes a `generate_quote_options` response, checks every option as its own package and saves `A_<option key>`; one failing option saves none. In the merge, an alternative pairs with the Option A unit that has the same key.
-- **A quantity above inventory is extended by `extend-quantity` only (R95).** Never scale a unit by hand. It needs the shortfall message, the vendor statement and the approver; it is internal and never in a client document.
+- **A quantity above inventory (R95).** The plugin-side workaround from this release was retired on 2026-10-20; see the unreleased additions below.
 - **The record says whether the feedback question was reached (R96).** A snapshot is `pending` until the second pass; any reply that is not a change request is `no_changes`.
 - **A client's time has a kind (R18, R34).** `--time-reading` records flight departure, pickup or airport arrival target. Pickup is the target minus Core's drive time, the unit must be priced at that pickup, and the document prints both times.
 - **A dimension comes from the user (R35).** Print one only from `--fact`; `vehicle-types.md` is for internal screening and nothing in it is stated to a client.
@@ -461,3 +461,8 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - **Notes collapse and totals come first (R99).** Identical notes print once, naming their legs; notes up to 70 characters print inline; the totals sit on the first summary page.
 - **Guidance sits where the mistake happens (R101–R104).** One tip with the first client or stop question; a stand-in client for a client Savoya does not have (`--client-source stand-in --prospect`, refused when the quote carries a contracted discount, the document names the real client); the discount, greeter and temporary-rate questions say the figure is not stored in Savoya, and `decide.py --fyi` repeats what applies at delivery; a failed PDF or map is answered with the printable document or dropping the map, and a note to ask the product team to enable it.
 - **A no-commission copy is a variant (R100).** `no_commission_copy.py` works on a copy, checks the total does not move and renders under a separate name.
+
+## Unreleased additions (2026-10-20)
+
+- **A quantity above inventory is Core's to price (R95).** After `market_inventory_shortfall`, a CSM who has the vehicles overrides it, and the same package is quoted again with `inventory_override: true` on the affected units. No reason is asked. Core prices the full quantity and puts an `Inventory override` warning on each affected unit; it reaches the internal summary and never a client document. The plugin never scales a unit, and nothing it saves differs from what Core returned.
+- **Any service area can be a source, and the nearby list pages (R48).** `lookup_nearby_markets` takes `shown_service_area_ids` for the next three nearest and `service_area_ids` for markets the CSM names at any distance. Each count names the other listed markets that share those vehicles.
