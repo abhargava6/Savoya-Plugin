@@ -108,7 +108,7 @@ def _pricing_bits(pr):
     if not pr:
         return None
     bits = []
-    eff = pr.get("effective_rate_amount") or pr.get("rate_amount")
+    eff = pr.get("effective_rate_amount")
     unit = pr.get("billing_unit")
     if eff:
         bits.append(f"{money(eff)}/{unit}" if unit else money(eff))
