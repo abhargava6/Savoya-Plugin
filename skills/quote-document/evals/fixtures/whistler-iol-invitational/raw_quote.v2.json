@@ -1,0 +1,156 @@
+{
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
+    "estimate_type": "exact",
+    "title": "Exact quote",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      },
+      {
+        "severity": "warning",
+        "message": "Whistler motorcoach — partner rate, quote only was used for this quote and was not saved in Savoya"
+      }
+    ],
+    "data": {
+      "total_amount": 1178100,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "area_tour_6_09",
+          "label": "Guided area tour — Whistler, 8 hours as directed",
+          "quantity": 2,
+          "total_amount": 785400,
+          "per_vehicle_amount": 392700,
+          "requested_quantity": 1,
+          "required_quantity": 2,
+          "excess_drive_time": true,
+          "vehicle_type_id": "6",
+          "vehicle_name": "Coach Bus",
+          "vehicle_capacity": 50,
+          "passenger_count": 60,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-09T09:00:00-07:00",
+          "timezone": "America/Vancouver",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "As Directed",
+              "address": "As Directed - Whistler, British Columbia",
+              "kind": "as_directed",
+              "wait_hours": 8,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 6,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "custom",
+            "base_rate_amount": 42500,
+            "effective_rate_amount": 32725,
+            "rate_amount": 32725,
+            "billing_unit": "hour",
+            "minimum_hours": 8,
+            "billable_hours": 12,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "golf_shuttle_6_10",
+          "label": "Shuttle — Westin Whistler → Fairmont Château Whistler Golf Course",
+          "quantity": 2,
+          "total_amount": 392700,
+          "per_vehicle_amount": 196350,
+          "requested_quantity": 1,
+          "required_quantity": 2,
+          "excess_drive_time": true,
+          "vehicle_type_id": "6",
+          "vehicle_name": "Coach Bus",
+          "vehicle_capacity": 50,
+          "passenger_count": 60,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-10T08:00:00-07:00",
+          "timezone": "America/Vancouver",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "Fairmont Château Whistler Golf Course",
+              "address": "4599 Chateau Boulevard, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.116646,
+              "longitude": -122.946221,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 6,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "custom",
+            "base_rate_amount": 42500,
+            "effective_rate_amount": 32725,
+            "rate_amount": 32725,
+            "billing_unit": "hour",
+            "minimum_hours": 6,
+            "billable_hours": 6,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
+        "Whistler motorcoach — partner rate, quote only was used for this quote and was not saved in Savoya"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
+    }
+  }
+}

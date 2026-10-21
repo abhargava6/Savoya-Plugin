@@ -105,8 +105,14 @@
   "total_amount": 40420,
   "calculation": {
    "quote_unit_count": 1
-  }
+  },
+  "warnings": [
+   "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+  ]
  },
+ "warnings": [
+  "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+ ],
  "presentation": {
   "version": 1,
   "view": "quote_result",
