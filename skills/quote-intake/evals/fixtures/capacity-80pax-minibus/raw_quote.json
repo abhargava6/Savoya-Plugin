@@ -1,310 +1,92 @@
 {
- "contract_version": 1,
- "quote_units": [
-  {
-   "key": "shuttle_80pax",
-   "label": "Hotel to Anaheim Convention Center — 80 passengers",
-   "quantity": 2,
-   "unit_total": 157460,
-   "line_total": 314920,
-   "currency": "USD",
-   "vehicle_type": {
-    "id": 7,
-    "name": "Mini Bus",
-    "capacity": 41,
-    "classification": "other"
-   },
-   "passenger_count": 80,
-   "passenger_count_source": "provided",
-   "passenger_selection_source": "quote_only_fallback",
-   "pickup_date": "2027-03-20T08:00:00-07:00",
-   "timezone": "America/Los_Angeles",
-   "stops": [
-    {
-     "name": "Irvine Marriott",
-     "display_name": "18000 Von Karman Avenue, Irvine, California, US",
-     "address": "18000 Von Karman Avenue",
-     "travel_time": 0,
-     "timezone": "America/Los_Angeles",
-     "location": {
-      "timezone": "America/Los_Angeles",
-      "id": 4647466,
-      "type": "city",
-      "display_name": "Irvine, California",
-      "service_area": {
-       "id": 11554,
-       "name": "Orange County, CA"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 1,
-     "location_type": "pickup_stop",
-     "postal_code": "92612",
-     "country": {
-      "id": 8467,
-      "code": "US",
-      "name": "United States"
-     },
-     "position": {
-      "latitude": 33.6783214,
-      "longitude": -117.8497412
-     },
-     "duration": 0
-    },
-    {
-     "name": "Anaheim Convention Center",
-     "display_name": "800 West Katella Avenue, Anaheim, California, US",
-     "address": "800 West Katella Avenue",
-     "travel_time": 23,
-     "timezone": "America/Los_Angeles",
-     "location": {
-      "timezone": "America/Los_Angeles",
-      "id": 4645260,
-      "type": "city",
-      "display_name": "Anaheim, California",
-      "service_area": {
-       "id": 11554,
-       "name": "Orange County, CA"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 2,
-     "location_type": "dropoff_stop",
-     "postal_code": "92802",
-     "country": {
-      "id": 8467,
-      "code": "US",
-      "name": "United States"
-     },
-     "position": {
-      "latitude": 33.8008759,
-      "longitude": -117.9209238
-     },
-     "duration": 0
-    }
-   ],
-   "persisted": false,
-   "pricing_summary": {
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
     "estimate_type": "exact",
+    "title": "Exact quote",
     "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 314920,
-    "per_vehicle_total_amount": 157460,
-    "pricing_method": "hourly",
-    "rate": {
-     "id": 54247,
-     "source": "rack",
-     "base_rate_amount": 40900,
-     "effective_rate_amount": 31492,
-     "billing_unit": "hour",
-     "minimum_hours": 5
-    },
-    "calculation": {
-     "billable_hours": 5,
-     "passenger_count": 80,
-     "vehicle_capacity": 41,
-     "requested_quantity": 1,
-     "required_quantity": 2,
-     "quantity": 2
-    },
-    "adjustments": {
-     "discount_basis_points": 3000,
-     "special_handling_basis_points": 0,
-     "fuel_surcharge_basis_points": 1000,
-     "temporary_rate_used": false
-    },
-    "cancellation_hours": 72,
+    "amount_unit": "cents",
     "warnings": [
-     "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-    ]
-   },
-   "quote": {
-    "id": null,
-    "quoted_time": 1.5,
-    "type": "hourly",
-    "base_rate": 40900,
-    "excess_wait_rate": null,
-    "base_quote": 157460,
-    "client_fuel_surcharge": 1000,
-    "discount_percentage": 3000,
-    "special_handling_percentage": 0,
-    "adjusted_client_rate": 31492,
-    "adjusted_greeter_fee": null,
-    "cancellation_hours": 72,
-    "minimum": 5,
-    "quoted_trip_duration": 5,
-    "rate_id": 54247,
-    "rate_type": "HourlyRate",
-    "greeter_fee": null,
-    "waive_excess_drive_time": false,
-    "excess_drive_time_approved": false,
-    "accept_low_margin": false
-   },
-   "travel_times": [
-    0,
-    23
-   ],
-   "limited_availability": true,
-   "excess_drive_time": false,
-   "vehicle_options": [
-    {
-     "vehicle_type": {
-      "id": 7,
-      "name": "Mini Bus",
-      "capacity": 41,
-      "classification": "other"
-     },
-     "quoteable": true,
-     "unit_total": 157460,
-     "quantity": 2,
-     "line_total": 314920,
-     "passenger_count": 80,
-     "required_quantity": 2,
-     "requested_quantity": 1,
-     "capacity_adjusted": true,
-     "quote_type": "hourly",
-     "rate_id": 54247,
-     "rate_type": "HourlyRate",
-     "pricing_summary": {
-      "estimate_type": "exact",
-      "currency_code": "USD",
-      "status": "priced",
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      }
+    ],
+    "data": {
       "total_amount": 314920,
-      "per_vehicle_total_amount": 157460,
-      "pricing_method": "hourly",
-      "rate": {
-       "id": 54247,
-       "source": "rack",
-       "base_rate_amount": 40900,
-       "effective_rate_amount": 31492,
-       "billing_unit": "hour",
-       "minimum_hours": 5
-      },
-      "calculation": {
-       "billable_hours": 5,
-       "passenger_count": 80,
-       "vehicle_capacity": 41,
-       "requested_quantity": 1,
-       "required_quantity": 2,
-       "quantity": 2
-      },
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      },
-      "cancellation_hours": 72,
-      "warnings": [
-       "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-      ]
-     }
-    }
-   ],
-   "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   ]
-  }
- ],
- "aggregate_total": 314920,
- "currency": "USD",
- "persisted": false,
- "pricing_summary": {
-  "estimate_type": "exact",
-  "currency_code": "USD",
-  "status": "priced",
-  "total_amount": 314920,
-  "calculation": {
-   "quote_unit_count": 1
-  },
-  "warnings": [
-   "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-  ]
- },
- "warnings": [
-  "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
- ],
- "presentation": {
-  "version": 1,
-  "view": "quote_result",
-  "status": "ready",
-  "estimate_type": "exact",
-  "title": "Exact quote",
-  "currency_code": "USD",
-  "warnings": [
-   {
-    "severity": "warning",
-    "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   }
-  ],
-  "actions": [
-   {
-    "id": "refine_quote",
-    "label": "Refine this quote",
-    "intent": "refine_quote"
-   }
-  ],
-  "data": {
-   "total_amount": 314920,
-   "quote_units": [
-    {
-     "key": "shuttle_80pax",
-     "label": "Hotel to Anaheim Convention Center — 80 passengers",
-     "quantity": 2,
-     "total_amount": 314920,
-     "vehicle_name": "Mini Bus",
-     "vehicle_capacity": 41,
-     "passenger_count": 80,
-     "passenger_count_source": "provided",
-     "passenger_selection_source": "quote_only_fallback",
-     "pickup_date": "2027-03-20T08:00:00-07:00",
-     "timezone": "America/Los_Angeles",
-     "stops": [
-      {
-       "order": 1,
-       "label": "18000 Von Karman Avenue, Irvine, California, US",
-       "address": "18000 Von Karman Avenue",
-       "timezone": "America/Los_Angeles"
-      },
-      {
-       "order": 2,
-       "drive_minutes": 23,
-       "label": "800 West Katella Avenue, Anaheim, California, US",
-       "address": "800 West Katella Avenue",
-       "timezone": "America/Los_Angeles"
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "shuttle_80pax",
+          "label": "Hotel to Anaheim Convention Center — 80 passengers",
+          "quantity": 2,
+          "total_amount": 314920,
+          "per_vehicle_amount": 157460,
+          "requested_quantity": 1,
+          "required_quantity": 2,
+          "vehicle_type_id": "7",
+          "vehicle_name": "Mini Bus",
+          "vehicle_capacity": 41,
+          "passenger_count": 80,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-03-20T08:00:00-07:00",
+          "timezone": "America/Los_Angeles",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Irvine Marriott",
+              "address": "18000 Von Karman Avenue, Irvine, California, US",
+              "kind": "address",
+              "latitude": 33.678321,
+              "longitude": -117.849741,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Orange County, CA"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 23,
+              "label": "Anaheim Convention Center",
+              "address": "800 West Katella Avenue, Anaheim, California, US",
+              "kind": "address",
+              "latitude": 33.800876,
+              "longitude": -117.920924,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Orange County, CA"
+            }
+          ],
+          "estimated_drive_minutes": 23,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "54247",
+            "base_rate_amount": 40900,
+            "effective_rate_amount": 31492,
+            "rate_amount": 31492,
+            "billing_unit": "hour",
+            "minimum_hours": 5,
+            "billable_hours": 5,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
       }
-     ],
-     "estimated_drive_minutes": 23,
-     "pricing": {
-      "pricing_method": "hourly",
-      "rate_source": "rack",
-      "base_rate_amount": 40900,
-      "effective_rate_amount": 31492,
-      "rate_amount": 31492,
-      "billing_unit": "hour",
-      "minimum_hours": 5,
-      "billable_hours": 5,
-      "cancellation_hours": 72,
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      }
-     },
-     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-     ]
     }
-   ],
-   "unquoteable_unit_keys": [],
-   "pricing": {
-    "adjustments": {
-     "temporary_rate_used": false
-    }
-   }
   }
- }
 }

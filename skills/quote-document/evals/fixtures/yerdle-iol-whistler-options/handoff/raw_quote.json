@@ -1,693 +1,334 @@
 {
-  "contract_version": 1,
-  "aggregate_total": 1321089,
-  "currency": "USD",
-  "persisted": false,
-  "pricing_summary": {
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
     "estimate_type": "exact",
+    "title": "Exact quote",
     "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 1321089,
-    "calculation": {
-      "quote_unit_count": 2
-    },
+    "amount_unit": "cents",
     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-      "Additional discount was used for this quote and was not saved in Savoya"
-    ]
-  },
-  "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-    "Additional discount was used for this quote and was not saved in Savoya"
-  ],
-  "quote_units": [
-    {
-      "key": "optA_jun9_coach",
-      "label": "Jun 9 guided Whistler tour, 1 coach all day",
-      "quantity": 1,
-      "unit_total": 655578,
-      "line_total": 655578,
-      "currency": "USD",
-      "vehicle_type": {
-        "id": 6,
-        "name": "Coach Bus",
-        "capacity": 50,
-        "classification": "other"
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
       },
-      "passenger_count_source": "default",
-      "passenger_selection_source": "quote_only_fallback",
-      "pickup_date": "2027-06-09T09:00:00-07:00",
-      "timezone": "America/Vancouver",
-      "primary_service_area": {
-        "id": 11146,
-        "name": "Vancouver, Canada"
-      },
-      "source_service_area": {
-        "id": 11171,
-        "name": "Seattle, WA"
-      },
-      "quoted_time": 16.5,
-      "sourcing_drive_time": {
-        "primary_quoted_time_hours": 12,
-        "source_quoted_time_hours": 16.5,
-        "additional_quoted_time_hours": 4.5,
-        "primary_billable_hours": 12,
-        "source_billable_hours": 16.5,
-        "incremental_client_amount_per_vehicle": 178794,
-        "incremental_client_amount": 178794
-      },
-      "stops": [
-        {
-          "name": "The Westin Resort & Spa, Whistler",
-          "display_name": "4090 Whistler Way, Whistler, British Columbia, CA",
-          "address": "4090 Whistler Way",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "postal_code": "V8E 1H9",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
-          },
-          "position": {
-            "latitude": 50.1121815,
-            "longitude": -122.9561244
-          },
-          "travel_time": 0,
-          "stop_number": 1,
-          "location_type": "pickup_stop",
-          "duration": 0
-        },
-        {
-          "name": "As Directed",
-          "display_name": "As Directed - Whistler, British Columbia",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "position": {
-            "latitude": null,
-            "longitude": null
-          },
-          "as_directed": true,
-          "travel_time": 6,
-          "stop_number": 2,
-          "location_type": "dropoff_stop",
-          "duration": 8
-        }
-      ],
+      {
+        "severity": "warning",
+        "message": "Additional discount was used for this quote and was not saved in Savoya"
+      }
+    ],
+    "data": {
+      "total_amount": 1321089,
       "persisted": false,
-      "pricing_summary": {
-        "estimate_type": "exact",
-        "currency_code": "USD",
-        "status": "priced",
-        "total_amount": 655578,
-        "per_vehicle_total_amount": 655578,
-        "pricing_method": "hourly",
-        "rate": {
-          "id": 54031,
-          "source": "rack",
-          "base_rate_amount": 60200,
-          "effective_rate_amount": 39732,
-          "billing_unit": "hour",
-          "minimum_hours": 4
-        },
-        "calculation": {
-          "billable_hours": 16.5,
-          "vehicle_capacity": 50,
+      "quote_units": [
+        {
+          "key": "optA_jun9_coach",
+          "label": "Jun 9 guided Whistler tour, 1 coach all day",
+          "quantity": 1,
+          "total_amount": 655578,
+          "per_vehicle_amount": 655578,
           "requested_quantity": 1,
           "required_quantity": 1,
-          "quantity": 1
-        },
-        "adjustments": {
-          "discount_basis_points": 3000,
-          "special_handling_basis_points": 0,
-          "fuel_surcharge_basis_points": 1000,
-          "temporary_rate_used": false,
-          "temporary_discount_basis_points": 1000,
-          "effective_discount_basis_points": 4000,
-          "temporary_discount_amount": 109263,
-          "temporary_discount_label": "Additional discount"
-        },
-        "cancellation_hours": 72,
-        "warnings": [
-          "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-          "Additional discount was used for this quote and was not saved in Savoya"
-        ],
-        "subtotal_amount": 764841,
-        "per_vehicle_subtotal_amount": 764841
-      },
-      "quote": {
-        "id": null,
-        "quoted_time": 16.5,
-        "type": "hourly",
-        "base_rate": 60200,
-        "excess_wait_rate": null,
-        "base_quote": 764841,
-        "client_fuel_surcharge": 1000,
-        "discount_percentage": 3000,
-        "special_handling_percentage": 0,
-        "adjusted_client_rate": 46354,
-        "cancellation_hours": 72,
-        "minimum": 4,
-        "quoted_trip_duration": 16.5,
-        "rate_id": 54031,
-        "rate_type": "HourlyRate"
-      },
-      "travel_times": [
-        0,
-        6
-      ],
-      "limited_availability": true,
-      "excess_drive_time": true,
-      "warnings": [
-        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-        "Additional discount was used for this quote and was not saved in Savoya"
-      ]
-    },
-    {
-      "key": "optA_jun10_coach",
-      "label": "Jun 10 continuous shuttle, Westin and Fairmont golf course",
-      "quantity": 1,
-      "unit_total": 665511,
-      "line_total": 665511,
-      "currency": "USD",
-      "vehicle_type": {
-        "id": 6,
-        "name": "Coach Bus",
-        "capacity": 50,
-        "classification": "other"
-      },
-      "passenger_count_source": "default",
-      "passenger_selection_source": "quote_only_fallback",
-      "pickup_date": "2027-06-10T09:00:00-07:00",
-      "timezone": "America/Vancouver",
-      "primary_service_area": {
-        "id": 11146,
-        "name": "Vancouver, Canada"
-      },
-      "source_service_area": {
-        "id": 11171,
-        "name": "Seattle, WA"
-      },
-      "quoted_time": 16.75,
-      "sourcing_drive_time": {
-        "primary_quoted_time_hours": 12.25,
-        "source_quoted_time_hours": 16.75,
-        "additional_quoted_time_hours": 4.5,
-        "primary_billable_hours": 12.25,
-        "source_billable_hours": 16.75,
-        "incremental_client_amount_per_vehicle": 178794,
-        "incremental_client_amount": 178794
-      },
-      "stops": [
-        {
-          "name": "The Westin Resort & Spa, Whistler",
-          "display_name": "4090 Whistler Way, Whistler, British Columbia, CA",
-          "address": "4090 Whistler Way",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "postal_code": "V8E 1H9",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
-          },
-          "position": {
-            "latitude": 50.1121815,
-            "longitude": -122.9561244
-          },
-          "travel_time": 0,
-          "stop_number": 1,
-          "location_type": "pickup_stop",
-          "duration": 0
-        },
-        {
-          "name": "Fairmont Chateau Whistler Golf Club and The Chalet Restaurant",
-          "display_name": "4612 Blackcomb Way, Whistler, British Columbia, CA",
-          "address": "4612 Blackcomb Way",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "postal_code": "V8E 0Z5",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
-          },
-          "position": {
-            "latitude": 50.12063560000001,
-            "longitude": -122.9431822
-          },
-          "travel_time": 6,
-          "stop_number": 2,
-          "location_type": "stop_location",
-          "duration": 8
-        },
-        {
-          "name": "The Westin Resort & Spa, Whistler",
-          "display_name": "4090 Whistler Way, Whistler, British Columbia, CA",
-          "address": "4090 Whistler Way",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "postal_code": "V8E 1H9",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
-          },
-          "position": {
-            "latitude": 50.1121815,
-            "longitude": -122.9561244
-          },
-          "travel_time": 7,
-          "stop_number": 3,
-          "location_type": "dropoff_stop",
-          "duration": 0
-        }
-      ],
-      "persisted": false,
-      "pricing_summary": {
-        "estimate_type": "exact",
-        "currency_code": "USD",
-        "status": "priced",
-        "total_amount": 665511,
-        "per_vehicle_total_amount": 665511,
-        "pricing_method": "hourly",
-        "rate": {
-          "id": 54031,
-          "source": "rack",
-          "base_rate_amount": 60200,
-          "effective_rate_amount": 39732,
-          "billing_unit": "hour",
-          "minimum_hours": 4
-        },
-        "calculation": {
-          "billable_hours": 16.75,
+          "quoted_hours": 16.5,
+          "excess_drive_time": true,
+          "vehicle_type_id": "6",
+          "vehicle_name": "Coach Bus",
           "vehicle_capacity": 50,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-09T09:00:00-07:00",
+          "timezone": "America/Vancouver",
+          "primary_service_area": "Vancouver, Canada",
+          "source_service_area": "Seattle, WA",
+          "sourcing_drive_time": {
+            "additional_quoted_time_hours": 4.5,
+            "incremental_client_amount": 178794
+          },
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "As Directed",
+              "address": "As Directed - Whistler, British Columbia",
+              "kind": "as_directed",
+              "wait_hours": 8,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 6,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "54031",
+            "subtotal_amount": 764841,
+            "base_rate_amount": 60200,
+            "effective_rate_amount": 39732,
+            "rate_amount": 39732,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 16.5,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_discount_basis_points": 1000,
+              "effective_discount_basis_points": 4000,
+              "temporary_discount_amount": 109263,
+              "temporary_discount_label": "Additional discount",
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "optA_jun10_coach",
+          "label": "Jun 10 continuous shuttle, Westin and Fairmont golf course",
+          "quantity": 1,
+          "total_amount": 665511,
+          "per_vehicle_amount": 665511,
           "requested_quantity": 1,
           "required_quantity": 1,
-          "quantity": 1
-        },
-        "adjustments": {
-          "discount_basis_points": 3000,
-          "special_handling_basis_points": 0,
-          "fuel_surcharge_basis_points": 1000,
-          "temporary_rate_used": false,
-          "temporary_discount_basis_points": 1000,
-          "effective_discount_basis_points": 4000,
-          "temporary_discount_amount": 110919,
-          "temporary_discount_label": "Additional discount"
-        },
-        "cancellation_hours": 72,
-        "warnings": [
-          "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-          "Additional discount was used for this quote and was not saved in Savoya"
-        ],
-        "subtotal_amount": 776430,
-        "per_vehicle_subtotal_amount": 776430
-      },
-      "quote": {
-        "id": null,
-        "quoted_time": 16.75,
-        "type": "hourly",
-        "base_rate": 60200,
-        "excess_wait_rate": null,
-        "base_quote": 776430,
-        "client_fuel_surcharge": 1000,
-        "discount_percentage": 3000,
-        "special_handling_percentage": 0,
-        "adjusted_client_rate": 46354,
-        "cancellation_hours": 72,
-        "minimum": 4,
-        "quoted_trip_duration": 16.75,
-        "rate_id": 54031,
-        "rate_type": "HourlyRate"
-      },
-      "travel_times": [
-        0,
-        6,
-        7
-      ],
-      "limited_availability": true,
-      "excess_drive_time": true,
-      "warnings": [
-        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-        "Additional discount was used for this quote and was not saved in Savoya"
-      ]
-    },
-    {
-      "key": "optB_jun9_coach",
-      "label": "Jun 9 guided Whistler tour, coach (4 hrs)",
-      "quantity": 1,
-      "unit_total": 506583,
-      "line_total": 506583,
-      "currency": "USD",
-      "vehicle_type": {
-        "id": 6,
-        "name": "Coach Bus",
-        "capacity": 50,
-        "classification": "other"
-      },
-      "passenger_count_source": "default",
-      "passenger_selection_source": "quote_only_fallback",
-      "pickup_date": "2027-06-09T09:00:00-07:00",
-      "timezone": "America/Vancouver",
-      "primary_service_area": {
-        "id": 11146,
-        "name": "Vancouver, Canada"
-      },
-      "source_service_area": {
-        "id": 11171,
-        "name": "Seattle, WA"
-      },
-      "quoted_time": 12.75,
-      "sourcing_drive_time": {
-        "primary_quoted_time_hours": 8.25,
-        "source_quoted_time_hours": 12.75,
-        "additional_quoted_time_hours": 4.5,
-        "primary_billable_hours": 8.25,
-        "source_billable_hours": 12.75,
-        "incremental_client_amount_per_vehicle": 178794,
-        "incremental_client_amount": 178794
-      },
-      "stops": [
-        {
-          "name": "The Westin Resort & Spa, Whistler",
-          "display_name": "4090 Whistler Way, Whistler, British Columbia, CA",
-          "address": "4090 Whistler Way",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "postal_code": "V8E 1H9",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
-          },
-          "position": {
-            "latitude": 50.1121815,
-            "longitude": -122.9561244
-          },
-          "travel_time": 0,
-          "stop_number": 1,
-          "location_type": "pickup_stop",
-          "duration": 0
-        },
-        {
-          "name": "As Directed",
-          "display_name": "As Directed - Whistler, British Columbia",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "position": {
-            "latitude": null,
-            "longitude": null
-          },
-          "as_directed": true,
-          "travel_time": 6,
-          "stop_number": 2,
-          "location_type": "dropoff_stop",
-          "duration": 4
-        }
-      ],
-      "persisted": false,
-      "pricing_summary": {
-        "estimate_type": "exact",
-        "currency_code": "USD",
-        "status": "priced",
-        "total_amount": 506583,
-        "per_vehicle_total_amount": 506583,
-        "pricing_method": "hourly",
-        "rate": {
-          "id": 54031,
-          "source": "rack",
-          "base_rate_amount": 60200,
-          "effective_rate_amount": 39732,
-          "billing_unit": "hour",
-          "minimum_hours": 4
-        },
-        "calculation": {
-          "billable_hours": 12.75,
+          "quoted_hours": 16.75,
+          "excess_drive_time": true,
+          "vehicle_type_id": "6",
+          "vehicle_name": "Coach Bus",
           "vehicle_capacity": 50,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-10T09:00:00-07:00",
+          "timezone": "America/Vancouver",
+          "primary_service_area": "Vancouver, Canada",
+          "source_service_area": "Seattle, WA",
+          "sourcing_drive_time": {
+            "additional_quoted_time_hours": 4.5,
+            "incremental_client_amount": 178794
+          },
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "Fairmont Chateau Whistler Golf Club and The Chalet Restaurant",
+              "address": "4612 Blackcomb Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "wait_hours": 8,
+              "latitude": 50.120636,
+              "longitude": -122.943182,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 3,
+              "drive_minutes": 7,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 13,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "54031",
+            "subtotal_amount": 776430,
+            "base_rate_amount": 60200,
+            "effective_rate_amount": 39732,
+            "rate_amount": 39732,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 16.75,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_discount_basis_points": 1000,
+              "effective_discount_basis_points": 4000,
+              "temporary_discount_amount": 110919,
+              "temporary_discount_label": "Additional discount",
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "optB_jun9_coach",
+          "label": "Jun 9 guided Whistler tour, coach (4 hrs)",
+          "quantity": 1,
+          "total_amount": 506583,
+          "per_vehicle_amount": 506583,
           "requested_quantity": 1,
           "required_quantity": 1,
-          "quantity": 1
-        },
-        "adjustments": {
-          "discount_basis_points": 3000,
-          "special_handling_basis_points": 0,
-          "fuel_surcharge_basis_points": 1000,
-          "temporary_rate_used": false,
-          "temporary_discount_basis_points": 1000,
-          "effective_discount_basis_points": 4000,
-          "temporary_discount_amount": 84431,
-          "temporary_discount_label": "Additional discount"
-        },
-        "cancellation_hours": 72,
-        "warnings": [
-          "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-          "Additional discount was used for this quote and was not saved in Savoya"
-        ],
-        "subtotal_amount": 591014,
-        "per_vehicle_subtotal_amount": 591014
-      },
-      "quote": {
-        "id": null,
-        "quoted_time": 12.75,
-        "type": "hourly",
-        "base_rate": 60200,
-        "excess_wait_rate": null,
-        "base_quote": 591014,
-        "client_fuel_surcharge": 1000,
-        "discount_percentage": 3000,
-        "special_handling_percentage": 0,
-        "adjusted_client_rate": 46354,
-        "cancellation_hours": 72,
-        "minimum": 4,
-        "quoted_trip_duration": 12.75,
-        "rate_id": 54031,
-        "rate_type": "HourlyRate"
-      },
-      "travel_times": [
-        0,
-        6
-      ],
-      "limited_availability": true,
-      "excess_drive_time": true,
-      "warnings": [
-        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-        "Additional discount was used for this quote and was not saved in Savoya"
-      ]
-    },
-    {
-      "key": "optB_jun9_minibus",
-      "label": "Jun 9 guided Whistler tour, mini bus (4 hrs)",
-      "quantity": 1,
-      "unit_total": 430848,
-      "line_total": 430848,
-      "currency": "USD",
-      "vehicle_type": {
-        "id": 7,
-        "name": "Mini Bus",
-        "capacity": 41,
-        "classification": "other"
-      },
-      "passenger_count_source": "default",
-      "passenger_selection_source": "quote_only_fallback",
-      "pickup_date": "2027-06-09T09:00:00-07:00",
-      "timezone": "America/Vancouver",
-      "primary_service_area": {
-        "id": 11146,
-        "name": "Vancouver, Canada"
-      },
-      "source_service_area": {
-        "id": 11171,
-        "name": "Seattle, WA"
-      },
-      "quoted_time": 12.75,
-      "sourcing_drive_time": {
-        "primary_quoted_time_hours": 8.25,
-        "source_quoted_time_hours": 12.75,
-        "additional_quoted_time_hours": 4.5,
-        "primary_billable_hours": 8.25,
-        "source_billable_hours": 12.75,
-        "incremental_client_amount_per_vehicle": 152064,
-        "incremental_client_amount": 152064
-      },
-      "stops": [
-        {
-          "name": "The Westin Resort & Spa, Whistler",
-          "display_name": "4090 Whistler Way, Whistler, British Columbia, CA",
-          "address": "4090 Whistler Way",
+          "quoted_hours": 12.75,
+          "excess_drive_time": true,
+          "vehicle_type_id": "6",
+          "vehicle_name": "Coach Bus",
+          "vehicle_capacity": 50,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-09T09:00:00-07:00",
           "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
+          "primary_service_area": "Vancouver, Canada",
+          "source_service_area": "Seattle, WA",
+          "sourcing_drive_time": {
+            "additional_quoted_time_hours": 4.5,
+            "incremental_client_amount": 178794
           },
-          "postal_code": "V8E 1H9",
-          "country": {
-            "id": 8505,
-            "code": "CA",
-            "name": "Canada"
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "As Directed",
+              "address": "As Directed - Whistler, British Columbia",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 6,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "54031",
+            "subtotal_amount": 591014,
+            "base_rate_amount": 60200,
+            "effective_rate_amount": 39732,
+            "rate_amount": 39732,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 12.75,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_discount_basis_points": 1000,
+              "effective_discount_basis_points": 4000,
+              "temporary_discount_amount": 84431,
+              "temporary_discount_label": "Additional discount",
+              "temporary_rate_used": false
+            }
           },
-          "position": {
-            "latitude": 50.1121815,
-            "longitude": -122.9561244
-          },
-          "travel_time": 0,
-          "stop_number": 1,
-          "location_type": "pickup_stop",
-          "duration": 0
+          "warnings": []
         },
         {
-          "name": "As Directed",
-          "display_name": "As Directed - Whistler, British Columbia",
-          "timezone": "America/Vancouver",
-          "location": {
-            "timezone": "America/Vancouver",
-            "id": 4683703,
-            "type": "city",
-            "display_name": "Whistler, British Columbia",
-            "service_area": null,
-            "country_code": "CA",
-            "confidence": "candidate"
-          },
-          "position": {
-            "latitude": null,
-            "longitude": null
-          },
-          "as_directed": true,
-          "travel_time": 6,
-          "stop_number": 2,
-          "location_type": "dropoff_stop",
-          "duration": 4
-        }
-      ],
-      "persisted": false,
-      "pricing_summary": {
-        "estimate_type": "exact",
-        "currency_code": "USD",
-        "status": "priced",
-        "total_amount": 430848,
-        "per_vehicle_total_amount": 430848,
-        "pricing_method": "hourly",
-        "rate": {
-          "id": 54032,
-          "source": "rack",
-          "base_rate_amount": 51200,
-          "effective_rate_amount": 33792,
-          "billing_unit": "hour",
-          "minimum_hours": 4
-        },
-        "calculation": {
-          "billable_hours": 12.75,
+          "key": "optB_jun9_minibus",
+          "label": "Jun 9 guided Whistler tour, mini bus (4 hrs)",
+          "quantity": 1,
+          "total_amount": 430848,
+          "per_vehicle_amount": 430848,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "quoted_hours": 12.75,
+          "excess_drive_time": true,
+          "vehicle_type_id": "7",
+          "vehicle_name": "Mini Bus",
           "vehicle_capacity": 41,
-          "requested_quantity": 1,
-          "required_quantity": 1,
-          "quantity": 1
-        },
-        "adjustments": {
-          "discount_basis_points": 3000,
-          "special_handling_basis_points": 0,
-          "fuel_surcharge_basis_points": 1000,
-          "temporary_rate_used": false,
-          "temporary_discount_basis_points": 1000,
-          "effective_discount_basis_points": 4000,
-          "temporary_discount_amount": 71808,
-          "temporary_discount_label": "Additional discount"
-        },
-        "cancellation_hours": 72,
-        "warnings": [
-          "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
-          "Additional discount was used for this quote and was not saved in Savoya"
-        ],
-        "subtotal_amount": 502656,
-        "per_vehicle_subtotal_amount": 502656
-      },
-      "quote": {
-        "id": null,
-        "quoted_time": 12.75,
-        "type": "hourly",
-        "base_rate": 51200,
-        "excess_wait_rate": null,
-        "base_quote": 502656,
-        "client_fuel_surcharge": 1000,
-        "discount_percentage": 3000,
-        "special_handling_percentage": 0,
-        "adjusted_client_rate": 39424,
-        "cancellation_hours": 72,
-        "minimum": 4,
-        "quoted_trip_duration": 12.75,
-        "rate_id": 54032,
-        "rate_type": "HourlyRate"
-      },
-      "travel_times": [
-        0,
-        6
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-06-09T09:00:00-07:00",
+          "timezone": "America/Vancouver",
+          "primary_service_area": "Vancouver, Canada",
+          "source_service_area": "Seattle, WA",
+          "sourcing_drive_time": {
+            "additional_quoted_time_hours": 4.5,
+            "incremental_client_amount": 152064
+          },
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Westin Resort & Spa, Whistler",
+              "address": "4090 Whistler Way, Whistler, British Columbia, CA",
+              "kind": "address",
+              "latitude": 50.112182,
+              "longitude": -122.956124,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            },
+            {
+              "order": 2,
+              "drive_minutes": 6,
+              "label": "As Directed",
+              "address": "As Directed - Whistler, British Columbia",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/Vancouver",
+              "service_area": null
+            }
+          ],
+          "estimated_drive_minutes": 6,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "54032",
+            "subtotal_amount": 502656,
+            "base_rate_amount": 51200,
+            "effective_rate_amount": 33792,
+            "rate_amount": 33792,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 12.75,
+            "cancellation_hours": 72,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_discount_basis_points": 1000,
+              "effective_discount_basis_points": 4000,
+              "temporary_discount_amount": 71808,
+              "temporary_discount_label": "Additional discount",
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        }
       ],
-      "limited_availability": true,
-      "excess_drive_time": true,
-      "warnings": [
+      "warnings_on_every_unit": [
         "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
         "Additional discount was used for this quote and was not saved in Savoya"
-      ]
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
     }
-  ]
+  }
 }

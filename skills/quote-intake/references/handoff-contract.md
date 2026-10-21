@@ -7,9 +7,8 @@ handoff/
   request.md        the client's message, verbatim (becomes the eval prompt later)
   raw_quote.json    the engine result as the MCP returned it (latest re-quote) — from
                     generate_quote_options, calculate_quote_units, or
-                    calculate_temporary_quote_units. Usually MCP presentation version 2
-                    (the compact view); version 1 or unversioned for older sessions. A
-                    merged package or a saved option is written in the version 2 shape
+                    calculate_temporary_quote_units: the MCP's compact view (presentation
+                    version 2). A merged package or a saved option is written in that shape
   intake.json       everything intake decided + everything the document flow decides
   blocked.json      present only while a write is refused (R92): the gate, the reason and the fix.
                     The document step stops while it exists; a successful write removes it

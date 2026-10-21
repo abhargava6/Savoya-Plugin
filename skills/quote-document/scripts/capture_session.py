@@ -331,23 +331,9 @@ def main():
         sys.exit(f"Cannot read quote.json at {a.quote}")
 
     def slim_raw(raw):
-        """Keep only what regress.py needs to rebuild the quote: per unit, stops,
-        the chosen option, warnings, dates. Drops vehicle_options/elevated_option
-        (duplicates of value_option) and the presentation block. ~3x smaller."""
-        if not raw:
-            return None
-        if quote_view.is_v2(raw):
-            return raw          # the version 2 view is already the compact response
-        out = {k: v for k, v in raw.items() if k not in ("presentation", "quote_units")}
-        out["quote_units"] = []
-        for u in raw.get("quote_units", []):
-            su = {k: v for k, v in u.items() if k not in ("vehicle_options", "elevated_option")}
-            opt = su.get("value_option")
-            if opt:
-                su["value_option"] = {k: v for k, v in opt.items() if k != "warnings"}
-                su["vehicle_options"] = [su["value_option"]]
-            out["quote_units"].append(su)
-        return out
+        """The response regress.py rebuilds the quote from. The MCP's compact view is
+        already small, so it is kept whole."""
+        return raw or None
     expected = {
         "normalize": ({"client": a.client, "prepared_by": q["meta"].get("prepared_by"),
                        "select": a.select, "title": q["meta"].get("title")} if a.raw else None),

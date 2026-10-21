@@ -1,1 +1,166 @@
-{"contract_version":1,"quote_units":[{"key":"offsite_9_15_minibus","label":"Offsite — Hyatt Regency Boston Harbor ↔ Classic Harbor Line","quantity":3,"unit_total":187104,"line_total":561312,"currency":"USD","vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"classification":"other"},"passenger_count":120,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-09-15T17:45:00-04:00","timezone":"America/New_York","stops":[{"name":"Hyatt Regency Boston Harbor","display_name":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","travel_time":0,"timezone":"America/New_York","location":{"timezone":"America/New_York","id":4644869,"type":"city","display_name":"Boston, Massachusetts","service_area":{"id":11192,"name":"Boston, MA"},"country_code":"US","confidence":"candidate"},"stop_number":1,"location_type":"pickup_stop","postal_code":"02128","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":42.3592641,"longitude":-71.0272118},"duration":0},{"name":"Classic Harbor Line Boston","display_name":"60 Rowes Wharf, Boston, Massachusetts, US","address":"60 Rowes Wharf","travel_time":17,"timezone":"America/New_York","location":{"timezone":"America/New_York","id":4644869,"type":"city","display_name":"Boston, Massachusetts","service_area":{"id":11192,"name":"Boston, MA"},"country_code":"US","confidence":"candidate"},"stop_number":2,"location_type":"stop_location","postal_code":"02110","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":42.3559666,"longitude":-71.04995989999999},"duration":2.25},{"name":"Hyatt Regency Boston Harbor","display_name":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","travel_time":15,"timezone":"America/New_York","location":{"timezone":"America/New_York","id":4644869,"type":"city","display_name":"Boston, Massachusetts","service_area":{"id":11192,"name":"Boston, MA"},"country_code":"US","confidence":"candidate"},"stop_number":3,"location_type":"dropoff_stop","postal_code":"02128","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":42.3592641,"longitude":-71.0272118},"duration":0}],"persisted":false,"pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":561312,"per_vehicle_total_amount":187104,"pricing_method":"hourly","rate":{"id":53396,"source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"billing_unit":"hour","minimum_hours":6},"calculation":{"billable_hours":6,"passenger_count":120,"vehicle_capacity":41,"requested_quantity":1,"required_quantity":3,"quantity":3},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false},"cancellation_hours":48,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]},"quote":{"id":null,"quoted_time":4,"type":"hourly","base_rate":40500,"excess_wait_rate":null,"base_quote":187104,"client_fuel_surcharge":1000,"discount_percentage":3000,"special_handling_percentage":0,"adjusted_client_rate":31184,"adjusted_greeter_fee":null,"cancellation_hours":48,"minimum":6,"quoted_trip_duration":6,"rate_id":53396,"rate_type":"HourlyRate","greeter_fee":null,"waive_excess_drive_time":false,"excess_drive_time_approved":false,"accept_low_margin":false,"base_rate_in_vendor_currency":405,"excess_wait_rate_in_vendor_currency":0,"base_quote_in_vendor_currency":1871.04,"client_fuel_surcharge_in_vendor_currency":10,"adjusted_client_rate_in_vendor_currency":311.84,"adjusted_greeter_fee_in_vendor_currency":0,"greeter_fee_in_vendor_currency":0,"vendor_currency":null},"travel_times":[0,17,15],"limited_availability":true,"excess_drive_time":false,"vehicle_options":[{"vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"classification":"other"},"quoteable":true,"unit_total":187104,"quantity":3,"line_total":561312,"passenger_count":120,"required_quantity":3,"requested_quantity":1,"capacity_adjusted":true,"quote_type":"hourly","rate_id":53396,"rate_type":"HourlyRate","pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":561312,"per_vehicle_total_amount":187104,"pricing_method":"hourly","rate":{"id":53396,"source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"billing_unit":"hour","minimum_hours":6},"calculation":{"billable_hours":6,"passenger_count":120,"vehicle_capacity":41,"requested_quantity":1,"required_quantity":3,"quantity":3},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false},"cancellation_hours":48,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]}}],"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]},{"key":"departure_9_17_minibus","label":"Departure — Hyatt Regency Boston Harbor → BOS","quantity":2,"unit_total":187104,"line_total":374208,"currency":"USD","vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"classification":"other"},"passenger_count":80,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-09-17T12:00:00-04:00","timezone":"America/New_York","stops":[{"name":"Hyatt Regency Boston Harbor","display_name":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","travel_time":0,"timezone":"America/New_York","location":{"timezone":"America/New_York","id":4644869,"type":"city","display_name":"Boston, Massachusetts","service_area":{"id":11192,"name":"Boston, MA"},"country_code":"US","confidence":"candidate"},"stop_number":1,"location_type":"pickup_stop","postal_code":"02128","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":42.3592641,"longitude":-71.0272118},"duration":0},{"display_name":"BOS - Boston Logan International","travel_time":7,"timezone":"America/New_York","location":{"timezone":"America/New_York","id":4655910,"type":"airport","display_name":"BOS - Boston Logan International","service_area":{"id":11192,"name":"Boston, MA"},"country_code":"US","confidence":"candidate"},"flight":{"scheduled_time":"2027-09-17T16:00:00.000Z","flight_type":"departure","private":false,"commercial_tbd":true},"stop_number":2,"location_type":"dropoff_stop","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":42.364347,"longitude":-71.005181},"duration":0}],"persisted":false,"pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":374208,"per_vehicle_total_amount":187104,"pricing_method":"hourly","rate":{"id":53396,"source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"billing_unit":"hour","minimum_hours":6},"calculation":{"billable_hours":6,"passenger_count":80,"vehicle_capacity":41,"requested_quantity":1,"required_quantity":2,"quantity":2},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false},"cancellation_hours":48,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]},"quote":{"id":null,"quoted_time":1.25,"type":"hourly","base_rate":40500,"excess_wait_rate":null,"base_quote":187104,"client_fuel_surcharge":1000,"discount_percentage":3000,"special_handling_percentage":0,"adjusted_client_rate":31184,"adjusted_greeter_fee":null,"cancellation_hours":48,"minimum":6,"quoted_trip_duration":6,"rate_id":53396,"rate_type":"HourlyRate","greeter_fee":null,"waive_excess_drive_time":false,"excess_drive_time_approved":false,"accept_low_margin":false,"base_rate_in_vendor_currency":405,"excess_wait_rate_in_vendor_currency":0,"base_quote_in_vendor_currency":1871.04,"client_fuel_surcharge_in_vendor_currency":10,"adjusted_client_rate_in_vendor_currency":311.84,"adjusted_greeter_fee_in_vendor_currency":0,"greeter_fee_in_vendor_currency":0,"vendor_currency":null},"travel_times":[0,7],"limited_availability":true,"excess_drive_time":false,"vehicle_options":[{"vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"classification":"other"},"quoteable":true,"unit_total":187104,"quantity":2,"line_total":374208,"passenger_count":80,"required_quantity":2,"requested_quantity":1,"capacity_adjusted":true,"quote_type":"hourly","rate_id":53396,"rate_type":"HourlyRate","pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":374208,"per_vehicle_total_amount":187104,"pricing_method":"hourly","rate":{"id":53396,"source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"billing_unit":"hour","minimum_hours":6},"calculation":{"billable_hours":6,"passenger_count":80,"vehicle_capacity":41,"requested_quantity":1,"required_quantity":2,"quantity":2},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false},"cancellation_hours":48,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]}}],"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]}],"aggregate_total":935520,"currency":"USD","persisted":false,"pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":935520,"calculation":{"quote_unit_count":2},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"],"presentation":{"version":1,"view":"quote_result","status":"ready","estimate_type":"exact","title":"Exact quote","currency_code":"USD","warnings":[{"severity":"warning","message":"No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"}],"actions":[{"id":"refine_quote","label":"Refine this quote","intent":"refine_quote"}],"data":{"total_amount":935520,"quote_units":[{"key":"offsite_9_15_minibus","label":"Offsite — Hyatt Regency Boston Harbor ↔ Classic Harbor Line","quantity":3,"total_amount":561312,"vehicle_name":"Mini Bus","vehicle_capacity":41,"passenger_count":120,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-09-15T17:45:00-04:00","timezone":"America/New_York","stops":[{"order":1,"label":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","timezone":"America/New_York"},{"order":2,"drive_minutes":17,"label":"60 Rowes Wharf, Boston, Massachusetts, US","address":"60 Rowes Wharf","timezone":"America/New_York"},{"order":3,"drive_minutes":15,"label":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","timezone":"America/New_York"}],"estimated_drive_minutes":32,"pricing":{"pricing_method":"hourly","rate_source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"rate_amount":31184,"billing_unit":"hour","minimum_hours":6,"billable_hours":6,"cancellation_hours":48,"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false}},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]},{"key":"departure_9_17_minibus","label":"Departure — Hyatt Regency Boston Harbor → BOS","quantity":2,"total_amount":374208,"vehicle_name":"Mini Bus","vehicle_capacity":41,"passenger_count":80,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-09-17T12:00:00-04:00","timezone":"America/New_York","stops":[{"order":1,"label":"101 Harborside Drive, Boston, Massachusetts, US","address":"101 Harborside Drive","timezone":"America/New_York"},{"order":2,"drive_minutes":7,"label":"BOS - Boston Logan International","timezone":"America/New_York","flight_time":"2027-09-17T16:00:00.000Z"}],"estimated_drive_minutes":7,"pricing":{"pricing_method":"hourly","rate_source":"rack","base_rate_amount":40500,"effective_rate_amount":31184,"rate_amount":31184,"billing_unit":"hour","minimum_hours":6,"billable_hours":6,"cancellation_hours":48,"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":false}},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"]}],"unquoteable_unit_keys":[],"pricing":{"adjustments":{"temporary_rate_used":false}}}}}
+{
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
+    "estimate_type": "exact",
+    "title": "Exact quote",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      }
+    ],
+    "data": {
+      "total_amount": 935520,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "offsite_9_15_minibus",
+          "label": "Offsite — Hyatt Regency Boston Harbor ↔ Classic Harbor Line",
+          "quantity": 3,
+          "total_amount": 561312,
+          "per_vehicle_amount": 187104,
+          "requested_quantity": 1,
+          "required_quantity": 3,
+          "vehicle_type_id": "7",
+          "vehicle_name": "Mini Bus",
+          "vehicle_capacity": 41,
+          "passenger_count": 120,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-09-15T17:45:00-04:00",
+          "timezone": "America/New_York",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Hyatt Regency Boston Harbor",
+              "address": "101 Harborside Drive, Boston, Massachusetts, US",
+              "kind": "address",
+              "latitude": 42.359264,
+              "longitude": -71.027212,
+              "timezone": "America/New_York",
+              "service_area": "Boston, MA"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 17,
+              "label": "Classic Harbor Line Boston",
+              "address": "60 Rowes Wharf, Boston, Massachusetts, US",
+              "kind": "address",
+              "wait_hours": 2.25,
+              "latitude": 42.355967,
+              "longitude": -71.04996,
+              "timezone": "America/New_York",
+              "service_area": "Boston, MA"
+            },
+            {
+              "order": 3,
+              "drive_minutes": 15,
+              "label": "Hyatt Regency Boston Harbor",
+              "address": "101 Harborside Drive, Boston, Massachusetts, US",
+              "kind": "address",
+              "latitude": 42.359264,
+              "longitude": -71.027212,
+              "timezone": "America/New_York",
+              "service_area": "Boston, MA"
+            }
+          ],
+          "estimated_drive_minutes": 32,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "53396",
+            "base_rate_amount": 40500,
+            "effective_rate_amount": 31184,
+            "rate_amount": 31184,
+            "billing_unit": "hour",
+            "minimum_hours": 6,
+            "billable_hours": 6,
+            "cancellation_hours": 48,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "departure_9_17_minibus",
+          "label": "Departure — Hyatt Regency Boston Harbor → BOS",
+          "quantity": 2,
+          "total_amount": 374208,
+          "per_vehicle_amount": 187104,
+          "requested_quantity": 1,
+          "required_quantity": 2,
+          "vehicle_type_id": "7",
+          "vehicle_name": "Mini Bus",
+          "vehicle_capacity": 41,
+          "passenger_count": 80,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-09-17T12:00:00-04:00",
+          "timezone": "America/New_York",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Hyatt Regency Boston Harbor",
+              "address": "101 Harborside Drive, Boston, Massachusetts, US",
+              "kind": "address",
+              "latitude": 42.359264,
+              "longitude": -71.027212,
+              "timezone": "America/New_York",
+              "service_area": "Boston, MA"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 7,
+              "label": "BOS - Boston Logan International",
+              "kind": "airport",
+              "latitude": 42.364347,
+              "longitude": -71.005181,
+              "timezone": "America/New_York",
+              "flight_time": "2027-09-17T16:00:00.000Z",
+              "flight_type": "departure",
+              "flight_tbd": true,
+              "service_area": "Boston, MA"
+            }
+          ],
+          "estimated_drive_minutes": 7,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "53396",
+            "base_rate_amount": 40500,
+            "effective_rate_amount": 31184,
+            "rate_amount": 31184,
+            "billing_unit": "hour",
+            "minimum_hours": 6,
+            "billable_hours": 6,
+            "cancellation_hours": 48,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
+    }
+  }
+}

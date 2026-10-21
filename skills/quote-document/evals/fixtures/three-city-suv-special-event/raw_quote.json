@@ -1,823 +1,209 @@
 {
- "contract_version": 1,
- "quote_units": [
-  {
-   "key": "orlando_hourly",
-   "label": "Orlando — 4 hours as directed",
-   "quantity": 1,
-   "unit_total": 102487,
-   "line_total": 102487,
-   "currency": "USD",
-   "vehicle_type": {
-    "id": 8,
-    "name": "SUV",
-    "capacity": 6,
-    "classification": "suv"
-   },
-   "passenger_count": 5,
-   "passenger_count_source": "provided",
-   "passenger_selection_source": "quote_only_fallback",
-   "pickup_date": "2027-09-05T09:00:00-04:00",
-   "timezone": "America/New_York",
-   "stops": [
-    {
-     "name": "Hyatt Regency Orlando",
-     "display_name": "9801 International Drive, Orlando, Florida, US",
-     "address": "9801 International Drive",
-     "travel_time": 0,
-     "timezone": "America/New_York",
-     "location": {
-      "timezone": "America/New_York",
-      "id": 4644712,
-      "type": "city",
-      "display_name": "Orlando, Florida",
-      "service_area": {
-       "id": 11178,
-       "name": "Orlando, FL"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 1,
-     "location_type": "pickup_stop",
-     "postal_code": "32819",
-     "country": {
-      "id": 8467,
-      "code": "US",
-      "name": "United States"
-     },
-     "position": {
-      "latitude": 28.42769,
-      "longitude": -81.4687483
-     },
-     "duration": 0
-    },
-    {
-     "name": "As Directed",
-     "display_name": "As Directed - Orlando, Florida",
-     "travel_time": 17,
-     "timezone": "America/New_York",
-     "location": {
-      "timezone": "America/New_York",
-      "id": 4644712,
-      "type": "city",
-      "display_name": "Orlando, Florida",
-      "service_area": {
-       "id": 11178,
-       "name": "Orlando, FL"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 2,
-     "location_type": "dropoff_stop",
-     "position": {
-      "latitude": null,
-      "longitude": null
-     },
-     "duration": 4,
-     "as_directed": true
-    }
-   ],
-   "persisted": false,
-   "pricing_summary": {
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
     "estimate_type": "exact",
+    "title": "Exact quote",
     "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 102487,
-    "per_vehicle_total_amount": 102487,
-    "pricing_method": "hourly",
-    "rate": {
-     "id": 53510,
-     "source": "rack",
-     "base_rate_amount": 24200,
-     "effective_rate_amount": 18634,
-     "billing_unit": "hour",
-     "minimum_hours": 2
-    },
-    "calculation": {
-     "billable_hours": 5.5,
-     "passenger_count": 5,
-     "vehicle_capacity": 6,
-     "requested_quantity": 1,
-     "required_quantity": 1,
-     "quantity": 1
-    },
-    "adjustments": {
-     "discount_basis_points": 3000,
-     "special_handling_basis_points": 0,
-     "fuel_surcharge_basis_points": 1000,
-     "temporary_rate_used": false
-    },
-    "cancellation_hours": 2,
+    "amount_unit": "cents",
     "warnings": [
-     "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-    ]
-   },
-   "quote": {
-    "id": null,
-    "quoted_time": 5.5,
-    "type": "hourly",
-    "base_rate": 24200,
-    "excess_wait_rate": null,
-    "base_quote": 102487,
-    "client_fuel_surcharge": 1000,
-    "discount_percentage": 3000,
-    "special_handling_percentage": 0,
-    "adjusted_client_rate": 18634,
-    "adjusted_greeter_fee": null,
-    "cancellation_hours": 2,
-    "minimum": 2,
-    "quoted_trip_duration": 5.5,
-    "rate_id": 53510,
-    "rate_type": "HourlyRate",
-    "greeter_fee": null,
-    "waive_excess_drive_time": false,
-    "excess_drive_time_approved": false,
-    "accept_low_margin": false,
-    "base_rate_in_vendor_currency": 242,
-    "excess_wait_rate_in_vendor_currency": 0,
-    "base_quote_in_vendor_currency": 1024.87,
-    "client_fuel_surcharge_in_vendor_currency": 10,
-    "adjusted_client_rate_in_vendor_currency": 186.34,
-    "adjusted_greeter_fee_in_vendor_currency": 0,
-    "greeter_fee_in_vendor_currency": 0,
-    "vendor_currency": null
-   },
-   "travel_times": [
-    0,
-    17
-   ],
-   "limited_availability": false,
-   "excess_drive_time": false,
-   "vehicle_options": [
-    {
-     "vehicle_type": {
-      "id": 8,
-      "name": "SUV",
-      "capacity": 6,
-      "classification": "suv"
-     },
-     "quoteable": true,
-     "unit_total": 102487,
-     "quantity": 1,
-     "line_total": 102487,
-     "passenger_count": 5,
-     "required_quantity": 1,
-     "requested_quantity": 1,
-     "capacity_adjusted": false,
-     "quote_type": "hourly",
-     "rate_id": 53510,
-     "rate_type": "HourlyRate",
-     "pricing_summary": {
-      "estimate_type": "exact",
-      "currency_code": "USD",
-      "status": "priced",
-      "total_amount": 102487,
-      "per_vehicle_total_amount": 102487,
-      "pricing_method": "hourly",
-      "rate": {
-       "id": 53510,
-       "source": "rack",
-       "base_rate_amount": 24200,
-       "effective_rate_amount": 18634,
-       "billing_unit": "hour",
-       "minimum_hours": 2
-      },
-      "calculation": {
-       "billable_hours": 5.5,
-       "passenger_count": 5,
-       "vehicle_capacity": 6,
-       "requested_quantity": 1,
-       "required_quantity": 1,
-       "quantity": 1
-      },
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      },
-      "cancellation_hours": 2,
-      "warnings": [
-       "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-      ]
-     }
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      }
+    ],
+    "data": {
+      "total_amount": 307461,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "orlando_hourly",
+          "label": "Orlando — 4 hours as directed",
+          "quantity": 1,
+          "total_amount": 102487,
+          "per_vehicle_amount": 102487,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "vehicle_type_id": "8",
+          "vehicle_name": "SUV",
+          "vehicle_capacity": 6,
+          "passenger_count": 5,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-09-05T09:00:00-04:00",
+          "timezone": "America/New_York",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Hyatt Regency Orlando",
+              "address": "9801 International Drive, Orlando, Florida, US",
+              "kind": "address",
+              "latitude": 28.42769,
+              "longitude": -81.468748,
+              "timezone": "America/New_York",
+              "service_area": "Orlando, FL"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 17,
+              "label": "As Directed",
+              "address": "As Directed - Orlando, Florida",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/New_York",
+              "service_area": "Orlando, FL"
+            }
+          ],
+          "estimated_drive_minutes": 17,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "53510",
+            "base_rate_amount": 24200,
+            "effective_rate_amount": 18634,
+            "rate_amount": 18634,
+            "billing_unit": "hour",
+            "minimum_hours": 2,
+            "billable_hours": 5.5,
+            "cancellation_hours": 2,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "la_hourly",
+          "label": "Los Angeles — 4 hours as directed",
+          "quantity": 1,
+          "total_amount": 102487,
+          "per_vehicle_amount": 102487,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "vehicle_type_id": "8",
+          "vehicle_name": "SUV",
+          "vehicle_capacity": 6,
+          "passenger_count": 5,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-09-05T09:00:00-07:00",
+          "timezone": "America/Los_Angeles",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Beverly Hilton",
+              "address": "9876 Wilshire Boulevard, Beverly Hills, California, US",
+              "kind": "address",
+              "latitude": 34.066407,
+              "longitude": -118.412652,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Los Angeles, CA"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 25,
+              "label": "As Directed",
+              "address": "As Directed - Los Angeles, California",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Los Angeles, CA"
+            }
+          ],
+          "estimated_drive_minutes": 25,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "53526",
+            "base_rate_amount": 24200,
+            "effective_rate_amount": 18634,
+            "rate_amount": 18634,
+            "billing_unit": "hour",
+            "minimum_hours": 2,
+            "billable_hours": 5.5,
+            "cancellation_hours": 2,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        },
+        {
+          "key": "nyc_hourly",
+          "label": "New York City — 4 hours as directed",
+          "quantity": 1,
+          "total_amount": 102487,
+          "per_vehicle_amount": 102487,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "vehicle_type_id": "8",
+          "vehicle_name": "SUV",
+          "vehicle_capacity": 6,
+          "passenger_count": 5,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-09-05T09:00:00-04:00",
+          "timezone": "America/New_York",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Pierre, A Taj Hotel, New York",
+              "address": "2 East 61st Street, New York City, New York, US",
+              "kind": "address",
+              "latitude": 40.765183,
+              "longitude": -73.971894,
+              "timezone": "America/New_York",
+              "service_area": "New York City, NY"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 21,
+              "label": "As Directed",
+              "address": "As Directed - New York City, New York",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/New_York",
+              "service_area": "New York City, NY"
+            }
+          ],
+          "estimated_drive_minutes": 21,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "53528",
+            "base_rate_amount": 24200,
+            "effective_rate_amount": 18634,
+            "rate_amount": 18634,
+            "billing_unit": "hour",
+            "minimum_hours": 2,
+            "billable_hours": 5.5,
+            "cancellation_hours": 2,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
     }
-   ],
-   "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   ]
-  },
-  {
-   "key": "la_hourly",
-   "label": "Los Angeles — 4 hours as directed",
-   "quantity": 1,
-   "unit_total": 102487,
-   "line_total": 102487,
-   "currency": "USD",
-   "vehicle_type": {
-    "id": 8,
-    "name": "SUV",
-    "capacity": 6,
-    "classification": "suv"
-   },
-   "passenger_count": 5,
-   "passenger_count_source": "provided",
-   "passenger_selection_source": "quote_only_fallback",
-   "pickup_date": "2027-09-05T09:00:00-07:00",
-   "timezone": "America/Los_Angeles",
-   "stops": [
-    {
-     "name": "The Beverly Hilton",
-     "display_name": "9876 Wilshire Boulevard, Beverly Hills, California, US",
-     "address": "9876 Wilshire Boulevard",
-     "travel_time": 0,
-     "timezone": "America/Los_Angeles",
-     "location": {
-      "timezone": "America/Los_Angeles",
-      "id": 4644841,
-      "type": "city",
-      "display_name": "Beverly Hills, California",
-      "service_area": {
-       "id": 11196,
-       "name": "Los Angeles, CA"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 1,
-     "location_type": "pickup_stop",
-     "postal_code": "90210",
-     "country": {
-      "id": 8467,
-      "code": "US",
-      "name": "United States"
-     },
-     "position": {
-      "latitude": 34.0664073,
-      "longitude": -118.4126525
-     },
-     "duration": 0
-    },
-    {
-     "name": "As Directed",
-     "display_name": "As Directed - Los Angeles, California",
-     "travel_time": 25,
-     "timezone": "America/Los_Angeles",
-     "location": {
-      "timezone": "America/Los_Angeles",
-      "id": 4644660,
-      "type": "city",
-      "display_name": "Los Angeles, California",
-      "service_area": {
-       "id": 11196,
-       "name": "Los Angeles, CA"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 2,
-     "location_type": "dropoff_stop",
-     "position": {
-      "latitude": null,
-      "longitude": null
-     },
-     "duration": 4,
-     "as_directed": true
-    }
-   ],
-   "persisted": false,
-   "pricing_summary": {
-    "estimate_type": "exact",
-    "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 102487,
-    "per_vehicle_total_amount": 102487,
-    "pricing_method": "hourly",
-    "rate": {
-     "id": 53526,
-     "source": "rack",
-     "base_rate_amount": 24200,
-     "effective_rate_amount": 18634,
-     "billing_unit": "hour",
-     "minimum_hours": 2
-    },
-    "calculation": {
-     "billable_hours": 5.5,
-     "passenger_count": 5,
-     "vehicle_capacity": 6,
-     "requested_quantity": 1,
-     "required_quantity": 1,
-     "quantity": 1
-    },
-    "adjustments": {
-     "discount_basis_points": 3000,
-     "special_handling_basis_points": 0,
-     "fuel_surcharge_basis_points": 1000,
-     "temporary_rate_used": false
-    },
-    "cancellation_hours": 2,
-    "warnings": [
-     "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-    ]
-   },
-   "quote": {
-    "id": null,
-    "quoted_time": 5.5,
-    "type": "hourly",
-    "base_rate": 24200,
-    "excess_wait_rate": null,
-    "base_quote": 102487,
-    "client_fuel_surcharge": 1000,
-    "discount_percentage": 3000,
-    "special_handling_percentage": 0,
-    "adjusted_client_rate": 18634,
-    "adjusted_greeter_fee": null,
-    "cancellation_hours": 2,
-    "minimum": 2,
-    "quoted_trip_duration": 5.5,
-    "rate_id": 53526,
-    "rate_type": "HourlyRate",
-    "greeter_fee": null,
-    "waive_excess_drive_time": false,
-    "excess_drive_time_approved": false,
-    "accept_low_margin": false,
-    "base_rate_in_vendor_currency": 242,
-    "excess_wait_rate_in_vendor_currency": 0,
-    "base_quote_in_vendor_currency": 1024.87,
-    "client_fuel_surcharge_in_vendor_currency": 10,
-    "adjusted_client_rate_in_vendor_currency": 186.34,
-    "adjusted_greeter_fee_in_vendor_currency": 0,
-    "greeter_fee_in_vendor_currency": 0,
-    "vendor_currency": null
-   },
-   "travel_times": [
-    0,
-    25
-   ],
-   "limited_availability": false,
-   "excess_drive_time": false,
-   "vehicle_options": [
-    {
-     "vehicle_type": {
-      "id": 8,
-      "name": "SUV",
-      "capacity": 6,
-      "classification": "suv"
-     },
-     "quoteable": true,
-     "unit_total": 102487,
-     "quantity": 1,
-     "line_total": 102487,
-     "passenger_count": 5,
-     "required_quantity": 1,
-     "requested_quantity": 1,
-     "capacity_adjusted": false,
-     "quote_type": "hourly",
-     "rate_id": 53526,
-     "rate_type": "HourlyRate",
-     "pricing_summary": {
-      "estimate_type": "exact",
-      "currency_code": "USD",
-      "status": "priced",
-      "total_amount": 102487,
-      "per_vehicle_total_amount": 102487,
-      "pricing_method": "hourly",
-      "rate": {
-       "id": 53526,
-       "source": "rack",
-       "base_rate_amount": 24200,
-       "effective_rate_amount": 18634,
-       "billing_unit": "hour",
-       "minimum_hours": 2
-      },
-      "calculation": {
-       "billable_hours": 5.5,
-       "passenger_count": 5,
-       "vehicle_capacity": 6,
-       "requested_quantity": 1,
-       "required_quantity": 1,
-       "quantity": 1
-      },
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      },
-      "cancellation_hours": 2,
-      "warnings": [
-       "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-      ]
-     }
-    }
-   ],
-   "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   ]
-  },
-  {
-   "key": "nyc_hourly",
-   "label": "New York City — 4 hours as directed",
-   "quantity": 1,
-   "unit_total": 102487,
-   "line_total": 102487,
-   "currency": "USD",
-   "vehicle_type": {
-    "id": 8,
-    "name": "SUV",
-    "capacity": 6,
-    "classification": "suv"
-   },
-   "passenger_count": 5,
-   "passenger_count_source": "provided",
-   "passenger_selection_source": "quote_only_fallback",
-   "pickup_date": "2027-09-05T09:00:00-04:00",
-   "timezone": "America/New_York",
-   "stops": [
-    {
-     "name": "The Pierre, A Taj Hotel, New York",
-     "display_name": "2 East 61st Street, New York City, New York, US",
-     "address": "2 East 61st Street",
-     "travel_time": 0,
-     "timezone": "America/New_York",
-     "location": {
-      "timezone": "America/New_York",
-      "id": 4646477,
-      "type": "city",
-      "display_name": "New York City, New York",
-      "service_area": {
-       "id": 11198,
-       "name": "New York City, NY"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 1,
-     "location_type": "pickup_stop",
-     "postal_code": "10065",
-     "country": {
-      "id": 8467,
-      "code": "US",
-      "name": "United States"
-     },
-     "position": {
-      "latitude": 40.7651828,
-      "longitude": -73.9718937
-     },
-     "duration": 0
-    },
-    {
-     "name": "As Directed",
-     "display_name": "As Directed - New York City, New York",
-     "travel_time": 21,
-     "timezone": "America/New_York",
-     "location": {
-      "timezone": "America/New_York",
-      "id": 4646477,
-      "type": "city",
-      "display_name": "New York City, New York",
-      "service_area": {
-       "id": 11198,
-       "name": "New York City, NY"
-      },
-      "country_code": "US",
-      "confidence": "candidate"
-     },
-     "stop_number": 2,
-     "location_type": "dropoff_stop",
-     "position": {
-      "latitude": null,
-      "longitude": null
-     },
-     "duration": 4,
-     "as_directed": true
-    }
-   ],
-   "persisted": false,
-   "pricing_summary": {
-    "estimate_type": "exact",
-    "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 102487,
-    "per_vehicle_total_amount": 102487,
-    "pricing_method": "hourly",
-    "rate": {
-     "id": 53528,
-     "source": "rack",
-     "base_rate_amount": 24200,
-     "effective_rate_amount": 18634,
-     "billing_unit": "hour",
-     "minimum_hours": 2
-    },
-    "calculation": {
-     "billable_hours": 5.5,
-     "passenger_count": 5,
-     "vehicle_capacity": 6,
-     "requested_quantity": 1,
-     "required_quantity": 1,
-     "quantity": 1
-    },
-    "adjustments": {
-     "discount_basis_points": 3000,
-     "special_handling_basis_points": 0,
-     "fuel_surcharge_basis_points": 1000,
-     "temporary_rate_used": false
-    },
-    "cancellation_hours": 2,
-    "warnings": [
-     "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-    ]
-   },
-   "quote": {
-    "id": null,
-    "quoted_time": 5.5,
-    "type": "hourly",
-    "base_rate": 24200,
-    "excess_wait_rate": null,
-    "base_quote": 102487,
-    "client_fuel_surcharge": 1000,
-    "discount_percentage": 3000,
-    "special_handling_percentage": 0,
-    "adjusted_client_rate": 18634,
-    "adjusted_greeter_fee": null,
-    "cancellation_hours": 2,
-    "minimum": 2,
-    "quoted_trip_duration": 5.5,
-    "rate_id": 53528,
-    "rate_type": "HourlyRate",
-    "greeter_fee": null,
-    "waive_excess_drive_time": false,
-    "excess_drive_time_approved": false,
-    "accept_low_margin": false,
-    "base_rate_in_vendor_currency": 242,
-    "excess_wait_rate_in_vendor_currency": 0,
-    "base_quote_in_vendor_currency": 1024.87,
-    "client_fuel_surcharge_in_vendor_currency": 10,
-    "adjusted_client_rate_in_vendor_currency": 186.34,
-    "adjusted_greeter_fee_in_vendor_currency": 0,
-    "greeter_fee_in_vendor_currency": 0,
-    "vendor_currency": null
-   },
-   "travel_times": [
-    0,
-    21
-   ],
-   "limited_availability": false,
-   "excess_drive_time": false,
-   "vehicle_options": [
-    {
-     "vehicle_type": {
-      "id": 8,
-      "name": "SUV",
-      "capacity": 6,
-      "classification": "suv"
-     },
-     "quoteable": true,
-     "unit_total": 102487,
-     "quantity": 1,
-     "line_total": 102487,
-     "passenger_count": 5,
-     "required_quantity": 1,
-     "requested_quantity": 1,
-     "capacity_adjusted": false,
-     "quote_type": "hourly",
-     "rate_id": 53528,
-     "rate_type": "HourlyRate",
-     "pricing_summary": {
-      "estimate_type": "exact",
-      "currency_code": "USD",
-      "status": "priced",
-      "total_amount": 102487,
-      "per_vehicle_total_amount": 102487,
-      "pricing_method": "hourly",
-      "rate": {
-       "id": 53528,
-       "source": "rack",
-       "base_rate_amount": 24200,
-       "effective_rate_amount": 18634,
-       "billing_unit": "hour",
-       "minimum_hours": 2
-      },
-      "calculation": {
-       "billable_hours": 5.5,
-       "passenger_count": 5,
-       "vehicle_capacity": 6,
-       "requested_quantity": 1,
-       "required_quantity": 1,
-       "quantity": 1
-      },
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      },
-      "cancellation_hours": 2,
-      "warnings": [
-       "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-      ]
-     }
-    }
-   ],
-   "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   ]
   }
- ],
- "aggregate_total": 307461,
- "currency": "USD",
- "persisted": false,
- "pricing_summary": {
-  "estimate_type": "exact",
-  "currency_code": "USD",
-  "status": "priced",
-  "total_amount": 307461,
-  "calculation": {
-   "quote_unit_count": 3
-  },
-  "warnings": [
-   "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-  ]
- },
- "warnings": [
-  "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
- ],
- "presentation": {
-  "version": 1,
-  "view": "quote_result",
-  "status": "ready",
-  "estimate_type": "exact",
-  "title": "Exact quote",
-  "currency_code": "USD",
-  "warnings": [
-   {
-    "severity": "warning",
-    "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   }
-  ],
-  "actions": [
-   {
-    "id": "refine_quote",
-    "label": "Refine this quote",
-    "intent": "refine_quote"
-   }
-  ],
-  "data": {
-   "total_amount": 307461,
-   "quote_units": [
-    {
-     "key": "orlando_hourly",
-     "label": "Orlando — 4 hours as directed",
-     "quantity": 1,
-     "total_amount": 102487,
-     "vehicle_name": "SUV",
-     "vehicle_capacity": 6,
-     "passenger_count": 5,
-     "passenger_count_source": "provided",
-     "passenger_selection_source": "quote_only_fallback",
-     "pickup_date": "2027-09-05T09:00:00-04:00",
-     "timezone": "America/New_York",
-     "stops": [
-      {
-       "order": 1,
-       "label": "9801 International Drive, Orlando, Florida, US",
-       "address": "9801 International Drive",
-       "timezone": "America/New_York"
-      },
-      {
-       "order": 2,
-       "drive_minutes": 17,
-       "label": "As Directed - Orlando, Florida",
-       "timezone": "America/New_York"
-      }
-     ],
-     "estimated_drive_minutes": 17,
-     "pricing": {
-      "pricing_method": "hourly",
-      "rate_source": "rack",
-      "base_rate_amount": 24200,
-      "effective_rate_amount": 18634,
-      "rate_amount": 18634,
-      "billing_unit": "hour",
-      "minimum_hours": 2,
-      "billable_hours": 5.5,
-      "cancellation_hours": 2,
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      }
-     },
-     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-     ]
-    },
-    {
-     "key": "la_hourly",
-     "label": "Los Angeles — 4 hours as directed",
-     "quantity": 1,
-     "total_amount": 102487,
-     "vehicle_name": "SUV",
-     "vehicle_capacity": 6,
-     "passenger_count": 5,
-     "passenger_count_source": "provided",
-     "passenger_selection_source": "quote_only_fallback",
-     "pickup_date": "2027-09-05T09:00:00-07:00",
-     "timezone": "America/Los_Angeles",
-     "stops": [
-      {
-       "order": 1,
-       "label": "9876 Wilshire Boulevard, Beverly Hills, California, US",
-       "address": "9876 Wilshire Boulevard",
-       "timezone": "America/Los_Angeles"
-      },
-      {
-       "order": 2,
-       "drive_minutes": 25,
-       "label": "As Directed - Los Angeles, California",
-       "timezone": "America/Los_Angeles"
-      }
-     ],
-     "estimated_drive_minutes": 25,
-     "pricing": {
-      "pricing_method": "hourly",
-      "rate_source": "rack",
-      "base_rate_amount": 24200,
-      "effective_rate_amount": 18634,
-      "rate_amount": 18634,
-      "billing_unit": "hour",
-      "minimum_hours": 2,
-      "billable_hours": 5.5,
-      "cancellation_hours": 2,
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      }
-     },
-     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-     ]
-    },
-    {
-     "key": "nyc_hourly",
-     "label": "New York City — 4 hours as directed",
-     "quantity": 1,
-     "total_amount": 102487,
-     "vehicle_name": "SUV",
-     "vehicle_capacity": 6,
-     "passenger_count": 5,
-     "passenger_count_source": "provided",
-     "passenger_selection_source": "quote_only_fallback",
-     "pickup_date": "2027-09-05T09:00:00-04:00",
-     "timezone": "America/New_York",
-     "stops": [
-      {
-       "order": 1,
-       "label": "2 East 61st Street, New York City, New York, US",
-       "address": "2 East 61st Street",
-       "timezone": "America/New_York"
-      },
-      {
-       "order": 2,
-       "drive_minutes": 21,
-       "label": "As Directed - New York City, New York",
-       "timezone": "America/New_York"
-      }
-     ],
-     "estimated_drive_minutes": 21,
-     "pricing": {
-      "pricing_method": "hourly",
-      "rate_source": "rack",
-      "base_rate_amount": 24200,
-      "effective_rate_amount": 18634,
-      "rate_amount": 18634,
-      "billing_unit": "hour",
-      "minimum_hours": 2,
-      "billable_hours": 5.5,
-      "cancellation_hours": 2,
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
-      }
-     },
-     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-     ]
-    }
-   ],
-   "unquoteable_unit_keys": [],
-   "pricing": {
-    "adjustments": {
-     "temporary_rate_used": false
-    }
-   }
-  }
- }
 }

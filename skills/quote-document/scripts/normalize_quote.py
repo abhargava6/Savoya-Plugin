@@ -2,8 +2,8 @@
 """Normalize a Savoya engine quote result into canonical quote.json.
 
 Accepts the JSON returned by calculate_quote_units, calculate_sourced_quote_units,
-calculate_temporary_quote_units, or generate_quote_options (pass --option), in any shape
-quote_view.py reads: MCP presentation version 2, version 1, or an unversioned raw payload.
+calculate_temporary_quote_units, or generate_quote_options (pass --option): the MCP's
+compact quote view, read through quote_view.py.
 
 Usage:
   normalize_quote.py raw_quote.json quote.json --client "Yerdle" [--prepared-by NAME]
@@ -19,7 +19,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import quote_view  # noqa: E402  -- the one reader of a quote response, both skills
-from quote_view import coordinates_of  # noqa: E402,F401  -- kept importable for the guards
 
 # The handoff contract this build reads. Bumped whenever intake starts writing a
 # field the document relies on, so a handoff from an older build is refused rather
@@ -152,7 +151,7 @@ def normalize_stop(stop):
 
 
 def normalize_unit(unit):
-    """One quote-view unit (version 2 shape; quote_view converts version 1) as a leg."""
+    """One quote-view unit as a leg."""
     pricing = unit.get("pricing") or {}
     view_stops = unit.get("stops") or []
     stops = [normalize_stop(s) for s in view_stops]
@@ -426,9 +425,8 @@ def main():
     with open(args.raw, encoding="utf-8") as f:
         raw = json.load(f)
 
-    # Every shape the MCP sends -- presentation version 2, version 1 with the raw Core
-    # payload, or an unversioned raw payload -- is read through quote_view, which hands
-    # back packages of version 2 units. Any other version is refused there, loudly.
+    # The response is read through quote_view, which hands back packages of view units
+    # and refuses any presentation version this build does not read, loudly.
     try:
         pkgs = quote_view.packages(raw)
     except quote_view.QuoteViewError as e:
@@ -519,12 +517,6 @@ def main():
     today = dt.date.today()
     subtotal = sum(l["pricing"]["line_total_cents"] or 0 for l in legs if not l.get("alternative_of"))
     adjustments = []
-    # engine-applied fuel surcharge stated at the top of an older result (quote_view reads
-    # the field names those used); current results state it per unit, handled below.
-    fuel = chosen.get("fuel_pct")
-    if fuel:
-        adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fuel, "applies_to": None,
-                            "source": "engine", "amount_cents": 0})
     pcts = {l.get("engine_discount_pct") for l in legs if l.get("engine_discount_pct")}
     if len(pcts) == 1:
         pct = pcts.pop()

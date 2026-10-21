@@ -1,24 +1,17 @@
-// Turn a captured v1 quote response (raw Core payload + presentation v1, or raw Core
-// payload alone) into the response the MCP sends at presentation version 2, using the
-// MCP's own mapping rather than a copy of it.
+// Convert a quote response captured before GREEN-380 (raw Core payload, with or without
+// a version 1 presentation) into the response the MCP sends now: the compact quote view,
+// presentation version 2. It uses the MCP's own mapping rather than a copy of it, so a
+// pre-GREEN-380 capture (for example one from the Drive capture folder) can still become
+// a fixture. The plugin reads version 2 only.
 //
 // Run with Node 24 from a checkout of savoya-quote-mcp that carries presentation
-// version 2 (branch ethan/green-380-compact-quote-view at 400b1d4 or later), with its
-// node_modules installed:
+// version 2, with its node_modules installed:
 //
 //   cd /path/to/savoya-quote-mcp
-//   npx tsx /path/to/Savoya-Plugin/tests/tools/make_v2_fixture.mts <raw_quote.json> <raw_quote.v2.json>
+//   npx tsx /path/to/Savoya-Plugin/tests/tools/make_v2_fixture.mts <old.json> <raw_quote.json> [<in> <out> ...]
 //
-// Several pairs may be given in one run: <in1> <out1> <in2> <out2> ...
-//
-// To regenerate every fixture in the plugin (each raw_quote.json under
-// skills/*/evals/fixtures gets a raw_quote.v2.json beside it):
-//
-//   npx tsx /path/to/Savoya-Plugin/tests/tools/make_v2_fixture.mts --all /path/to/Savoya-Plugin
-//
-// LEGACY_V1_ONLY lists captures that predate the current Core contract. The MCP's schema
-// rejects them, so they have no v2 form and stay v1-only (unversioned raw Core payloads,
-// which the plugin still reads). Any other rejection fails the run.
+// A blocked result names the failing trip only when the request's unit label is known;
+// the capture does not carry the request, so name it by hand in the fixture's input if needed.
 //
 // The tool is chosen from the response's shape, as the MCP would have been called:
 // options[] -> generate_quote_options, previews[] -> preview_rate_batch, anything else
@@ -30,27 +23,13 @@
 //
 // A file ending in .mts because tsx compiles a .ts file outside an ESM package as CJS,
 // which rejects the top-level await below.
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 type Json = Record<string, any>;
 
 const PLUGIN_KEYS = ["merged_packages", "_ingest"];
-const LEGACY_V1_ONLY = ["skills/quote-document/evals/fixtures/boston-exact-path/raw_quote.json"];
-
-function rawFixtures(root: string): string[] {
-  const found: string[] = [];
-  const walk = (dir: string) => {
-    for (const name of readdirSync(dir).sort()) {
-      const path = join(dir, name);
-      if (statSync(path).isDirectory()) walk(path);
-      else if (name === "raw_quote.json") found.push(path);
-    }
-  };
-  for (const skill of ["quote-document", "quote-intake"]) walk(join(root, "skills", skill, "evals", "fixtures"));
-  return found;
-}
 
 const presentationModule = pathToFileURL(join(process.cwd(), "src", "domains", "quotes", "presentation.ts")).href;
 const { addPresentation, QUOTE_PRESENTATION_VERSION } = await import(presentationModule);
@@ -79,16 +58,9 @@ function inputFor(tool: string, raw: Json): Json {
   };
 }
 
-let args = process.argv.slice(2);
-let root: string | undefined;
-if (args[0] === "--all" && args.length === 2) {
-  root = args[1];
-  args = rawFixtures(root)
-    .filter((path) => !LEGACY_V1_ONLY.includes(relative(root!, path)))
-    .flatMap((path) => [path, path.replace(/raw_quote\.json$/, "raw_quote.v2.json")]);
-}
+const args = process.argv.slice(2);
 if (!args.length || args.length % 2) {
-  console.error("usage: make_v2_fixture.mts <raw_quote.json> <raw_quote.v2.json> [<in> <out> ...] | --all <plugin root>");
+  console.error("usage: make_v2_fixture.mts <old.json> <raw_quote.json> [<in> <out> ...]");
   process.exit(2);
 }
 let failed = 0;
@@ -105,7 +77,7 @@ for (let i = 0; i < args.length; i += 2) {
     console.log(`${args[i + 1]}: ${tool} -> ${view} (${presented.presentation.status})`);
   } catch (error) {
     // A capture the MCP's schema rejects is reported, not patched here: fix the input
-    // faithfully (and record why) or leave the fixture v1-only.
+    // faithfully and record why, or re-capture the quote from the live MCP.
     failed += 1;
     const issues = (error as { issues?: Array<{ path: unknown[]; message: string }> }).issues;
     console.error(`${args[i]}: REJECTED by the MCP schema`);

@@ -84,7 +84,7 @@ def _warn_lines(warnings, seen, priced=True):
     return out
 
 
-def _hours_note(u, raw_unit):
+def _hours_note(u):
     """Say out loud when Core billed more hours than the user asked for.
 
     Core adds positioning time: an as-directed stop sent `duration: 2` billed 3.25 hours
@@ -95,10 +95,7 @@ def _hours_note(u, raw_unit):
     billable = ((u.get("pricing") or {}).get("billable_hours"))
     if billable is None:
         return []
-    # Version 2 views carry each stop's requested wait; a version 1 presentation did not,
-    # so its raw unit's stop durations are read instead.
-    requested = sum(s.get("wait_hours") or 0 for s in (u.get("stops") or [])) or \
-        sum(s.get("duration") or 0 for s in ((raw_unit or {}).get("stops") or []))
+    requested = sum(s.get("wait_hours") or 0 for s in (u.get("stops") or []))
     if not requested or abs(billable - requested) < 0.01:
         return []
     extra = round(billable - requested, 2)
@@ -150,7 +147,7 @@ def _pricing_bits(pr):
     return " · ".join(bits) if bits else None
 
 
-def _unit_block(u, currency, seen, raw_unit=None):
+def _unit_block(u, currency, seen):
     out = [f"**{u.get('label') or u.get('key')}** — {money(u.get('total_amount'), currency)}"]
     facts = []
     if u.get("vehicle_name"):
@@ -166,8 +163,6 @@ def _unit_block(u, currency, seen, raw_unit=None):
     if pb:
         out.append(f"  {pb}")
     sub = (u.get("pricing") or {}).get("subtotal_amount")
-    if sub is None:      # a version 1 presentation did not carry it; its raw unit did
-        sub = ((raw_unit or {}).get("pricing_summary") or {}).get("subtotal_amount")
     if sub and sub != u.get("total_amount"):
         off = sub - (u.get("total_amount") or 0)
         out.append(f"  {money(sub, currency)} before the additional discount "
@@ -184,7 +179,7 @@ def _unit_block(u, currency, seen, raw_unit=None):
         out.append(f"  {s.get('order', '•')}. {label}"
                    + (f" — {' · '.join(extra)}" if extra else ""))
     out += ["  " + ln for ln in _warn_lines(u.get("warnings"), seen)]
-    out += ["  " + ln for ln in _hours_note(u, raw_unit)]
+    out += ["  " + ln for ln in _hours_note(u)]
     return out
 
 
@@ -213,16 +208,18 @@ def _generic(data, depth=0):
     return out
 
 
-def cross_check(raw, pres):
-    """Does Core's own presentation total match its own quote units?
+def cross_check(pres):
+    """Does the quote's total match its own quote units?
 
     If it doesn't, that is Core disagreeing with itself. Say so and show both. Picking one
     silently would make our output look authoritative about a number we can't vouch for."""
-    shown = ((pres.get("data") or {}).get("total_amount"))
-    actual = raw.get("aggregate_total")
-    if actual is None:
-        actual = (raw.get("pricing_summary") or {}).get("total_amount")
-    if shown is None or actual is None or shown == actual:
+    data = pres.get("data") or {}
+    shown = data.get("total_amount")
+    lines = [u.get("total_amount") for u in data.get("quote_units") or []]
+    if pres.get("view") != "quote_result" or shown is None or not lines or None in lines:
+        return []
+    actual = sum(lines)
+    if shown == actual:
         return []
     return [
         "",
@@ -270,9 +267,8 @@ def render(raw):
         total = data.get("total_amount")
         if total is not None:
             lines += [f"**Total {money(total, currency)}**", ""]
-        raw_by_key = {ru.get("key"): ru for ru in (raw.get("quote_units") or [])}
         for u in data.get("quote_units") or []:
-            lines += _unit_block(u, currency, seen, raw_by_key.get(u.get("key"))) + [""]
+            lines += _unit_block(u, currency, seen) + [""]
         bad = data.get("unquoteable_unit_keys") or []
         if bad:
             lines.append(f"✗ Could not be priced: {', '.join(bad)}")
@@ -343,7 +339,7 @@ def render(raw):
 
     lines += _warn_lines(pres.get("warnings"), seen)
 
-    lines += cross_check(raw, pres)
+    lines += cross_check(pres)
     return "\n".join(lines).rstrip() + "\n", 0
 
 

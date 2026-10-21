@@ -1,1 +1,96 @@
-{"contract_version":1,"quote_units":[{"key":"execvan_temp_rate","label":"Exec Van — temporary hourly rate (no stored rate in market)","quantity":1,"unit_total":77000,"line_total":77000,"currency":"USD","vehicle_type":{"id":25,"name":"Exec Van","capacity":14,"classification":"other"},"passenger_count":12,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-03-20T08:00:00-07:00","timezone":"America/Los_Angeles","stops":[{"name":"Irvine Marriott","display_name":"18000 Von Karman Avenue, Irvine, California, US","address":"18000 Von Karman Avenue","travel_time":0,"timezone":"America/Los_Angeles","location":{"timezone":"America/Los_Angeles","id":4647466,"type":"city","display_name":"Irvine, California","service_area":{"id":11554,"name":"Orange County, CA"},"country_code":"US","confidence":"candidate"},"stop_number":1,"location_type":"pickup_stop","postal_code":"92612","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":33.6783214,"longitude":-117.8497412},"duration":0},{"name":"Anaheim Convention Center","display_name":"800 West Katella Avenue, Anaheim, California, US","address":"800 West Katella Avenue","travel_time":23,"timezone":"America/Los_Angeles","location":{"timezone":"America/Los_Angeles","id":4645260,"type":"city","display_name":"Anaheim, California","service_area":{"id":11554,"name":"Orange County, CA"},"country_code":"US","confidence":"candidate"},"stop_number":2,"location_type":"dropoff_stop","postal_code":"92802","country":{"id":8467,"code":"US","name":"United States"},"position":{"latitude":33.8008759,"longitude":-117.9209238},"duration":0}],"persisted":false,"pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":77000,"per_vehicle_total_amount":77000,"pricing_method":"hourly","rate":{"source":"custom","base_rate_amount":25000,"effective_rate_amount":19250,"billing_unit":"hour","minimum_hours":4},"calculation":{"billable_hours":4,"passenger_count":12,"vehicle_capacity":14,"requested_quantity":1,"required_quantity":1,"quantity":1},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":true},"cancellation_hours":24,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"]},"quote":{"id":null,"quoted_time":1.5,"type":"hourly","base_rate":25000,"excess_wait_rate":null,"base_quote":77000,"client_fuel_surcharge":1000,"discount_percentage":3000,"special_handling_percentage":0,"adjusted_client_rate":19250,"adjusted_greeter_fee":null,"cancellation_hours":24,"minimum":4,"quoted_trip_duration":4,"rate_id":null,"rate_type":"CustomHourlyRate","greeter_fee":null,"waive_excess_drive_time":false,"excess_drive_time_approved":false,"accept_low_margin":false,"base_rate_in_vendor_currency":250,"excess_wait_rate_in_vendor_currency":0,"base_quote_in_vendor_currency":770,"client_fuel_surcharge_in_vendor_currency":10,"adjusted_client_rate_in_vendor_currency":192.5,"adjusted_greeter_fee_in_vendor_currency":0,"greeter_fee_in_vendor_currency":0,"vendor_currency":null},"travel_times":[0,23],"limited_availability":false,"excess_drive_time":false,"vehicle_options":[{"vehicle_type":{"id":25,"name":"Exec Van","capacity":14,"classification":"other"},"quoteable":true,"unit_total":77000,"quantity":1,"line_total":77000,"passenger_count":12,"required_quantity":1,"requested_quantity":1,"capacity_adjusted":false,"quote_type":"hourly","rate_id":null,"rate_type":"CustomHourlyRate","pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":77000,"per_vehicle_total_amount":77000,"pricing_method":"hourly","rate":{"source":"custom","base_rate_amount":25000,"effective_rate_amount":19250,"billing_unit":"hour","minimum_hours":4},"calculation":{"billable_hours":4,"passenger_count":12,"vehicle_capacity":14,"requested_quantity":1,"required_quantity":1,"quantity":1},"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":true},"cancellation_hours":24,"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"]}}],"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"]}],"aggregate_total":77000,"currency":"USD","persisted":false,"pricing_summary":{"estimate_type":"exact","currency_code":"USD","status":"priced","total_amount":77000,"calculation":{"quote_unit_count":1},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"]},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"],"presentation":{"version":1,"view":"quote_result","status":"ready","estimate_type":"exact","title":"Exact quote","currency_code":"USD","warnings":[{"severity":"warning","message":"No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"},{"severity":"warning","message":"Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"}],"actions":[{"id":"refine_quote","label":"Refine this quote","intent":"refine_quote"}],"data":{"total_amount":77000,"quote_units":[{"key":"execvan_temp_rate","label":"Exec Van — temporary hourly rate (no stored rate in market)","quantity":1,"total_amount":77000,"vehicle_name":"Exec Van","vehicle_capacity":14,"passenger_count":12,"passenger_count_source":"provided","passenger_selection_source":"quote_only_fallback","pickup_date":"2027-03-20T08:00:00-07:00","timezone":"America/Los_Angeles","stops":[{"order":1,"label":"18000 Von Karman Avenue, Irvine, California, US","address":"18000 Von Karman Avenue","timezone":"America/Los_Angeles"},{"order":2,"drive_minutes":23,"label":"800 West Katella Avenue, Anaheim, California, US","address":"800 West Katella Avenue","timezone":"America/Los_Angeles"}],"estimated_drive_minutes":23,"pricing":{"pricing_method":"hourly","rate_source":"custom","base_rate_amount":25000,"effective_rate_amount":19250,"rate_amount":19250,"billing_unit":"hour","minimum_hours":4,"billable_hours":4,"cancellation_hours":24,"adjustments":{"discount_basis_points":3000,"special_handling_basis_points":0,"fuel_surcharge_basis_points":1000,"temporary_rate_used":true}},"warnings":["No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved","Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"]}],"unquoteable_unit_keys":[],"pricing":{"adjustments":{"temporary_rate_used":false}}}}}
+{
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
+    "estimate_type": "exact",
+    "title": "Exact quote",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      },
+      {
+        "severity": "warning",
+        "message": "Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"
+      }
+    ],
+    "data": {
+      "total_amount": 77000,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "execvan_temp_rate",
+          "label": "Exec Van — temporary hourly rate (no stored rate in market)",
+          "quantity": 1,
+          "total_amount": 77000,
+          "per_vehicle_amount": 77000,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "vehicle_type_id": "25",
+          "vehicle_name": "Exec Van",
+          "vehicle_capacity": 14,
+          "passenger_count": 12,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-03-20T08:00:00-07:00",
+          "timezone": "America/Los_Angeles",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Irvine Marriott",
+              "address": "18000 Von Karman Avenue, Irvine, California, US",
+              "kind": "address",
+              "latitude": 33.678321,
+              "longitude": -117.849741,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Orange County, CA"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 23,
+              "label": "Anaheim Convention Center",
+              "address": "800 West Katella Avenue, Anaheim, California, US",
+              "kind": "address",
+              "latitude": 33.800876,
+              "longitude": -117.920924,
+              "timezone": "America/Los_Angeles",
+              "service_area": "Orange County, CA"
+            }
+          ],
+          "estimated_drive_minutes": 23,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "custom",
+            "base_rate_amount": 25000,
+            "effective_rate_amount": 19250,
+            "rate_amount": 19250,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 4,
+            "cancellation_hours": 24,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved",
+        "Partner-supplied Exec Van rate was used for this quote and was not saved in Savoya"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
+    }
+  }
+}
