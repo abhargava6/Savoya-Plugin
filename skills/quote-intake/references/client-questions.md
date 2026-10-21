@@ -37,7 +37,7 @@ The third kind, and the easiest to miss. The client asks something the **quote d
 | The client asks | Where the answer already is | What the document must do |
 |---|---|---|
 | "Can you suggest pick-up times?" | each leg's `pickup_date` | a **Suggested pickup times** callout: per date, per pickup area, the time |
-| "How long is the drive?" / "When will we arrive?" | `route.drive_min`, `travel_times` | state drive time per leg where it matters, not only in the route table |
+| "How long is the drive?" / "When will we arrive?" | `route.drive_min`, each stop's `drive_minutes` | state drive time per leg where it matters, not only in the route table |
 | "How many vehicles?" | `vehicle.quantity` per leg | say it in the intro note when it's the client's actual question |
 | "How long will we have the vehicle?" | `billable_hours`, `minimum_hours` | state the block per leg in plain words |
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Normalize a Savoya engine quote result into canonical quote.json.
 
-Accepts the JSON returned by calculate_quote_units,
-calculate_temporary_quote_units, or a single option from generate_quote_options.
+Accepts the JSON returned by calculate_quote_units, calculate_sourced_quote_units,
+calculate_temporary_quote_units, or generate_quote_options (pass --option), in any shape
+quote_view.py reads: MCP presentation version 2, version 1, or an unversioned raw payload.
 
 Usage:
   normalize_quote.py raw_quote.json quote.json --client "Yerdle" [--prepared-by NAME]
@@ -17,6 +18,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import quote_view  # noqa: E402  -- the one reader of a quote response, both skills
+from quote_view import coordinates_of  # noqa: E402,F401  -- kept importable for the guards
 
 # The handoff contract this build reads. Bumped whenever intake starts writing a
 # field the document relies on, so a handoff from an older build is refused rather
@@ -50,98 +53,7 @@ def load_terms():
     return terms
 
 
-def pick_option(unit):
-    """Return the vehicle option to use for a unit.
-    Exact path (calculate_quote_units / generate_quote_options result): the unit itself
-    carries the chosen vehicle, quantity and pricing_summary."""
-    if unit.get("pricing_summary") and unit.get("vehicle_type"):
-        return unit
-    if unit.get("value_option"):
-        return unit["value_option"]
-    opts = unit.get("vehicle_options") or []
-    priced = [o for o in opts if o.get("quoteable")]
-    if not priced:
-        return None
-    return min(priced, key=lambda o: o.get("line_total", 0))
-
-
-def stop_label(stop, presentation_stop):
-    """Best-effort client label for a stop. Flags 'Stop N' placeholders."""
-    if stop.get("name"):
-        return stop["name"], False
-    # exact path: airport stops carry display_name ("BOS - Boston Logan International")
-    if stop.get("display_name") and not str(stop["display_name"]).startswith("Stop "):
-        return stop["display_name"], False
-    if presentation_stop and presentation_stop.get("label") and not presentation_stop["label"].startswith("Stop "):
-        return presentation_stop["label"], False
-    if is_airport(stop):
-        return "Airport (label needed)", True
-    if stop.get("as_directed"):
-        city = (stop_service_area(stop) or "").split("/")[0].split(",")[0].strip()
-        return f"As directed — {city}" if city else "As directed", False
-    return "Stop (label needed)", True
-
-
-def is_airport(stop):
-    """Is this stop an airport, in EITHER response shape?
-
-    The connector moved airport identification. It used to arrive as a top-level
-    `airport` object on the stop ({"airport": {"id": 4655910}}); current responses carry
-    no such key and identify the airport through `location.type == "airport"` instead.
-
-    Reading only the old shape made every airport stop normalize as kind "address" and
-    DROPPED the flight object with it — so the "flight time to be confirmed" disclosure
-    silently stopped appearing on client documents. Found by re-capturing a fixture
-    against the live MCP; invisible before, because the fixture carried the old shape.
-
-    Both shapes are accepted: an old capture must keep working, and the suite still holds
-    fixtures in both."""
-    if stop.get("airport"):
-        return True
-    return ((stop.get("location") or {}).get("type") == "airport"
-            or stop.get("stop_type") == "airport")
-
-
 _TEMP_WORDS = re.compile(r"temporar|user-supplied|unsaved", re.I)
-
-
-def stop_service_area(stop):
-    """A stop's service-area name, in EITHER response shape.
-
-    This moved, like the airport flag and the sourcing warning before it. It used to be
-    a top-level `service_area` on the stop; current responses carry it only at
-    `location.service_area`. NO stop in any of the three captures taken on 10 Oct 2026
-    has the top-level key, so the old reader returned None every time -- which silently
-    made `pickup_service_area` (the fallback behind every service-area field) dead, and
-    printed "As directed" with no city on every as-directed leg.
-
-    Both shapes are read, and the new one is preferred.
-    """
-    if not isinstance(stop, dict):
-        return None
-    for holder in ((stop.get("location") or {}), stop):
-        area = holder.get("service_area")
-        if isinstance(area, dict) and area.get("name"):
-            return area["name"]
-        if isinstance(area, str) and area:
-            return area
-    return None
-
-
-def stop_has_no_service_area(stop):
-    """Core said this place is in NO service area -- as distinct from not saying.
-
-    The difference decides whether a leg is treated as sourced, so conflating them is
-    expensive in both directions. Current responses carry `location.service_area: null`
-    for a place outside every market (Catania, and the Sicily hotel). An older or
-    trimmed response may carry no `location` at all, which means "unknown" and must not
-    be read as "nowhere" -- doing so marked three single-market fixtures as sourced and
-    the suite caught it.
-    """
-    loc = stop.get("location") if isinstance(stop, dict) else None
-    if not isinstance(loc, dict) or "service_area" not in loc:
-        return False
-    return not loc.get("service_area")
 
 
 def event_for_client(special_event, pickup_date):
@@ -199,92 +111,54 @@ def client_label(raw):
     return label
 
 
-def coordinates_of(stop):
-    """Core's own coordinates for a stop, from whichever shape it sent them in.
+def normalize_stop(stop):
+    """One view stop (quote_view units carry version 2 stops) as a quote.json stop.
 
-    This read only `position.latitude/longitude`. A real quote came back with the
-    coordinates somewhere else, so they were dropped, and the map fell back to
-    geocoding the stop against the market name "Dallas/Fort Worth" — which no public
-    geocoder knows. Both stops failed, and the client PDF shipped with no map at all,
-    while Core had the exact coordinates the whole time.
-
-    Same shape as the airport and sourcing-warning incidents: the signal moved and the
-    plugin kept reading the old place. So read every shape, and when one is found that
-    is not the documented path, say so on stderr — that is how the real key gets into
-    a capture and then into this list, instead of being rediscovered next quarter.
-    """
-    def pair(d):
-        if not isinstance(d, dict):
-            return None
-        for a, b in (("latitude", "longitude"), ("lat", "lon"), ("lat", "lng"),
-                     ("y", "x")):
-            if d.get(a) is not None and d.get(b) is not None:
-                try:
-                    return float(d[a]), float(d[b])
-                except (TypeError, ValueError):
-                    return None
-        return None
-
-    known = pair(stop.get("position") or {})
-    if known:
-        return known
-    for key in ("location", "coordinates", "geo", "point", "place", "address_details"):
-        found = pair(stop.get(key) or {})
-        if found:
-            print(f"WARNING: stop coordinates found under {key!r}, not 'position' — "
-                  f"add it to coordinates_of()'s documented path list and tell "
-                  f"engineering which shape Core is sending", file=sys.stderr)
-            return found
-    found = pair(stop)
-    if found:
-        print("WARNING: stop coordinates found at the top level of the stop, not under "
-              "'position' — add it to coordinates_of()'s documented path list",
-              file=sys.stderr)
-    return found
-
-
-def normalize_stop(stop, presentation_stop):
-    label, needs_label = stop_label(stop, presentation_stop)
+    The view labels a stop by the venue's own name, then its address, and only when Core
+    gave neither does it send a numbered "Stop N". That placeholder is the one label never
+    printed: it becomes "(label needed)" and the session must name it. Only the exact
+    "Stop <number>" shape counts, so a venue called "Stop & Shop" keeps its name. An
+    unnamed as-directed stop is named after its market instead ("As directed — Irvine")."""
+    label = (stop.get("label") or "").strip()
+    kind = stop.get("kind") or "address"
+    needs_label = not label or quote_view.STOP_PLACEHOLDER.fullmatch(label) is not None
+    if needs_label and kind == "as_directed":
+        city = (stop.get("service_area") or "").split("/")[0].split(",")[0].strip()
+        label, needs_label = (f"As directed — {city}" if city else "As directed"), False
+    elif needs_label:
+        label = "Airport (label needed)" if kind == "airport" else "Stop (label needed)"
     out = {"label": label}
-    if stop.get("address"):
+    # An as-directed stop's "address" is Core's placeholder for it ("As Directed - Irvine,
+    # California"), not a place; printed beside the label it reads "As Directed · As
+    # Directed - Irvine, California". The label already says it.
+    if stop.get("address") and kind != "as_directed":
         out["address"] = stop["address"]
-    if is_airport(stop):
-        out["kind"] = "airport"
-        fl = stop.get("flight") or {}
+    out["kind"] = kind
+    if kind == "airport":
         out["flight"] = {
-            "tbd": bool(fl.get("commercial_tbd")),
-            "type": fl.get("flight_type"),
-            "scheduled_time": fl.get("scheduled_time"),
+            "tbd": bool(stop.get("flight_tbd")),
+            "type": stop.get("flight_type"),
+            "scheduled_time": stop.get("flight_time"),
         }
-    else:
-        out["kind"] = "address"
-    ll = coordinates_of(stop)
-    if ll:
-        out["lat"], out["lon"] = ll
-    if stop.get("as_directed"):
-        out["kind"] = "as_directed"
+    if stop.get("latitude") is not None and stop.get("longitude") is not None:
+        out["lat"], out["lon"] = stop["latitude"], stop["longitude"]
+    if kind == "as_directed":
         out["as_directed"] = True
-    if stop.get("duration"):
-        out["wait_hours"] = stop["duration"]
+    if stop.get("wait_hours"):
+        out["wait_hours"] = stop["wait_hours"]
     if needs_label:
         out["needs_label"] = True
     return out
 
 
-def normalize_unit(unit, presentation_unit):
-    opt = pick_option(unit)
-    if not opt:
-        return None, [f"{unit.get('key')}: no quoteable vehicle option"]
-    ps = opt.get("pricing_summary", {})
-    rate = ps.get("rate", {})
-    pres_stops = (presentation_unit or {}).get("stops") or []
-    stops = []
-    for i, s in enumerate(unit.get("stops", [])):
-        stops.append(normalize_stop(s, pres_stops[i] if i < len(pres_stops) else None))
-    vt = opt.get("vehicle_type", {})
-    adj = ps.get("adjustments") or {}
-    std_rate = rate.get("base_rate_amount") or rate.get("rate_amount_before_temporary_discount")
-    eff_rate = rate.get("effective_rate_amount") or opt.get("effective_rate_amount")
+def normalize_unit(unit):
+    """One quote-view unit (version 2 shape; quote_view converts version 1) as a leg."""
+    pricing = unit.get("pricing") or {}
+    view_stops = unit.get("stops") or []
+    stops = [normalize_stop(s) for s in view_stops]
+    adj = pricing.get("adjustments") or {}
+    std_rate = pricing.get("base_rate_amount")
+    eff_rate = pricing.get("effective_rate_amount")
     bps = adj.get("discount_basis_points") or adj.get("custom_discount_basis_points") or 0
     # An ADDITIONAL discount asked for in the document flow comes back as its own basis
     # points; `discount_basis_points` keeps reporting only the contracted one. Reading just
@@ -303,8 +177,7 @@ def normalize_unit(unit, presentation_unit):
         engine_discount_pct = bps / 100.0
     engine_fuel_pct = (adj.get("fuel_surcharge_basis_points") or 0) / 100.0 or None
     engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
-    stop_areas = [stop_service_area(s) for s in unit.get("stops", [])]
-    pickup_service_area = next((n for n in stop_areas if n), None)
+    pickup_service_area = next((s.get("service_area") for s in view_stops if s.get("service_area")), None)
     # No stop in this unit sits in a Savoya service area at all. Core still prices it,
     # from whichever market owns the nearest fleet, and bills the positioning -- which
     # is the EXPENSIVE sourcing case, not an edge case. On 10 Oct 2026 a Catania airport
@@ -315,16 +188,19 @@ def normalize_unit(unit, presentation_unit):
     # and the source market of that unit. So `source != primary` -- the test for an
     # ordinary cross-market override -- is FALSE here, and the costly case was the one
     # case the sourcing marker missed.
-    orphan_stops = bool(unit.get("stops")) and all(
-        stop_has_no_service_area(s) for s in unit["stops"])
+    #
+    # A view stop carries `service_area: null` only when Core said the place is in no
+    # market; the key is absent when Core did not say, which must not read as "nowhere".
+    orphan_stops = bool(view_stops) and all(
+        "service_area" in s and not s["service_area"] for s in view_stops)
     # Cross-market sourcing (PRD R48-R51). Core carries ONE source per unit, not an
     # array per leg: a mixed-market package is several units, each with its own
     # source_service_area, which is exactly how calculate_sourced_quote_units takes
     # the allocation. `service_area` therefore means "where this vehicle came from",
     # and `primary_service_area` means "where the work is".
-    source_service_area = (unit.get("source_service_area") or {}).get("name")
+    source_service_area = unit.get("source_service_area")
     service_area = source_service_area or pickup_service_area
-    primary_service_area = (unit.get("primary_service_area") or {}).get("name") or pickup_service_area
+    primary_service_area = unit.get("primary_service_area") or pickup_service_area
     leg = {
         "key": unit.get("key"),
         "service_area": service_area,
@@ -334,25 +210,23 @@ def normalize_unit(unit, presentation_unit):
             or (source_service_area and source_service_area != primary_service_area))),
         "no_local_service_area": orphan_stops,
         "label": unit.get("label") or unit.get("key"),
-        "date": unit.get("pickup_date") or (presentation_unit or {}).get("date"),
-        "passenger_count": unit.get("passenger_count") or ps.get("calculation", {}).get("passenger_count"),
+        "date": unit.get("pickup_date"),
+        "passenger_count": unit.get("passenger_count"),
         "vehicle": {
-            "name": vt.get("name"),
-            "capacity": vt.get("capacity"),
-            "quantity": opt.get("quantity") or ps.get("calculation", {}).get("quantity") or 1,
+            "name": unit.get("vehicle_name"),
+            "capacity": unit.get("vehicle_capacity"),
+            "quantity": unit.get("quantity") or 1,
         },
         "stops": stops,
         "pricing": {
-            "method": ps.get("pricing_method"),
+            "method": pricing.get("pricing_method"),
             "rate_cents": std_rate if engine_discount_pct else eff_rate,
-            "billable_hours": opt.get("billable_hours") or ps.get("calculation", {}).get("billable_hours"),
-            "minimum_hours": rate.get("minimum_hours") or opt.get("minimum"),
-            "cancellation_hours": opt.get("cancellation_hours") or ps.get("cancellation_hours"),
-            "special_event": event_for_client(
-                ps.get("special_event"),
-                unit.get("pickup_date") or (presentation_unit or {}).get("date")),
-            "per_vehicle_cents": opt.get("unit_total") or ps.get("per_vehicle_total_amount"),
-            "line_total_cents": opt.get("line_total") or ps.get("total_amount"),
+            "billable_hours": pricing.get("billable_hours"),
+            "minimum_hours": pricing.get("minimum_hours"),
+            "cancellation_hours": pricing.get("cancellation_hours"),
+            "special_event": event_for_client(pricing.get("special_event"), unit.get("pickup_date")),
+            "per_vehicle_cents": unit.get("per_vehicle_amount"),
+            "line_total_cents": unit.get("total_amount"),
         },
         "client_notes": [],
     }
@@ -380,15 +254,16 @@ def normalize_unit(unit, presentation_unit):
     # D1 — a greeter drives nowhere. Core still reports a travel_time on the as-directed
     # stop (6 minutes at Whistler, 5 at Irvine, 13 on the wrong hotel-to-venue shape), and
     # "5 min drive" against a person meeting a flight is the kind of detail a client notices.
-    is_greeter = bool((unit.get("vehicle_type") or {}).get("greeter")) or \
-        "greet" in ((unit.get("vehicle_type") or {}).get("name") or "").lower()
+    is_greeter = "greet" in (unit.get("vehicle_name") or "").lower()
     if is_greeter:
         leg["is_greeter"] = True
-    tt = [] if is_greeter else (unit.get("travel_times") or [])
-    if tt:
-        for i, s_ in enumerate(leg["stops"]):
-            if i < len(tt) and tt[i]:
-                s_["drive_minutes"] = tt[i]
+    # Drive times are Core's: the view carries the minutes from the previous stop on each
+    # stop. A greeter's are dropped (D1 above); a stop with none gets none, never a zero.
+    tt = [] if is_greeter else [s.get("drive_minutes") for s in view_stops]
+    if any(tt):
+        for s_, minutes in zip(leg["stops"], tt):
+            if minutes:
+                s_["drive_minutes"] = minutes
         leg["route"] = {"drive_min": int(sum(x for x in tt if x)), "source": "engine"}
     if engine_discount_pct:
         # Present standard rates on the line; the engine's discount becomes a visible line item.
@@ -398,7 +273,7 @@ def normalize_unit(unit, presentation_unit):
         if hourly:
             per = std_rate * units
         else:
-            per = round((opt.get("unit_total") or 0) * std_rate / eff_rate)
+            per = round((unit.get("per_vehicle_amount") or 0) * std_rate / eff_rate)
         # Keep Core's own net alongside the standard presentation. C5 needs both: the
         # standard figure is what the rate card shows, the net is what Core actually
         # quoted, and the engine lines are pinned so standard + lines == net exactly.
@@ -454,9 +329,11 @@ def normalize_unit(unit, presentation_unit):
     if leg["pricing"]["method"] != "hourly":
         leg["pricing"]["billable_hours"] = None
         leg["pricing"]["minimum_hours"] = None
-    unit_priced = ((unit.get("pricing_summary") or {}).get("status") or "priced") == "priced"
+    # The MCP passes only priced units in a successful result; a unit with no amount is
+    # the one case where Core's passenger note may explain something and is kept.
+    unit_priced = unit.get("total_amount") is not None
     internal = {
-        "rate_ids": [opt.get("rate_id")] if opt.get("rate_id") else [],
+        "rate_ids": [pricing.get("rate_id")] if pricing.get("rate_id") else [],
         "warnings": [w for w in (unit.get("warnings") or [])
                      if not (SUPPRESSED_WARNING in w and unit_priced)],
         "placeholders": [],
@@ -549,34 +426,40 @@ def main():
     with open(args.raw, encoding="utf-8") as f:
         raw = json.load(f)
 
-    # generate_quote_options returns options[].result; each result is the single-package shape.
-    if raw.get("options") and raw.get("quote_units") is None:
-        keys = [o.get("key") for o in raw["options"]]
+    # Every shape the MCP sends -- presentation version 2, version 1 with the raw Core
+    # payload, or an unversioned raw payload -- is read through quote_view, which hands
+    # back packages of version 2 units. Any other version is refused there, loudly.
+    try:
+        pkgs = quote_view.packages(raw)
+    except quote_view.QuoteViewError as e:
+        sys.exit(str(e))
+    if not pkgs:
+        sys.exit("The quote result has no priced packages.")
+    # generate_quote_options returns several complete packages; one is chosen.
+    if quote_view.is_options(raw):
+        keys = [p["key"] for p in pkgs]
         want = args.option or (handoff or {}).get("selected_option")
-        chosen = next((o for o in raw["options"] if o.get("key") == want), None)
+        chosen = next((p for p in pkgs if p["key"] == want), None)
         if chosen is None:
             if want:
                 sys.exit(f"Option {want!r} not in this response. Available: {keys}")
-            if len(raw["options"]) > 1:
+            if len(pkgs) > 1:
                 sys.exit(f"This is a multi-option response ({keys}). Pass --option <key> for the one the user chose.")
-            chosen = raw["options"][0]
-        print(f"Using option {chosen.get('key')!r} from a multi-option response", file=sys.stderr)
-        raw = chosen.get("result") or {}
-
-    units = raw.get("quote_units") or []
-    pres_units = {u.get("key"): u for u in (raw.get("presentation", {}).get("data", {}).get("quote_units") or [])}
+            chosen = pkgs[0]
+        print(f"Using option {chosen['key']!r} from a multi-option response", file=sys.stderr)
+    else:
+        chosen = pkgs[0]
+    units = chosen["units"]
+    unpriced = [f"{k}: no quoteable vehicle option" for k in chosen.get("unpriced") or []]
     selected = set(k.strip() for k in args.select.split(",")) if args.select else None
 
     alt_map = dict(a.split(":", 1) for a in args.alternative)
-    legs, dropped, warnings, placeholders, rate_ids = [], [], [], [], []
+    legs, dropped, warnings, placeholders, rate_ids = [], [], list(unpriced), [], []
     for u in units:
         if selected is not None and u.get("key") not in selected:
             dropped.append(u.get("key"))
             continue
-        leg, internal = normalize_unit(u, pres_units.get(u.get("key")))
-        if leg is None:
-            warnings.extend(internal)
-            continue
+        leg, internal = normalize_unit(u)
         legs.append(leg)
         warnings.extend(internal["warnings"])
         placeholders.extend(internal["placeholders"])
@@ -636,16 +519,9 @@ def main():
     today = dt.date.today()
     subtotal = sum(l["pricing"]["line_total_cents"] or 0 for l in legs if not l.get("alternative_of"))
     adjustments = []
-    # engine-applied fuel surcharge, if the result carries one (field names vary; check the common ones)
-    ps_top = raw.get("pricing_summary") or {}
-    fuel = None
-    for src in (ps_top, raw):
-        for k in ("fuel_surcharge_percent", "fuel_surcharge_pct", "fuel_surcharge"):
-            v = src.get(k)
-            if isinstance(v, (int, float)) and v:
-                fuel = float(v) if v < 100 else None
-            elif isinstance(v, dict) and (v.get("percent") or v.get("rate")):
-                fuel = float(v.get("percent") or v.get("rate"))
+    # engine-applied fuel surcharge stated at the top of an older result (quote_view reads
+    # the field names those used); current results state it per unit, handled below.
+    fuel = chosen.get("fuel_pct")
     if fuel:
         adjustments.append({"label": "Fuel surcharge", "type": "percent", "value": fuel, "applies_to": None,
                             "source": "engine", "amount_cents": 0})
@@ -727,15 +603,17 @@ def main():
     quote = {
         "meta": {
             "client": args.client,
-            "profile_id": next((u.get("travel_coordination_profile_id") for u in units if u.get("travel_coordination_profile_id")), None),
+            # The profile the quote ran under, as intake recorded it. The view does not carry
+            # it, and no Core response ever did on a unit in any capture.
+            "profile_id": ((handoff or {}).get("client") or {}).get("profile_id"),
             "prepared_by": args.prepared_by,
             # R109: the headcount the user confirmed. The header prints it; legs priced without a
             # passenger_count (a vehicle default) cannot say how many people the party is.
             "headcount": (handoff or {}).get("headcount_confirmed"),
             "prepared_on": today.isoformat(),
             "valid_until": (today + dt.timedelta(days=args.valid_days)).isoformat(),
-            "estimate_type": raw.get("estimate_type") or raw.get("pricing_summary", {}).get("estimate_type"),
-            "currency": raw.get("currency") or raw.get("pricing_summary", {}).get("currency_code") or "USD",
+            "estimate_type": chosen.get("estimate_type"),
+            "currency": chosen.get("currency") or "USD",
             "title": args.title,
             "reference": None,
             "travel_coordinator": None,
@@ -749,7 +627,7 @@ def main():
                                        if l.get("service_area")), None)),
         },
         "legs": legs,
-        "engine_total_cents": raw.get("aggregate_total") or (raw.get("pricing_summary") or {}).get("total_amount"),
+        "engine_total_cents": chosen["total_cents"],
         "engine_subtotal_cents": subtotal,
         "adjustments": adjustments,
         "total_cents": subtotal + sum(a["amount_cents"] for a in adjustments),

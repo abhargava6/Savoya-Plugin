@@ -40,6 +40,8 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import quote_view as qv  # noqa: E402  -- guards build v1 shapes and read them as the view does
 SKILL = os.path.dirname(HERE)
 DEFAULT_FIXTURES = os.path.join(SKILL, "evals", "fixtures")
 
@@ -435,6 +437,7 @@ def lint_warning_surfacing():
                             "calculation": {"quantity": 1}},
         "warnings": [ho.SUPPRESSED_WARNING + " for this quote", unknown],
     }
+    unit = qv.unit_from_v1(unit)          # unit_lines reads quote-view units
     rendered = "\n".join(ho.unit_lines(unit))
 
     # 2. The suppressed one must not appear...
@@ -452,7 +455,7 @@ def lint_warning_surfacing():
         problems.append(f"warning repeated {twice.count(unknown)}× across units; expected once")
 
     # 5. Suppression is conditional on the unit having priced. A blocked unit keeps it.
-    blocked = dict(unit, pricing_summary=dict(unit["pricing_summary"], status="blocked"))
+    blocked = dict(unit, total_amount=None)     # a unit that did not price carries no amount
     if ho.SUPPRESSED_WARNING not in "\n".join(ho.unit_lines(blocked)):
         problems.append("the passenger warning was suppressed on a BLOCKED unit; "
                         "suppression is conditional on pricing succeeding")
@@ -610,14 +613,14 @@ def lint_airport_shape():
     }
     problems = []
     for name, stop in shapes.items():
-        out = nq.normalize_stop(stop, None)
+        out = nq.normalize_stop(qv.stop_from_v1(stop))
         if out.get("kind") != "airport":
             problems.append(f"{name}: normalized as {out.get('kind')!r}, not 'airport'")
         if not (out.get("flight") or {}).get("tbd"):
             problems.append(f"{name}: flight object lost — the TBD disclosure cannot fire")
     # A plain address must NOT be mistaken for an airport.
-    plain = nq.normalize_stop({"display_name": "101 Harborside Drive",
-                               "location": {"type": "city"}}, None)
+    plain = nq.normalize_stop(qv.stop_from_v1({"display_name": "101 Harborside Drive",
+                                               "location": {"type": "city"}}))
     if plain.get("kind") != "address":
         problems.append(f"a city stop normalized as {plain.get('kind')!r}")
 
@@ -661,7 +664,7 @@ def lint_positioned_from():
     problems = []
 
     def notes(u):
-        leg, _ = nq.normalize_unit(u, None)
+        leg, _ = nq.normalize_unit(qv.unit_from_v1(u))
         return leg["client_notes"]
 
     cases = {
@@ -844,8 +847,8 @@ def lint_greeter_leg():
                                              "billing_unit": "hour", "minimum_hours": 2},
                                     "calculation": {"billable_hours": 5.25, "quantity": 1}}}
     problems = []
-    g, _ = nq.normalize_unit(unit({"id": 12, "name": "Hourly Greeter/Coordinator",
-                                   "capacity": None, "greeter": True}), None)
+    g, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 12, "name": "Hourly Greeter/Coordinator",
+                                                   "capacity": None, "greeter": True})))
     if g.get("route"):
         problems.append(f"greeter leg carries a route: {g['route']}")
     if any(s.get("drive_minutes") for s in g["stops"]):
@@ -856,12 +859,12 @@ def lint_greeter_leg():
         problems.append("greeter leg lost its price — only the drive time should go")
 
     # By name alone, when `greeter` isn't on the vehicle_type object.
-    g2, _ = nq.normalize_unit(unit({"id": 13, "name": "Single Greet", "capacity": None}), None)
+    g2, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 13, "name": "Single Greet", "capacity": None})))
     if g2.get("route") or not g2.get("is_greeter"):
         problems.append("a greeter identified by name alone kept its drive time")
 
     # A normal vehicle must keep its drive time.
-    v, _ = nq.normalize_unit(unit({"id": 8, "name": "SUV", "capacity": 6}), None)
+    v, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 8, "name": "SUV", "capacity": 6})))
     if not v.get("route"):
         problems.append("an SUV lost its drive time — suppression is too broad")
 
@@ -1821,14 +1824,14 @@ def lint_no_hand_editing():
             problems.append("handoff.py has no temporary_pricing_of(), so the additional "
                             "discount has to be hand-patched into intake.json")
         else:
-            units = [{"pricing_summary": {"adjustments": {
+            units = [{"pricing": {"adjustments": {
                 "temporary_discount_basis_points": 500,
                 "temporary_discount_label": "Additional 5% discount"}}}]
             got = _handoff.temporary_pricing_of(units) or {}
             if (got.get("discount") or {}).get("basis_points") != 500:
                 problems.append(f"temporary_pricing_of did not read Core's basis points: "
                                 f"{got!r}")
-            if _handoff.temporary_pricing_of([{"pricing_summary": {"adjustments": {}}}]):
+            if _handoff.temporary_pricing_of([{"pricing": {"adjustments": {}}}]):
                 problems.append("temporary_pricing_of invents a discount where Core "
                                 "reported none")
         src = open(os.path.join(SKILL, "..", "quote-intake", "scripts", "handoff.py"),
@@ -2393,9 +2396,11 @@ def lint_overlap_and_placeholders():
     h = importlib.import_module("handoff")
 
     def unit(key, method, start, hours=0, airport=False, drive=(30,)):
-        return {"key": key, "pickup_date": f"2027-03-20T{start}:00-07:00", "travel_times": list(drive),
-                "stops": [{"name": "LAX", "stop_type": "airport"}] if airport else [{"name": "Hotel"}],
-                "pricing_summary": {"pricing_method": method, "calculation": {"billable_hours": hours}}}
+        # A quote-view unit (handoff.py reads the view): drive minutes sit on the stops.
+        return {"key": key, "pickup_date": f"2027-03-20T{start}:00-07:00",
+                "stops": [dict({"label": "LAX", "kind": "airport"} if airport else {"label": "Hotel", "kind": "address"},
+                               drive_minutes=sum(drive))],
+                "pricing": {"pricing_method": method, "billable_hours": hours}}
     day = unit("day", "hourly", "08:00", 10)
     xfer = unit("xfer", "transfer", "14:00", airport=True, drive=(45,))
     early = unit("early", "transfer", "06:00", airport=True, drive=(45,))
@@ -2573,7 +2578,8 @@ def lint_review_fixes():
             merged, pk, alts = h.merge_packages(ns)
             if alts != {"A_elevated_t1": "t1", "A_elevated_t2": "t2"}:
                 problems.append(f"merged options did not pair by key: {alts}")
-            if len(merged["quote_units"]) != 4 or merged["aggregate_total"] != 3000:
+            mdata = merged["presentation"]["data"]
+            if len(mdata["quote_units"]) != 4 or mdata["total_amount"] != 3000:
                 problems.append("merged options lost a unit or changed the primary total")
         except SystemExit as e:
             problems.append(f"merging ingested options stopped: {e}")
@@ -2584,8 +2590,8 @@ def lint_review_fixes():
         if r.returncode != 2 or os.path.exists(os.path.join(d, "responses", "B_value.json")):
             problems.append("an options response with one altered total was partly saved")
     # overlaps stay inside one option
-    a1 = {"key": "a1", "pickup_date": "2027-03-20T08:00:00-07:00", "travel_times": [30], "stops": [{"name": "LAX", "stop_type": "airport"}],
-          "pricing_summary": {"pricing_method": "hourly", "calculation": {"billable_hours": 10}}}
+    a1 = {"key": "a1", "pickup_date": "2027-03-20T08:00:00-07:00", "stops": [{"label": "LAX", "kind": "airport", "drive_minutes": 30}],
+          "pricing": {"pricing_method": "hourly", "billable_hours": 10}}
     b1 = dict(a1, key="b1", pickup_date="2027-03-20T09:00:00-07:00")   # R107: the same time and stops would be one trip in parallel
     if len(h.overlaps([a1, b1])) != 2:
         problems.append("the control pair is not found without option sets")
@@ -2724,7 +2730,8 @@ def lint_noise_fixes():
     h = importlib.import_module("handoff")
     # R105: international departure 18:40, 3 h lead -> target 15:40. (priced, drive, accepted?)
     def u(priced, drive):
-        return {"key": "L4", "pickup_date": f"2026-11-13T{priced}:00-06:00", "travel_times": [0, drive]}
+        return {"key": "L4", "pickup_date": f"2026-11-13T{priced}:00-06:00",
+                "stops": [{"label": "Hotel", "kind": "address"}, {"label": "IAH", "kind": "airport", "drive_minutes": drive}]}
     for priced, drive, ok in (("15:06", 32, True), ("15:07", 33, True), ("15:08", 33, False), ("15:40", 34, False),
                               ("15:00", 32, True), ("14:55", 32, False)):
         out, probs = h.time_readings(["L4|flight_departure|18:40|3"], [u(priced, drive)])
@@ -2736,17 +2743,17 @@ def lint_noise_fixes():
     if not out or out[0].get("arrival") != "15:38" or out[0].get("window_min") != 10 or out[0].get("computed_pickup") != "15:08":
         problems.append(f"the reading does not record the arrival, the window and the computed pickup: {out}")
     # R107: the same date, time and stops are one trip in parallel
-    stops = [{"location": {"id": 1, "type": "airport"}, "display_name": "DFW"}, {"location": {"id": 2, "type": "address"}, "display_name": "The Joule"}]
-    hourly = {"key": "h", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": stops, "travel_times": [0, 29],
-              "pricing_summary": {"pricing_method": "hourly", "calculation": {"billable_hours": 2}}}
-    xfer = {"key": "t", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": copy.deepcopy(stops), "travel_times": [0, 29],
-            "pricing_summary": {"pricing_method": "transfer"}}
+    stops = [{"label": "DFW", "kind": "airport"}, {"label": "The Joule", "kind": "address", "drive_minutes": 29}]
+    hourly = {"key": "h", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": stops,
+              "pricing": {"pricing_method": "hourly", "billable_hours": 2}}
+    xfer = {"key": "t", "pickup_date": "2026-11-12T10:15:00-06:00", "stops": copy.deepcopy(stops),
+            "pricing": {"pricing_method": "transfer"}}
     if h.overlaps([hourly, xfer]):
         problems.append("a Sprinter block and an SUV transfer on the same trip were paired as an overlap")
     later = dict(copy.deepcopy(xfer), key="t2", pickup_date="2026-11-12T11:00:00-06:00")
     if h.overlaps([hourly, later]) != [("h", "t2")]:
         problems.append("a transfer that starts inside the block on other stops or at another time stopped being an overlap")
-    other = dict(copy.deepcopy(xfer), key="t3", stops=[{"location": {"id": 9, "type": "airport"}, "display_name": "DAL"}] + stops[1:])
+    other = dict(copy.deepcopy(xfer), key="t3", stops=[{"label": "DAL", "kind": "airport"}] + stops[1:])
     if h.overlaps([hourly, other]) != [("h", "t3")]:
         problems.append("a transfer from other stops at the same time stopped being an overlap")
     # R108: requests are asked first, and the document inputs are not built while one is open
@@ -3193,7 +3200,7 @@ def lint_handoff_packages():
         r = run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
                  "--package", "A", "--package", "C", "--headcount", "75"])
         merged = _json.load(open(os.path.join(d, "handoff", "raw_quote.json"))) if r.returncode == 0 else {}
-        keys = [u["key"] for u in merged.get("quote_units", [])]
+        keys = [u["key"] for u in ((merged.get("presentation") or {}).get("data") or {}).get("quote_units", [])]
         if r.returncode or len(keys) != len(set(keys)) or "C_optA_jun9_coach" not in keys:
             problems.append(f"colliding unit keys were not namespaced by the merge: {r.stderr.strip()[:120]} {keys}")
         if _json.load(open(os.path.join(d, "handoff", "responses", "C.json"))) != dup:
@@ -3237,7 +3244,7 @@ def lint_handoff_packages():
         if _json.load(open(os.path.join(d, "handoff", "intake.json"))).get("written_by") != "handoff.py write":
             problems.append("intake.json does not say it was written by handoff.py")
         # a response too large to paste may leave out its presentation block, declared and recorded
-        withp = dict(pkg(us[0:1]), presentation={"data": {"big": "x" * 50}})
+        withp = dict(pkg(us[0:1]), presentation={"version": 1, "data": {"big": "x" * 50}})
         r = run([intake, "ingest", "--name", "P", "--without-presentation"], _json.dumps(withp))
         sp = _json.load(open(os.path.join(d, "handoff", "responses", "P.json"))) if r.returncode == 0 else {}
         if "presentation" in sp or (sp.get("_ingest") or {}).get("left_out") != ["presentation"]:
@@ -3271,7 +3278,9 @@ def lint_time_reading():
     h = importlib.import_module("handoff")
 
     def u(pickup, tt=(55,)):
-        return {"key": "L1", "pickup_date": pickup, "travel_times": list(tt)}
+        # A quote-view unit: Core's drive minutes sit on each stop after the first.
+        return {"key": "L1", "pickup_date": pickup,
+                "stops": [{"label": "Hotel", "kind": "address"}] + [{"label": "LHR", "kind": "airport", "drive_minutes": m} for m in tt]}
     cases = [
         ("departure 15:50 +3h lead, 55 min drive -> target 12:50, pickup 11:55", "L1|flight_departure|15:50|3", u("2027-05-01T11:55:00+01:00"), "11:55", "12:50", None),
         ("departure priced at the airport target is refused", "L1|flight_departure|15:50|3", u("2027-05-01T12:50:00+01:00"), None, None, "priced at 12:50"),
@@ -3409,7 +3418,7 @@ def lint_inventory_override():
                 "pricing_summary": {"status": "priced", "total_amount": 540078, "pricing_method": "hourly",
                                     "rate": {"effective_rate_amount": 38577, "billing_unit": "hour"},
                                     "calculation": {"quantity": 7}}}
-        leg, internal = nq.normalize_unit(unit, None)
+        leg, internal = nq.normalize_unit(qv.unit_from_v1(unit))
         if warning not in internal["warnings"]:
             problems.append("an Inventory override warning did not reach the internal warnings")
         if "Inventory override" in _json.dumps(leg):
@@ -3840,6 +3849,99 @@ def lint_email_reconciles():
     return True
 
 
+def lint_v1_v2_parity():
+    """GREEN-380: the same quote must normalize identically from either MCP response shape.
+
+    The MCP now sends a compact presentation (version 2) instead of the raw Core payload
+    plus a version 1 presentation. Every fixture that has a `raw_quote.v2.json` beside its
+    `raw_quote.json` (generated from it by tests/tools/make_v2_fixture.mts, through the MCP's
+    own mapping) is normalized both ways, and the two quote.json files must be equal apart
+    from the dates stamped at run time. Every document is rendered from quote.json alone, so
+    an equal quote.json is an equal document. A handoff fixture is read with --from-handoff;
+    a response that is not a priced quote (blocked, a rate preview) must be refused the same
+    way in both shapes."""
+    import json as _json
+    import shutil
+    import tempfile
+    nq = os.path.join(HERE, "normalize_quote.py")
+    problems, checked = [], 0
+
+    def stamp_free(path):
+        q = _json.load(open(path, encoding="utf-8"))
+        for k in ("prepared_on", "valid_until"):
+            q.get("meta", {}).pop(k, None)
+        return q
+
+    pairs = sorted(glob.glob(os.path.join(HERE, "..", "..", "*", "evals", "fixtures", "**", "raw_quote.v2.json"),
+                         recursive=True))
+    if not pairs:
+        problems.append("no raw_quote.v2.json fixtures found; regenerate them with tests/tools/make_v2_fixture.mts")
+    for v2 in pairs:
+        v1 = os.path.join(os.path.dirname(v2), "raw_quote.json")
+        name = os.path.relpath(os.path.dirname(v2), os.path.join(HERE, "..", ".."))
+        raw = _json.load(open(v1, encoding="utf-8"))
+        try:
+            pkgs = qv.packages(raw)
+        except qv.QuoteViewError as e:
+            try:
+                qv.packages(_json.load(open(v2, encoding="utf-8")))
+                problems.append(f"{name}: v1 is refused ({e}) but v2 reads as a quote")
+            except qv.QuoteViewError:
+                checked += 1
+            continue
+        handoff = os.path.exists(os.path.join(os.path.dirname(v1), "intake.json"))
+        options = [p["key"] for p in pkgs] if qv.is_options(raw) else [None]
+        for opt in options:
+            with tempfile.TemporaryDirectory() as t:
+                outs = []
+                for tag, src in (("v1", v1), ("v2", v2)):
+                    out = os.path.join(t, f"{tag}.json")
+                    if handoff:
+                        d = os.path.join(t, f"h{tag}")
+                        shutil.copytree(os.path.dirname(v1), d)
+                        shutil.copy(src, os.path.join(d, "raw_quote.json"))
+                        cmd = [sys.executable, nq, "--from-handoff", d, out, "--prepared-by", "Parity"]
+                    else:
+                        cmd = [sys.executable, nq, src, out, "--client", "Parity"] + (["--option", opt] if opt else [])
+                    r = subprocess.run(cmd, capture_output=True, text=True, cwd=t)
+                    if r.returncode:
+                        problems.append(f"{name} {opt or ''} ({tag}): normalize failed: {(r.stderr or r.stdout).strip()[-160:]}")
+                        break
+                    outs.append(stamp_free(out))
+                if len(outs) == 2:
+                    checked += 1
+                    if outs[0] != outs[1]:
+                        diff = [k for k in sorted(set(outs[0]) | set(outs[1])) if outs[0].get(k) != outs[1].get(k)]
+                        problems.append(f"{name} {opt or ''}: v1 and v2 normalize differently (in {diff})")
+    # A newer MCP than this plugin reads is refused, loudly, never read on.
+    try:
+        qv.packages({"presentation": {"version": 3, "view": "quote_result", "data": {}}})
+        problems.append("presentation version 3 was read instead of refused")
+    except qv.QuoteViewError as e:
+        if "Update the savoya-quoting plugin" not in str(e):
+            problems.append(f"the version refusal does not tell the user to update the plugin: {e}")
+    # The CSM's intake summary reads both shapes the same way.
+    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
+    for v2 in pairs:
+        v1 = os.path.join(os.path.dirname(v2), "raw_quote.json")
+        outs = [subprocess.run([sys.executable, intake, "summarize", f], capture_output=True, text=True)
+                for f in (v1, v2)]
+        # Old v1 captures list the vehicles Core priced and did not choose ("alt:"). The exact
+        # tools take one vehicle per unit, so a v2 response never has any; that line alone may differ.
+        same = [ln for ln in outs[0].stdout.splitlines() if not ln.lstrip().startswith("alt:")] == \
+            outs[1].stdout.splitlines()
+        if outs[0].returncode == 0 and (outs[1].returncode or not same):
+            problems.append(f"{os.path.relpath(os.path.dirname(v2), os.path.join(HERE, '..', '..'))}: "
+                            "handoff.py summarize differs between v1 and v2")
+    if problems:
+        print("  \u2717 v1/v2 parity")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print(f"  \u2713 v1/v2 parity ({checked} fixture readings normalize identically from either MCP response shape)")
+    return True
+
+
 def lint_sourced_line():
     """A vehicle sourced from another market must say so, on every format.
 
@@ -3938,7 +4040,7 @@ def lint_sourced_line():
 
     # (a) sourced AND excess_drive_time -> the marker, and NOT the legacy line note.
     leg, _ = normalize_quote.normalize_unit(
-        unit("Orange County, CA", "San Diego, CA", "Orange County, CA", True), None)
+        qv.unit_from_v1(unit("Orange County, CA", "San Diego, CA", "Orange County, CA", True)))
     if leg is None:
         problems.append("normalize_unit rejected the sourced+excess test unit")
     else:
@@ -3951,7 +4053,7 @@ def lint_sourced_line():
 
     # (b) no stop in any service area -> still sourced, with the money in the internals.
     leg, internal = normalize_quote.normalize_unit(
-        unit(None, "Naples, Italy", "Naples, Italy", True), None)
+        qv.unit_from_v1(unit(None, "Naples, Italy", "Naples, Italy", True)))
     if leg is None:
         problems.append("normalize_unit rejected the no-service-area test unit")
     else:
@@ -3966,7 +4068,7 @@ def lint_sourced_line():
 
     # (c) ordinary single-market unit -> neither.
     leg, _ = normalize_quote.normalize_unit(
-        unit("Boston, MA", "Boston, MA", "Boston, MA", False), None)
+        qv.unit_from_v1(unit("Boston, MA", "Boston, MA", "Boston, MA", False)))
     if leg and leg.get("sourced_from_other_market"):
         problems.append("an ordinary single-market unit was marked as sourced")
 
@@ -4439,6 +4541,7 @@ def main():
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_sourced_line() and lint_ok
+    lint_ok = lint_v1_v2_parity() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok

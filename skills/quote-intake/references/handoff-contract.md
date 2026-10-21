@@ -5,9 +5,11 @@ Intake writes a `handoff/` folder in the working directory. The document skill r
 ```
 handoff/
   request.md        the client's message, verbatim (becomes the eval prompt later)
-  raw_quote.json    the engine result, verbatim (latest re-quote) — from
+  raw_quote.json    the engine result as the MCP returned it (latest re-quote) — from
                     generate_quote_options, calculate_quote_units, or
-                    calculate_temporary_quote_units
+                    calculate_temporary_quote_units. Usually MCP presentation version 2
+                    (the compact view); version 1 or unversioned for older sessions. A
+                    merged package or a saved option is written in the version 2 shape
   intake.json       everything intake decided + everything the document flow decides
   blocked.json      present only while a write is refused (R92): the gate, the reason and the fix.
                     The document step stops while it exists; a successful write removes it
@@ -85,7 +87,7 @@ sentence a CSM can act on: *re-run the quote.*
 - **`temporary_pricing`** — `{rate: {...}, discount: {...}, label}` when either was supplied,
   else `null`. The label is what Core echoes into its own warning, so it reaches the client
   document; it has to be written as if read.
-- **`aggregate_total`** — Core's figure, carried verbatim. The document fails closed if its
+- **`aggregate_total`** — Core's figure (the view's `total_amount`), carried verbatim. The document fails closed if its
   own total doesn't match (C4), and that check needs Core's number from the source rather
   than re-derived.
 - **`warnings`** — the unit-level warnings, **as Core sent them**, minus the single named

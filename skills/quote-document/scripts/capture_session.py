@@ -32,6 +32,8 @@ Re-running with the same slug creates -v2, -v3 …
 import argparse, base64, datetime as dt, glob, gzip, hashlib, json, os, re, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import quote_view  # noqa: E402  -- the one reader of a quote response
 CONFIG = os.path.expanduser("~/.savoya-quoting/config.json")
 ASSET_CFG = os.path.join(HERE, "..", "assets", "capture.json")
 
@@ -185,9 +187,15 @@ def write_blocked(a):
     priced = []
     for path in sorted(glob.glob(os.path.join(a.handoff, "responses", "*.json"))):
         r = load_json(path, {}) or {}
-        priced.append({"name": os.path.basename(path)[:-5], "aggregate_total": r.get("aggregate_total"),
-                       "units": [{"key": u.get("key"), "label": u.get("label"), "line_total": u.get("line_total")}
-                                 for u in (r.get("quote_units") or [])]})
+        try:
+            pkgs = quote_view.packages(r)
+        except quote_view.QuoteViewError:
+            pkgs = []           # an options response kept beside its packages, or not a quote
+        for pkg in pkgs:
+            priced.append({"name": os.path.basename(path)[:-5] + (f":{pkg['key']}" if pkg.get("key") else ""),
+                           "aggregate_total": pkg.get("total_cents"),
+                           "units": [{"key": u.get("key"), "label": u.get("label"), "line_total": u.get("total_amount")}
+                                     for u in pkg.get("units") or []]})
     rec = {"blocked_version": 1, "slug": slug, "client": a.client, "user": a.user or cfg.get("user"),
            "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
            "plugin_version": load_json(os.path.join(HERE, "..", "..", "..", ".claude-plugin", "plugin.json"), {}).get("version"),
@@ -328,6 +336,8 @@ def main():
         (duplicates of value_option) and the presentation block. ~3x smaller."""
         if not raw:
             return None
+        if quote_view.is_v2(raw):
+            return raw          # the version 2 view is already the compact response
         out = {k: v for k, v in raw.items() if k not in ("presentation", "quote_units")}
         out["quote_units"] = []
         for u in raw.get("quote_units", []):

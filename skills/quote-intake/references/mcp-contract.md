@@ -158,15 +158,23 @@ an hourly temporary rate.**
   sent `duration: 2` billed 3.25 hours and `duration: 4` billed 5.25 — a constant +1.25h of
   positioning time. Send what the user asked for; display what Core billed; never
   back-solve the duration.
-- **Every total.** `unit_total`, `line_total`, `aggregate_total`,
-  `pricing_summary.total_amount`. Copy and validate; never reconstruct.
+- **Every total.** In the compact view: `presentation.data.total_amount` (a scenario's
+  `total_amount` in a comparison), and each unit's `total_amount` and `per_vehicle_amount`.
+  A version 1 response carried them as `aggregate_total`, `line_total` and `unit_total`.
+  Copy and validate; never reconstruct.
 
 ## Shapes worth knowing
 
-- **`vehicle_options[]`** on each unit returns **every candidate Core priced**, each with
-  its own `unit_total`, `quantity`, `line_total`, `rate_id` and `pricing_summary` — not just
-  the winner. A free per-leg comparison, and the nearest thing to the multi-source shape
-  GREEN-371 will need.
+- **The compact quote view (MCP presentation version 2, GREEN-380).** A successful pricing,
+  preview or nearby-markets call returns exactly `{ "presentation": {...} }`.
+  The raw Core payload (`quote_units`, `aggregate_total`, `vehicle_options`, `travel_times`) is no longer sent.
+  Each unit carries its line and per-vehicle totals, vehicle, requested and required quantity, quoted and billable hours, rate id, adjustments and `excess_drive_time`.
+  Each stop carries a venue-first `label`, `address`, `kind` (`address`, `airport`, `as_directed`), `wait_hours`, coordinates, `drive_minutes`, `service_area` (`null` means no Savoya market) and flight details.
+  A warning every unit carries is listed once in `warnings_on_every_unit` and is given back to each unit.
+  Amounts are integer cents (`amount_unit: "cents"`).
+  Every script reads a response through `skills/quote-document/scripts/quote_view.py`, which also reads version 1 and unversioned captures and refuses any other version with an "update the plugin" message.
+- **No alternative vehicles.** The exact tools take one vehicle per unit, so a response carries the chosen vehicle only.
+  Old version 1 captures listed the other candidates in `vehicle_options[]`; `handoff.py summarize` still shows those as `alt:` lines.
 - **`presentation`** on every response: a `view` (`rate_preview`, `scenario_comparison`,
   `quote_result`, `blocked`), a `title`, severity-tagged `warnings` and pre-formatted rows.
   It carries no actions: the plugin asks every question itself. This is the CSM-facing

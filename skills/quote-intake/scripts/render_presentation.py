@@ -40,6 +40,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from handoff import SUPPRESSED_WARNING  # noqa: E402  — one source, not a third copy
+import quote_view  # noqa: E402  — on the path handoff set; refuses an unknown presentation version
 
 
 def money(cents, currency="USD"):
@@ -91,12 +92,13 @@ def _hours_note(u, raw_unit):
     a 5.25-hour line will call it a bug unless the difference is named. We print both and
     explain; we never back-solve the duration, which would be exactly the local arithmetic
     this release removes."""
-    if not raw_unit:
-        return []
     billable = ((u.get("pricing") or {}).get("billable_hours"))
     if billable is None:
         return []
-    requested = sum(s.get("duration") or 0 for s in (raw_unit.get("stops") or []))
+    # Version 2 views carry each stop's requested wait; a version 1 presentation did not,
+    # so its raw unit's stop durations are read instead.
+    requested = sum(s.get("wait_hours") or 0 for s in (u.get("stops") or [])) or \
+        sum(s.get("duration") or 0 for s in ((raw_unit or {}).get("stops") or []))
     if not requested or abs(billable - requested) < 0.01:
         return []
     extra = round(billable - requested, 2)
@@ -163,8 +165,9 @@ def _unit_block(u, currency, seen, raw_unit=None):
     pb = _pricing_bits(u.get("pricing"))
     if pb:
         out.append(f"  {pb}")
-    rps = (raw_unit or {}).get("pricing_summary") or {}
-    sub = rps.get("subtotal_amount")
+    sub = (u.get("pricing") or {}).get("subtotal_amount")
+    if sub is None:      # a version 1 presentation did not carry it; its raw unit did
+        sub = ((raw_unit or {}).get("pricing_summary") or {}).get("subtotal_amount")
     if sub and sub != u.get("total_amount"):
         off = sub - (u.get("total_amount") or 0)
         out.append(f"  {money(sub, currency)} before the additional discount "
@@ -234,6 +237,7 @@ def render(raw):
     pres = raw.get("presentation")
     if not isinstance(pres, dict) or not pres:
         return None, 3
+    quote_view.version(raw)          # an unknown presentation version is refused, loudly
     view = pres.get("view") or "unknown"
     data = pres.get("data") or {}
     currency = pres.get("currency_code") or raw.get("currency") or "USD"
@@ -353,7 +357,11 @@ def main():
     except (OSError, json.JSONDecodeError) as e:
         print(f"cannot read {sys.argv[1]}: {e}", file=sys.stderr)
         sys.exit(4)
-    out, code = render(raw)
+    try:
+        out, code = render(raw)
+    except quote_view.QuoteViewError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(4)
     if code == 3:
         print("no presentation block in this response — fall back to handoff.py summarize",
               file=sys.stderr)
