@@ -164,7 +164,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/set_personalization.
 
 `${CLAUDE_PLUGIN_ROOT}/skills/quote-document/references/personalization.md` has the menu and rules (hosted URLs only, what a good intro note looks like, where each element lands). The route map (`${CLAUDE_PLUGIN_ROOT}/skills/quote-document/scripts/route_map.py`) needs internet, adds ~10–20s, and skips itself if a service is down — no map at all rather than a blank panel.
 
-**Drive times come from the engine, not the map.** `travel_times` on the quote is Savoya's own number and the one the web app shows; the map's router only supplies distance and the drawn line. If a leg has no drive time, the map couldn't resolve every stop on it — say the drive time isn't available for that leg rather than quoting a routed guess, which understates any leg whose middle stop was lost.
+**Drive times come from the engine, not the map.** Each stop's `drive_minutes` on the quote is Savoya's own number and the one the web app shows; the map's router only supplies distance and the drawn line. If a leg has no drive time, the map couldn't resolve every stop on it — say the drive time isn't available for that leg rather than quoting a routed guess, which understates any leg whose middle stop was lost.
 
 ## Stage 4 — Render
 

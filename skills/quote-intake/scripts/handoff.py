@@ -50,6 +50,10 @@ CONFIG = os.path.expanduser("~/.savoya-quoting/config.json")
 # the two are identical, so the duplication cannot drift.
 SUPPRESSED_WARNING = "No passenger was selected"
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The one reader of a quote response lives with the document skill's scripts; both skills
+# ship in the same plugin, side by side under skills/.
+sys.path.insert(0, os.path.join(HERE, "..", "..", "quote-document", "scripts"))
+import quote_view  # noqa: E402
 
 
 def load_json(p, default=None):
@@ -76,44 +80,48 @@ def day(iso, fmt="%a %-m/%-d %-I:%M%p"):
 
 
 def shape_of(raw):
-    if isinstance(raw, dict) and raw.get("options"):
-        return "scenarios"
-    if isinstance(raw, dict) and raw.get("quote_units") is not None:
+    """"scenarios" (generate_quote_options), "package" (one priced package) or "unknown",
+    in any shape quote_view reads. An unsupported presentation version is refused here."""
+    try:
+        if quote_view.is_options(raw):
+            return "scenarios"
+        quote_view.packages(raw)
         return "package"
-    return "unknown"
+    except quote_view.QuoteViewError as e:
+        if "presentation version" in str(e):
+            sys.exit(str(e))
+        return "unknown"
+    except (AttributeError, TypeError):
+        return "unknown"
 
 
 def packages(raw):
-    """Normalize either shape into [(key, label, strategy, quote_units, total)]."""
-    if shape_of(raw) == "scenarios":
-        out = []
-        for o in raw["options"]:
-            r = o.get("result") or {}
-            out.append((o.get("key"), o.get("label") or o.get("key"), o.get("strategy"),
-                        r.get("quote_units") or [], r.get("aggregate_total")))
-        return out
-    return [(None, None, None, raw.get("quote_units") or [], raw.get("aggregate_total"))]
+    """[(key, label, strategy, units, total)] for either shape. The units are quote-view
+    units (version 2 shape) whatever the MCP sent; quote_view converts version 1."""
+    try:
+        return [(p["key"], p["label"], p["strategy"], p["units"], p["total_cents"]) for p in quote_view.packages(raw)]
+    except quote_view.QuoteViewError as e:
+        sys.exit(str(e))
 
 
 def route_of(unit):
     names = []
     for s in unit.get("stops") or []:
-        n = s.get("name") or s.get("display_name") or "Stop"
+        n = s.get("label") or "Stop"
         n = n.split(",")[0].strip()
-        wait = s.get("duration") or 0
+        wait = s.get("wait_hours") or 0
         names.append(f"{n} ({wait:g}h wait)" if wait else n)
     return " → ".join(names)
 
 
-def basis_of(ps):
-    rate = ps.get("rate") or {}
-    std, eff = rate.get("base_rate_amount"), rate.get("effective_rate_amount")
-    bps = (ps.get("adjustments") or {}).get("discount_basis_points") or 0
-    if ps.get("pricing_method") == "hourly":
-        hrs = (ps.get("calculation") or {}).get("billable_hours")
+def basis_of(pr):
+    std, eff = pr.get("base_rate_amount"), pr.get("effective_rate_amount")
+    bps = (pr.get("adjustments") or {}).get("discount_basis_points") or 0
+    if pr.get("pricing_method") == "hourly":
+        hrs = pr.get("billable_hours")
         txt = f"{hrs:g} hr × {money(eff)}/hr" if hrs else f"{money(eff)}/hr"
-        if rate.get("minimum_hours"):
-            txt += f" ({rate['minimum_hours']:g}-hr min)"
+        if pr.get("minimum_hours"):
+            txt += f" ({pr['minimum_hours']:g}-hr min)"
     else:
         txt = f"transfer {money(eff)}"
     if bps and std and std != eff:
@@ -122,12 +130,11 @@ def basis_of(ps):
 
 
 def unit_lines(unit, indent="  ", seen=None):
-    ps = unit.get("pricing_summary") or {}
-    vt = unit.get("vehicle_type") or {}
+    pr = unit.get("pricing") or {}
     qty = unit.get("quantity") or 1
     head = f"{indent}**{day(unit.get('pickup_date'))}** · {unit.get('passenger_count')} pax · {route_of(unit)}"
-    body = f"{indent}{qty} × {vt.get('name')} ({vt.get('capacity')} pax) — {basis_of(ps)} → **{money(unit.get('line_total'))}**"
-    cx = ps.get("cancellation_hours")
+    body = f"{indent}{qty} × {unit.get('vehicle_name')} ({unit.get('vehicle_capacity')} pax) — {basis_of(pr)} → **{money(unit.get('total_amount'))}**"
+    cx = pr.get("cancellation_hours")
     if cx is not None:
         body += f" · {cx}-hr cancel"
     # Cross-market sourcing. Core used to signal this only as a free-text warning
@@ -135,8 +142,8 @@ def unit_lines(unit, indent="  ", seen=None):
     # back structured on the unit. Both are handled on purpose — the warning path is
     # what older captures and fixtures carry, and a signal moving is how three live
     # bugs in 0.23 happened.
-    src = (unit.get("source_service_area") or {}).get("name")
-    primary = (unit.get("primary_service_area") or {}).get("name")
+    src = unit.get("source_service_area")
+    primary = unit.get("primary_service_area")
     if src and src != primary:
         body += f" · sourced from {src}"
     out = [head, body]
@@ -151,9 +158,9 @@ def unit_lines(unit, indent="  ", seen=None):
             bits.append(f"{money(delta)} added to the client price")
         out.append(f"{indent}↳ excess drive time from {src or 'another market'}: "
                    + " · ".join(bits))
-    if ps.get("special_event"):
-        out.append(f"{indent}⚠ {ps['special_event'].get('name')} event pricing in effect")
-    priced = (ps.get("status") or "priced") == "priced"
+    if pr.get("special_event"):
+        out.append(f"{indent}⚠ {pr['special_event'].get('name')} event pricing in effect")
+    priced = unit.get("total_amount") is not None
     if seen is None:
         seen = set()
     for w in unit.get("warnings") or []:
@@ -171,25 +178,22 @@ def unit_lines(unit, indent="  ", seen=None):
             # Not a shape we translate. Show it anyway, verbatim — an unrecognised
             # warning is exactly the kind we must not swallow.
             out.append(f"{indent}⚠ {w}")
-    chosen_total = unit.get("line_total") or 0
-    for alt in unit.get("vehicle_options") or []:
-        av = alt.get("vehicle_type") or {}
-        if not alt.get("quoteable") or av.get("id") == vt.get("id"):
-            continue
-        at = alt.get("line_total") or 0
+    # The candidates Core priced and did not choose. Only an old version 1 capture
+    # carries them: the exact tools take one vehicle per unit, so Core returns the chosen
+    # vehicle alone and a version 2 response has none.
+    chosen_total = unit.get("total_amount") or 0
+    for alt in unit.get("v1_alternatives") or []:
+        at = alt.get("total_amount") or 0
         flag = ""
         if chosen_total and at and at < chosen_total * 0.7:
             flag = "  ← **cheaper; check the candidate set**"
-        out.append(f"{indent}  alt: {alt.get('quantity')} × {av.get('name')} → {money(at)}{flag}")
+        out.append(f"{indent}  alt: {alt.get('quantity')} × {alt.get('vehicle_name')} → {money(at)}{flag}")
     return out
 
 
 def summarize(raw, select=None):
     pkgs = packages(raw)
-    est = None
-    for _, _, _, units, _ in pkgs:
-        for u in units:
-            est = (u.get("pricing_summary") or {}).get("estimate_type") or est
+    est = next((p["estimate_type"] for p in quote_view.packages(raw) if p.get("estimate_type")), None)
     lines, multi = [], len(pkgs) > 1
     seen_warnings = set()   # a distinct warning is shown once per quote, not once per unit
     for key, label, _strategy, units, total in pkgs:
@@ -204,7 +208,7 @@ def summarize(raw, select=None):
     bps, fuel = set(), set()
     for _, _, _, units, _ in pkgs:
         for u in units:
-            adj = (u.get("pricing_summary") or {}).get("adjustments") or {}
+            adj = (u.get("pricing") or {}).get("adjustments") or {}
             if adj.get("discount_basis_points"):
                 bps.add(adj["discount_basis_points"])
             if adj.get("fuel_surcharge_basis_points"):
@@ -227,14 +231,13 @@ def temporary_pricing_of(units):
     it; `normalize_quote.client_label()` is what makes it safe to print.
     """
     for u in units or []:
-        adj = ((u.get("pricing_summary") or {}).get("adjustments") or {})
+        adj = ((u.get("pricing") or {}).get("adjustments") or {})
         bps = adj.get("temporary_discount_basis_points") or 0
         rate_used = adj.get("temporary_rate_used")
         label = adj.get("temporary_discount_label")
         if bps or rate_used:
             return {
-                "rate": ((u.get("pricing_summary") or {}).get("rate") or {})
-                        .get("effective_rate_amount") if rate_used else None,
+                "rate": (u.get("pricing") or {}).get("effective_rate_amount") if rate_used else None,
                 "discount": ({"basis_points": bps, "label": label} if bps else None),
                 "label": label,
             }
@@ -244,44 +247,52 @@ def temporary_pricing_of(units):
 def check_response(raw):
     """Return (problems, units, total). A response is acceptable only if it is a priced package
     whose units add up to the figure the pricing system itself returned."""
-    problems = []
     if not isinstance(raw, dict):
         return ["not a JSON object"], [], None
     if shape_of(raw) != "package":
-        return ["no quote_units: this is not a priced package. A generate_quote_options response is saved with ingest, which keeps each option as its own package"], [], None
-    units = raw.get("quote_units") or []
+        return ["no quote units: this is not a priced package. A generate_quote_options response is saved with ingest, which keeps each option as its own package"], [], None
+    return check_package(quote_view.packages(raw)[0])
+
+
+def check_package(pkg):
+    """(problems, units, total) for one quote_view package: its units must add up to the
+    total the pricing system itself returned. Units are quote-view units."""
+    problems = []
+    units = pkg.get("units") or []
     if not units:
-        problems.append("no quote_units")
+        problems.append("no quote units")
+    problems.extend(f"unit {k}: no quoteable vehicle option" for k in pkg.get("unpriced") or [])
     keys = [u.get("key") for u in units]
     if len(set(keys)) != len(keys):
         problems.append("duplicate unit keys")
     for u in units:
-        if not isinstance(u.get("line_total"), (int, float)):
-            problems.append(f"unit {u.get('key')}: no numeric line_total")
+        if not isinstance(u.get("total_amount"), (int, float)):
+            problems.append(f"unit {u.get('key')}: no numeric line total")
         if not u.get("pickup_date"):
             problems.append(f"unit {u.get('key')}: no pickup_date")
-    total = raw.get("aggregate_total")
+    total = pkg.get("total_cents")
     if not isinstance(total, (int, float)):
-        problems.append("no aggregate_total")
-    elif not problems and sum(u["line_total"] for u in units) != total:
-        problems.append(f"unit totals add to {sum(u['line_total'] for u in units)} but aggregate_total is {total}: "
+        problems.append("no quote total")
+    elif not problems and sum(u["total_amount"] for u in units) != total:
+        problems.append(f"unit totals add to {sum(u['total_amount'] for u in units)} but the quote total is {total}: "
                         "the text was altered or cut off. Paste the response again, whole")
     return problems, units, total
 
 
 def ingest_options(a, raw):
-    """A generate_quote_options response: keep each option's priced result, untouched, as its own
-    saved package. Every option is checked as a package would be; one failure writes nothing."""
+    """A generate_quote_options response: keep each option as its own saved package, in the
+    version 2 shape whatever the MCP sent (quote_view.to_v2; amounts and units untouched).
+    Every option is checked as a package would be; one failure writes nothing."""
     saved, bad = [], []
     base = re.sub(r"[^A-Za-z0-9_-]+", "-", a.name).strip("-") or "A"
-    for i, o in enumerate(raw.get("options") or []):
-        res = o.get("result")
-        okey = re.sub(r"[^A-Za-z0-9_-]+", "-", str(o.get("key") or i + 1)).strip("-") or str(i + 1)
-        problems, units, total = check_response(res if isinstance(res, dict) else {})
+    for i, pkg in enumerate(quote_view.packages(raw)):
+        okey = re.sub(r"[^A-Za-z0-9_-]+", "-", str(pkg.get("key") or i + 1)).strip("-") or str(i + 1)
+        problems, units, total = check_package(pkg)
         if problems:
             bad.append(f"option {okey}: " + "; ".join(problems))
         else:
-            saved.append((f"{base}_{okey}", res, units, total, o))
+            saved.append((f"{base}_{okey}", quote_view.to_v2(pkg), units, total,
+                          {"key": pkg.get("key"), "label": pkg.get("label")}))
     if bad or not saved:
         print("REJECTED (nothing written):", file=sys.stderr)
         for p in bad or ["no options carry a priced result"]:
@@ -293,11 +304,7 @@ def ingest_options(a, raw):
         with open(os.path.join(out, f"{base}.options-response.json"), "w", encoding="utf-8") as fh:
             json.dump(raw, fh)
     for name, res, units, total, o in saved:
-        res = dict(res)
-        if a.without_presentation:
-            res.pop("presentation", None)
-        res["_ingest"] = {"from_options_response": base, "option_key": o.get("key"), "option_label": o.get("label"),
-                          **({"left_out": ["presentation"], "reason": "too large to paste; declared by the session"} if a.without_presentation else {})}
+        res["_ingest"] = {"from_options_response": base, "option_key": o.get("key"), "option_label": o.get("label")}
         with open(os.path.join(out, f"{name}.json"), "w", encoding="utf-8") as fh:
             json.dump(res, fh)
         print(f"SAVED {os.path.join(out, name + '.json')}: {len(units)} units, total {money(total)} (units add up to the option's own total)")
@@ -312,6 +319,9 @@ def ingest(a):
         raw = json.loads(text)
     except ValueError as e:
         sys.exit(f"REJECTED (nothing written): not valid JSON ({e}). Paste the whole response, unedited.")
+    if a.without_presentation and quote_view.is_v2(raw):
+        sys.exit("REJECTED (nothing written): --without-presentation cannot apply here. In this response the "
+                 "presentation IS the whole quote; save it as returned.")
     if shape_of(raw) == "scenarios":
         return ingest_options(a, raw)
     problems, units, total = check_response(raw)
@@ -338,7 +348,9 @@ def ingest(a):
 
 def merge_packages(a):
     """Build raw_quote.json from separately priced packages. The first is the primary; the
-    others' units become alternatives. Unit objects are copied verbatim; only bookkeeping is added."""
+    others' units become alternatives. It is written in the version 2 shape (quote_view.to_v2)
+    whatever the saved responses are; unit objects are copied verbatim from the view and only
+    bookkeeping is added."""
     import copy
     pk = []
     for name in a.package:
@@ -352,8 +364,9 @@ def merge_packages(a):
         pk.append((name, raw, units, total))
     shared = dict(x.split("=", 1) for x in a.shared)        # other_key=primary_key
     alt_of = dict(x.split("=", 1) for x in a.alt_of)
-    merged = copy.deepcopy(pk[0][1])
-    prim_units = merged["quote_units"]
+    merged = quote_view.to_v2(quote_view.packages(pk[0][1])[0])
+    all_units = merged["presentation"]["data"]["quote_units"]
+    prim_units = list(all_units)          # Option A alone; alternatives are appended to all_units
     seen = {u["key"] for u in prim_units}
     prim_by_key = {u["key"]: u for u in prim_units}
     alternatives, meta = {}, {pk[0][0]: {"aggregate_total": pk[0][3], "unit_keys": [u["key"] for u in prim_units]}}
@@ -363,7 +376,7 @@ def merge_packages(a):
             k = orig = u["key"]
             if k in shared:
                 p = prim_by_key.get(shared[k])
-                if p is None or p.get("line_total") != u.get("line_total"):
+                if p is None or p.get("total_amount") != u.get("total_amount"):
                     sys.exit(f"{k} is declared the same as {shared[k]} but its line total differs. "
                              "Declare it an alternative (--alt-of) or fix the pairing")
                 continue                                   # carried: the primary's unit stands
@@ -386,7 +399,7 @@ def merge_packages(a):
             kept.append(copy.deepcopy(u))
             if k in renamed.values():
                 kept[-1]["key"] = k
-        merged["quote_units"] = merged["quote_units"] + kept
+        all_units.extend(kept)
         meta[name] = {"aggregate_total": total, "unit_keys": [u["key"] for u in kept], "renamed_keys": dict(renamed),
                       "shared_with_primary": {k: v for k, v in shared.items() if k in {x["key"] for x in units}}}
     merged["merged_packages"] = meta
@@ -425,11 +438,16 @@ def refuse(a, gate, reason, fix):
              "or stop and tell the user why (R92).")
 
 
+def _vehicle_id(value):
+    """intake.json has always held Core's numeric vehicle id; the view sends it as a string."""
+    return int(value) if isinstance(value, str) and value.isdigit() else value
+
+
 def trip_key(u):
     """Units that serve the same trip share a pickup time and a stop list (R91)."""
     sig = []
     for s_ in u.get("stops") or []:
-        sig.append((s_.get("name") or s_.get("display_name") or s_.get("label") or s_.get("address") or "") if isinstance(s_, dict) else str(s_))
+        sig.append((s_.get("label") or s_.get("address") or "") if isinstance(s_, dict) else str(s_))
     return ((u.get("pickup_date") or ""), tuple(sig))
 
 
@@ -498,7 +516,8 @@ def gates(a, raw, units_src, pkgs):
 
 
 def _is_airport_stop(st):
-    return bool(st.get("airport")) or (st.get("location") or {}).get("type") == "airport" or st.get("stop_type") == "airport"
+    """A view stop says its kind; quote_view decided it from every shape Core has used."""
+    return st.get("kind") == "airport"
 
 
 def _span(u):
@@ -507,12 +526,16 @@ def _span(u):
     if not re.fullmatch(r"\d{2}:\d{2}", t):
         return None
     start = _hm(t)
-    ps = u.get("pricing_summary") or {}
-    if ps.get("pricing_method") == "hourly":
-        hrs = (ps.get("calculation") or {}).get("billable_hours") or 0
+    pr = u.get("pricing") or {}
+    if pr.get("pricing_method") == "hourly":
+        hrs = pr.get("billable_hours") or 0
         return start, start + int(round(float(hrs) * 60))
-    drive = sum(x for x in (u.get("travel_times") or []) if isinstance(x, (int, float)))
-    return start, start + int(drive)
+    return start, start + drive_minutes(u)
+
+
+def drive_minutes(u):
+    """Core's drive time for a unit: the minutes from the previous stop, summed over its stops."""
+    return int(sum(x for x in (s.get("drive_minutes") for s in u.get("stops") or []) if isinstance(x, (int, float)) and x))
 
 
 def option_sets(merged, prim_keys, alts):
@@ -529,8 +552,9 @@ def option_sets(merged, prim_keys, alts):
 
 
 def _stop_sig(u):
-    """The stops of a unit as a comparable tuple: the location id when Core returned one, else the name."""
-    return tuple((st.get("location") or {}).get("id") or st.get("display_name") or st.get("name") or "" for st in (u.get("stops") or []))
+    """The stops of a unit as a comparable tuple: the address when there is one, else the label.
+    The view carries no location id; within one response the address names the place."""
+    return tuple(st.get("address") or st.get("label") or "" for st in (u.get("stops") or []))
 
 
 def _same_trip(a, b):
@@ -545,7 +569,7 @@ def overlaps(units_src, sets=None):
     Returns [(hourly_key, transfer_key)]. Nothing is priced on an overlap without the user's answer."""
     out = []
     for h in units_src:
-        if (h.get("pricing_summary") or {}).get("pricing_method") != "hourly":
+        if (h.get("pricing") or {}).get("pricing_method") != "hourly":
             continue
         hs = _span(h)
         for t in units_src:
@@ -627,7 +651,7 @@ def time_readings(specs, units_src):
             problems.append(f"--time-reading names unit {key!r}, which is not in the response")
             continue
         r = {"unit": key, "kind": kind, "client_time": _fmt(client)}
-        drive = int(sum(x for x in (u.get("travel_times") or []) if isinstance(x, (int, float)) and x))
+        drive = drive_minutes(u)
         if kind == "pickup":
             pickup = client
         else:
@@ -701,6 +725,7 @@ def write(a):
     raw = load_json(a.raw, {}) or {}
     pkgs = packages(raw)
     chosen = next((p for p in pkgs if p[0] == a.selected), pkgs[0])
+    chosen_pkg = next(p for p in quote_view.packages(raw) if p["key"] == chosen[0])
     units_src = chosen[3]
     stop_notes = gates(a, raw, units_src, pkgs)
     missing = [u.get("key") for u in units_src if not u.get("pickup_date")]
@@ -709,7 +734,7 @@ def write(a):
     pstops, pprob = [], []
     for spec in a.placeholder_stop:
         unit_, stop_, label_ = (x.strip() for x in (spec.split("|", 2) + ["", ""])[:3])
-        names = [(st.get("name") or st.get("display_name") or "") for u in units_src if u.get("key") == unit_ for st in (u.get("stops") or [])]
+        names = [n for u in units_src if u.get("key") == unit_ for n in quote_view.stop_names(u)]
         if not (unit_ and stop_ and label_) or "to be confirmed" not in label_.lower():
             pprob.append(f"bad --placeholder-stop {spec!r}: use UNIT|stop name|a neutral label that says '(... to be confirmed)'")
         elif not any(stop_.lower() in n.lower() for n in names):
@@ -728,7 +753,7 @@ def write(a):
             flights.append({"unit": unit_, "text": text_})
     for spec in a.venue:
         unit_, stop_, name_ = (x.strip() for x in (spec.split("|", 2) + ["", ""])[:3])
-        names = [(st.get("name") or st.get("display_name") or "") for u in units_src if u.get("key") == unit_ for st in (u.get("stops") or [])]
+        names = [n for u in units_src if u.get("key") == unit_ for n in quote_view.stop_names(u)]
         if not (unit_ and stop_ and name_) or not any(stop_.lower() in n.lower() for n in names):
             vprob.append(f"bad --venue {spec!r}: use UNIT|the stop name Core returned|the venue name the client used")
         else:
@@ -746,9 +771,9 @@ def write(a):
         sprob = []
         if not (a.prospect or "").strip():
             sprob.append("a stand-in client needs --prospect with the real client's name; the document says 'Prepared for' that name")
-        found = sorted({(u.get("pricing_summary") or {}).get("adjustments", {}).get("discount_basis_points")
+        found = sorted({((u.get("pricing") or {}).get("adjustments") or {}).get("discount_basis_points")
                         for u in units_src
-                        if ((u.get("pricing_summary") or {}).get("adjustments") or {}).get("discount_basis_points")})
+                        if ((u.get("pricing") or {}).get("adjustments") or {}).get("discount_basis_points")})
         if found:
             sprob.append(f"the stand-in client's quote carries a {max(found)/100:g}% contracted discount, so this client is not a no-discount stand-in")
         if sprob:
@@ -776,19 +801,18 @@ def write(a):
         struct[k] = {"structure": s, "rationale": r}
     units = []
     for u in units_src:
-        ps = u.get("pricing_summary") or {}
-        vt = u.get("vehicle_type") or {}
+        pr = u.get("pricing") or {}
         units.append({
             "key": u.get("key"), "label": u.get("label"), "date": u.get("pickup_date"),
             "passenger_count": u.get("passenger_count"),
             "structure": struct.get(u.get("key"), {}).get("structure"),
             "rationale": struct.get(u.get("key"), {}).get("rationale"),
-            "vehicle": {"id": vt.get("id"), "name": vt.get("name"), "quantity": u.get("quantity")},
-            "line_total": u.get("line_total"),
-            "pricing_method": ps.get("pricing_method"),
-            "adjustments": ps.get("adjustments"),
+            "vehicle": {"id": _vehicle_id(u.get("vehicle_type_id")), "name": u.get("vehicle_name"), "quantity": u.get("quantity")},
+            "line_total": u.get("total_amount"),
+            "pricing_method": pr.get("pricing_method"),
+            "adjustments": pr.get("adjustments"),
         })
-    est = next(((u.get("pricing_summary") or {}).get("estimate_type") for u in units_src), None)
+    est = chosen_pkg.get("estimate_type")
     path = os.path.join(a.dir, "intake.json")
     prev = load_json(path, {}) or {}
     intake = {
@@ -824,8 +848,8 @@ def write(a):
         # wrong or forget while firefighting. They are all in the raw quote already, so
         # asking for them as flags was the mistake, not the missing flags.
         "source_tool": a.tool,
-        "persisted": raw.get("persisted"),
-        "aggregate_total": raw.get("aggregate_total"),
+        "persisted": chosen_pkg.get("persisted"),
+        "aggregate_total": chosen_pkg.get("total_cents"),
         "temporary_pricing": temporary_pricing_of(units_src),
         "log": prev.get("log", []) + [{"ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                                        "step": "quote",
@@ -861,7 +885,9 @@ def capture(a):
             out.append(su)
         return out
 
-    if shape_of(raw) == "scenarios":
+    if raw and quote_view.is_v2(raw):
+        slim = raw          # the version 2 view is already the compact response; nothing to drop
+    elif shape_of(raw) == "scenarios":
         slim = {"options": [{"key": o.get("key"), "label": o.get("label"),
                              "aggregate_total": (o.get("result") or {}).get("aggregate_total"),
                              "quote_units": slim_units((o.get("result") or {}).get("quote_units") or [])}

@@ -126,9 +126,10 @@ quoted and billable time, cancellation policy, minimum and excess drive time. Ev
 currently assumes **one rate, cancellation policy and minimum per vehicle type per leg**, and
 R51 breaks exactly that.
 
-`vehicle_options[]` on each quote unit is already shaped like this — Core returns **every**
-candidate it priced, with per-candidate `unit_total`, `quantity`, `line_total`, `rate_id` and
-`pricing_summary`, not just the winner. Design against that rather than against a guess, and
+On the exact path Core prices one vehicle per unit, and the compact view (MCP presentation
+version 2) carries that vehicle's rate, cancellation policy and minimum on the unit.
+A leg served from several markets is several units, one per vehicle type and source market.
+Design for several units per leg rather than several candidates per unit, and
 **do not add new logic that deepens the single-rate assumption** while touching
 `normalize_quote.py`, `render_print.py` or `verify_document.py`.
 
