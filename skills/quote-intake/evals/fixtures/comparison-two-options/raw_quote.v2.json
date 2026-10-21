@@ -1,0 +1,171 @@
+{
+  "presentation": {
+    "version": 2,
+    "view": "scenario_comparison",
+    "status": "ready",
+    "estimate_type": "exact",
+    "title": "Quote scenarios",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      }
+    ],
+    "data": {
+      "scenarios": [
+        {
+          "key": "value",
+          "label": "Value — Sedan or SUV, lowest priced",
+          "strategy": "value",
+          "total_amount": 34650,
+          "persisted": false,
+          "quote_units": [
+            {
+              "key": "irvine_to_anaheim",
+              "label": "Irvine Marriott → Anaheim Convention Center",
+              "quantity": 1,
+              "total_amount": 34650,
+              "per_vehicle_amount": 34650,
+              "requested_quantity": 1,
+              "required_quantity": 1,
+              "vehicle_type_id": "1",
+              "vehicle_name": "Sedan",
+              "vehicle_capacity": 3,
+              "passenger_count": 3,
+              "passenger_count_source": "provided",
+              "passenger_selection_source": "quote_only_fallback",
+              "pickup_date": "2027-03-20T08:00:00-07:00",
+              "timezone": "America/Los_Angeles",
+              "stops": [
+                {
+                  "order": 1,
+                  "label": "Irvine Marriott",
+                  "address": "18000 Von Karman Avenue, Irvine, California, US",
+                  "kind": "address",
+                  "latitude": 33.678321,
+                  "longitude": -117.849741,
+                  "timezone": "America/Los_Angeles",
+                  "service_area": "Orange County, CA"
+                },
+                {
+                  "order": 2,
+                  "drive_minutes": 23,
+                  "label": "Anaheim Convention Center",
+                  "address": "800 West Katella Avenue, Anaheim, California, US",
+                  "kind": "address",
+                  "latitude": 33.800876,
+                  "longitude": -117.920924,
+                  "timezone": "America/Los_Angeles",
+                  "service_area": "Orange County, CA"
+                }
+              ],
+              "estimated_drive_minutes": 23,
+              "pricing": {
+                "pricing_method": "hourly",
+                "rate_source": "rack",
+                "rate_id": "54129",
+                "base_rate_amount": 22500,
+                "effective_rate_amount": 17325,
+                "rate_amount": 17325,
+                "billing_unit": "hour",
+                "minimum_hours": 2,
+                "billable_hours": 2,
+                "cancellation_hours": 2,
+                "adjustments": {
+                  "discount_basis_points": 3000,
+                  "special_handling_basis_points": 0,
+                  "fuel_surcharge_basis_points": 1000,
+                  "temporary_rate_used": false
+                }
+              },
+              "warnings": []
+            }
+          ],
+          "warnings_on_every_unit": [
+            "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+          ],
+          "warnings": [
+            "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+          ]
+        },
+        {
+          "key": "elevated",
+          "label": "Elevated — Premium Sedan",
+          "strategy": "elevated",
+          "total_amount": 41888,
+          "persisted": false,
+          "quote_units": [
+            {
+              "key": "irvine_to_anaheim",
+              "label": "Irvine Marriott → Anaheim Convention Center",
+              "quantity": 1,
+              "total_amount": 41888,
+              "per_vehicle_amount": 41888,
+              "requested_quantity": 1,
+              "required_quantity": 1,
+              "vehicle_type_id": "143",
+              "vehicle_name": "Premium Sedan",
+              "vehicle_capacity": 3,
+              "passenger_count": 3,
+              "passenger_count_source": "provided",
+              "passenger_selection_source": "quote_only_fallback",
+              "pickup_date": "2027-03-20T08:00:00-07:00",
+              "timezone": "America/Los_Angeles",
+              "stops": [
+                {
+                  "order": 1,
+                  "label": "Irvine Marriott",
+                  "address": "18000 Von Karman Avenue, Irvine, California, US",
+                  "kind": "address",
+                  "latitude": 33.678321,
+                  "longitude": -117.849741,
+                  "timezone": "America/Los_Angeles",
+                  "service_area": "Orange County, CA"
+                },
+                {
+                  "order": 2,
+                  "drive_minutes": 23,
+                  "label": "Anaheim Convention Center",
+                  "address": "800 West Katella Avenue, Anaheim, California, US",
+                  "kind": "address",
+                  "latitude": 33.800876,
+                  "longitude": -117.920924,
+                  "timezone": "America/Los_Angeles",
+                  "service_area": "Orange County, CA"
+                }
+              ],
+              "estimated_drive_minutes": 23,
+              "pricing": {
+                "pricing_method": "hourly",
+                "rate_source": "rack",
+                "rate_id": "53439",
+                "base_rate_amount": 27200,
+                "effective_rate_amount": 20944,
+                "rate_amount": 20944,
+                "billing_unit": "hour",
+                "minimum_hours": 2,
+                "billable_hours": 2,
+                "cancellation_hours": 2,
+                "adjustments": {
+                  "discount_basis_points": 3000,
+                  "special_handling_basis_points": 0,
+                  "fuel_surcharge_basis_points": 1000,
+                  "temporary_rate_used": false
+                }
+              },
+              "warnings": []
+            }
+          ],
+          "warnings_on_every_unit": [
+            "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+          ],
+          "warnings": [
+            "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+          ]
+        }
+      ]
+    }
+  }
+}

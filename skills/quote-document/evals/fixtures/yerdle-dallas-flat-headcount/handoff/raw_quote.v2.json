@@ -1,0 +1,310 @@
+{
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
+    "estimate_type": "exact",
+    "title": "Exact quote",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [
+      {
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      },
+      {
+        "severity": "warning",
+        "message": "Custom transfer rate was used for this quote and was not saved in Savoya"
+      },
+      {
+        "severity": "warning",
+        "message": "Custom hourly rate was used for this quote and was not saved in Savoya"
+      },
+      {
+        "severity": "warning",
+        "message": "SUV standard transfer rate was used for this quote and was not saved in Savoya"
+      }
+    ],
+    "data": {
+      "total_amount": 242541,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "leg1_arrival",
+          "label": "Arrival DFW to The Joule",
+          "quantity": 1,
+          "total_amount": 38500,
+          "per_vehicle_amount": 38500,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "quoted_hours": 1.5,
+          "vehicle_type_id": "26",
+          "vehicle_name": "Mercedes Sprinter Van",
+          "vehicle_capacity": 13,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2026-11-12T10:15:00-06:00",
+          "timezone": "America/Chicago",
+          "primary_service_area": "Dallas/Fort Worth, Texas",
+          "source_service_area": "Dallas/Fort Worth, Texas",
+          "stops": [
+            {
+              "order": 1,
+              "label": "DFW - Dallas Fort Worth International",
+              "kind": "airport",
+              "latitude": 32.896828,
+              "longitude": -97.037997,
+              "timezone": "America/Chicago",
+              "flight_time": "2026-11-12T16:15:00.000Z",
+              "flight_type": "arrival",
+              "flight_tbd": true,
+              "service_area": "Dallas/Fort Worth, Texas"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 29,
+              "label": "The Joule",
+              "address": "1530 Main Street, Dallas, Texas, US",
+              "kind": "address",
+              "latitude": 32.780553,
+              "longitude": -96.798497,
+              "timezone": "America/Chicago",
+              "service_area": "Dallas/Fort Worth, Texas"
+            }
+          ],
+          "estimated_drive_minutes": 29,
+          "pricing": {
+            "pricing_method": "transfer",
+            "rate_source": "custom",
+            "base_rate_amount": 50000,
+            "effective_rate_amount": 38500,
+            "rate_amount": 38500,
+            "billing_unit": "trip",
+            "billable_hours": 1.5,
+            "cancellation_hours": 4,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": [
+            "Custom transfer rate was used for this quote and was not saved in Savoya"
+          ]
+        },
+        {
+          "key": "leg2_hourly",
+          "label": "Hourly service from The Joule, 8 hours",
+          "quantity": 1,
+          "total_amount": 142441,
+          "per_vehicle_amount": 142441,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "quoted_hours": 9.25,
+          "vehicle_type_id": "26",
+          "vehicle_name": "Mercedes Sprinter Van",
+          "vehicle_capacity": 13,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2026-11-12T13:00:00-06:00",
+          "timezone": "America/Chicago",
+          "primary_service_area": "Dallas/Fort Worth, Texas",
+          "source_service_area": "Dallas/Fort Worth, Texas",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Joule",
+              "address": "1530 Main Street, Dallas, Texas, US",
+              "kind": "address",
+              "latitude": 32.780553,
+              "longitude": -96.798497,
+              "timezone": "America/Chicago",
+              "service_area": "Dallas/Fort Worth, Texas"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 4,
+              "label": "As Directed",
+              "address": "As Directed - Dallas, Texas",
+              "kind": "as_directed",
+              "wait_hours": 8,
+              "timezone": "America/Chicago",
+              "service_area": "Dallas/Fort Worth, Texas"
+            }
+          ],
+          "estimated_drive_minutes": 4,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "custom",
+            "base_rate_amount": 20000,
+            "effective_rate_amount": 15399,
+            "rate_amount": 15399,
+            "billing_unit": "hour",
+            "minimum_hours": 4,
+            "billable_hours": 9.25,
+            "cancellation_hours": 4,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": [
+            "Custom hourly rate was used for this quote and was not saved in Savoya"
+          ]
+        },
+        {
+          "key": "leg3_dal",
+          "label": "The Joule to Dallas Love Field",
+          "quantity": 1,
+          "total_amount": 23100,
+          "per_vehicle_amount": 23100,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "quoted_hours": 1.5,
+          "vehicle_type_id": "8",
+          "vehicle_name": "SUV",
+          "vehicle_capacity": 6,
+          "passenger_count": 4,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2026-11-12T17:00:00-06:00",
+          "timezone": "America/Chicago",
+          "primary_service_area": "Dallas/Fort Worth, Texas",
+          "source_service_area": "Dallas/Fort Worth, Texas",
+          "stops": [
+            {
+              "order": 1,
+              "label": "The Joule",
+              "address": "1530 Main Street, Dallas, Texas, US",
+              "kind": "address",
+              "latitude": 32.780553,
+              "longitude": -96.798497,
+              "timezone": "America/Chicago",
+              "service_area": "Dallas/Fort Worth, Texas"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 25,
+              "label": "DAL - Dallas Love Fld",
+              "kind": "airport",
+              "latitude": 32.847111,
+              "longitude": -96.851778,
+              "timezone": "America/Chicago",
+              "flight_time": "2026-11-13T01:00:00.000Z",
+              "flight_type": "departure",
+              "flight_tbd": true,
+              "service_area": "Dallas/Fort Worth, Texas"
+            }
+          ],
+          "estimated_drive_minutes": 25,
+          "pricing": {
+            "pricing_method": "transfer",
+            "rate_source": "custom",
+            "base_rate_amount": 30000,
+            "effective_rate_amount": 23100,
+            "rate_amount": 23100,
+            "billing_unit": "trip",
+            "billable_hours": 1.5,
+            "cancellation_hours": 2,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": [
+            "SUV standard transfer rate was used for this quote and was not saved in Savoya"
+          ]
+        },
+        {
+          "key": "leg4_dfw",
+          "label": "Plano office to DFW departure",
+          "quantity": 1,
+          "total_amount": 38500,
+          "per_vehicle_amount": 38500,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "quoted_hours": 1.75,
+          "vehicle_type_id": "26",
+          "vehicle_name": "Mercedes Sprinter Van",
+          "vehicle_capacity": 13,
+          "passenger_count_source": "default",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2026-11-13T15:10:00-06:00",
+          "timezone": "America/Chicago",
+          "primary_service_area": "Dallas/Fort Worth, Texas",
+          "source_service_area": "Dallas/Fort Worth, Texas",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Legacy West",
+              "address": "5908 Headquarters Drive, Plano, Texas, US",
+              "kind": "address",
+              "latitude": 33.081058,
+              "longitude": -96.826346,
+              "timezone": "America/Chicago",
+              "service_area": "Dallas/Fort Worth, Texas"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 29,
+              "label": "DFW - Dallas Fort Worth International",
+              "kind": "airport",
+              "latitude": 32.896828,
+              "longitude": -97.037997,
+              "timezone": "America/Chicago",
+              "flight_time": "2026-11-14T00:40:00.000Z",
+              "flight_type": "departure",
+              "flight_tbd": true,
+              "service_area": "Dallas/Fort Worth, Texas"
+            }
+          ],
+          "estimated_drive_minutes": 29,
+          "pricing": {
+            "pricing_method": "transfer",
+            "rate_source": "custom",
+            "base_rate_amount": 50000,
+            "effective_rate_amount": 38500,
+            "rate_amount": 38500,
+            "billing_unit": "trip",
+            "billable_hours": 1.75,
+            "cancellation_hours": 4,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": true
+            }
+          },
+          "warnings": [
+            "Custom transfer rate was used for this quote and was not saved in Savoya"
+          ]
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
+      }
+    }
+  },
+  "merged_packages": {
+    "A": {
+      "aggregate_total": 242541,
+      "unit_keys": [
+        "leg1_arrival",
+        "leg2_hourly",
+        "leg3_dal",
+        "leg4_dfw"
+      ]
+    }
+  }
+}
