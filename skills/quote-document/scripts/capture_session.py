@@ -45,7 +45,11 @@ def load_json(p, default):
 
 # Paths whose contents do not survive the session. `~` under any of these is a
 # container or an isolated VM, never the user's own disk.
-_EPHEMERAL_PREFIXES = ("/home/claude", "/sessions/", "/root", "/tmp", "/var/folders")
+# macOS keeps /tmp and /var as symlinks into /private, so realpath() turns
+# /var/folders/... into /private/var/folders/... and a bare "/var/folders" prefix never
+# matches; the /private spellings are listed so the resolved path is caught too.
+_EPHEMERAL_PREFIXES = ("/home/claude", "/sessions/", "/root", "/tmp", "/var/folders",
+                       "/private/tmp", "/private/var/folders")
 
 
 def durability_of(path):
@@ -58,10 +62,11 @@ def durability_of(path):
     connected folder is the user's disk.
     """
     real = os.path.realpath(path)
-    for pre in _EPHEMERAL_PREFIXES:
-        if real == pre.rstrip("/") or real.startswith(pre if pre.endswith("/") else pre + "/"):
-            return False, (f"{real} is inside {pre}, which is this session's own "
-                           f"storage and goes away with it")
+    for cand in dict.fromkeys((os.path.abspath(path), real)):  # as given, and resolved
+        for pre in _EPHEMERAL_PREFIXES:
+            if cand == pre.rstrip("/") or cand.startswith(pre if pre.endswith("/") else pre + "/"):
+                return False, (f"{real} is inside {pre}, which is this session's own "
+                               f"storage and goes away with it")
     return True, None
 
 
