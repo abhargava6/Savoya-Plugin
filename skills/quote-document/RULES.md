@@ -435,7 +435,7 @@ Hard constraints distilled from real sessions. Read this before rendering. The d
 - **A stop that will not resolve asks for an address (R83).** Never a substituted stop, never a deleted travel time. Every lookup is recorded with `--stop-note`; `write` refuses an unresolved one. As-directed queries spell out the state or province.
 - **A headcount range is asked before pricing (R84).** `write` refuses a ranged request without `--headcount N`, and units priced without that `passenger_count`.
 - **Deliver only what was asked (R85).** `verify_document.py` prints the deliverables; `draft_email.py` refuses a PDF-only job unless `--asked`.
-- **A saved response is never edited (R78).** Colliding unit keys are namespaced by the merge; a response too large to paste uses `ingest --without-presentation`, which records what it left out.
+- **A saved response is never edited (R78).** Colliding unit keys are namespaced by the merge.
 
 ## 0.27.4 additions (2026-10-17)
 

@@ -1,1 +1,44 @@
-{"status":"blocked","error_type":"quote_units_unavailable","core_status":422,"request_id":"b49d4a73-7a08-4fc6-907b-b427bc0b257d","client_error":{"code":"quote_units_unavailable","category":"availability","user_message":"One or more trips could not be priced with the selected vehicles and rates.","recovery":{"code":"review_rates","message":"Please choose another vehicle, provide a temporary rate, or remove the unavailable option."},"issues":[{"path":"quote_units[0].vehicle_type_id","code":"rate_unavailable"}]},"message":"One or more trips could not be priced with the selected vehicles and rates.","next_action":"Choose another vehicle or provide a temporary rate for the named trip.","presentation":{"version":1,"view":"blocked","status":"blocked","title":"Quote needs attention","warnings":[{"severity":"error","message":"One or more trips could not be priced with the selected vehicles and rates."}],"actions":[{"id":"refine_quote","label":"Update quote details","intent":"refine_quote"}],"data":{"message":"One or more trips could not be priced with the selected vehicles and rates.","error_type":"quote_units_unavailable","request_id":"b49d4a73-7a08-4fc6-907b-b427bc0b257d","next_action":"Choose another vehicle or provide a temporary rate for the named trip.","issues":["Greeter — Boise, 2 hours as directed could not be priced because no matching Savoya rate was available for the selected vehicle."]}}}
+{
+ "status": "blocked",
+ "error_type": "quote_units_unavailable",
+ "core_status": 422,
+ "request_id": "b49d4a73-7a08-4fc6-907b-b427bc0b257d",
+ "client_error": {
+  "code": "quote_units_unavailable",
+  "category": "availability",
+  "user_message": "One or more trips could not be priced with the selected vehicles and rates.",
+  "recovery": {
+   "code": "review_rates",
+   "message": "Please choose another vehicle, provide a temporary rate, or remove the unavailable option."
+  },
+  "issues": [
+   {
+    "path": "quote_units[0].vehicle_type_id",
+    "code": "rate_unavailable"
+   }
+  ]
+ },
+ "message": "One or more trips could not be priced with the selected vehicles and rates.",
+ "next_action": "Choose another vehicle or provide a temporary rate for the named trip.",
+ "presentation": {
+  "version": 2,
+  "view": "blocked",
+  "status": "blocked",
+  "title": "Quote needs attention",
+  "warnings": [
+   {
+    "severity": "error",
+    "message": "One or more trips could not be priced with the selected vehicles and rates."
+   }
+  ],
+  "data": {
+   "message": "One or more trips could not be priced with the selected vehicles and rates.",
+   "error_type": "quote_units_unavailable",
+   "request_id": "b49d4a73-7a08-4fc6-907b-b427bc0b257d",
+   "next_action": "Choose another vehicle or provide a temporary rate for the named trip.",
+   "issues": [
+    "Greeter — Boise, 2 hours as directed could not be priced because no matching Savoya rate was available for the selected vehicle."
+   ]
+  }
+ }
+}

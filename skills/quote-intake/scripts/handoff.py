@@ -14,7 +14,7 @@
   handoff.py ingest --name A [--dir handoff] [--file response.json]   (response on stdin otherwise)
       → saves a pricing response EXACTLY as given to <dir>/responses/<name>.json, after checking
         that it parses, carries priced units, and that the unit totals add up to the response's
-        own aggregate_total. Never edits a figure. Exit 2 = rejected, nothing written.
+        own total. Never edits a figure. Exit 2 = rejected, nothing written.
 
   handoff.py write … --package A --package B [--shared B_key=A_key]... [--alt-of B_key=A_key]...
       → several separately priced packages as options in one handoff (R79). The first package is
@@ -80,8 +80,8 @@ def day(iso, fmt="%a %-m/%-d %-I:%M%p"):
 
 
 def shape_of(raw):
-    """"scenarios" (generate_quote_options), "package" (one priced package) or "unknown",
-    in any shape quote_view reads. An unsupported presentation version is refused here."""
+    """"scenarios" (generate_quote_options), "package" (one priced package) or "unknown".
+    An unsupported presentation version is refused here, loudly."""
     try:
         if quote_view.is_options(raw):
             return "scenarios"
@@ -96,8 +96,7 @@ def shape_of(raw):
 
 
 def packages(raw):
-    """[(key, label, strategy, units, total)] for either shape. The units are quote-view
-    units (version 2 shape) whatever the MCP sent; quote_view converts version 1."""
+    """[(key, label, strategy, units, total)] for a quote or a comparison; units are view units."""
     try:
         return [(p["key"], p["label"], p["strategy"], p["units"], p["total_cents"]) for p in quote_view.packages(raw)]
     except quote_view.QuoteViewError as e:
@@ -178,16 +177,6 @@ def unit_lines(unit, indent="  ", seen=None):
             # Not a shape we translate. Show it anyway, verbatim — an unrecognised
             # warning is exactly the kind we must not swallow.
             out.append(f"{indent}⚠ {w}")
-    # The candidates Core priced and did not choose. Only an old version 1 capture
-    # carries them: the exact tools take one vehicle per unit, so Core returns the chosen
-    # vehicle alone and a version 2 response has none.
-    chosen_total = unit.get("total_amount") or 0
-    for alt in unit.get("v1_alternatives") or []:
-        at = alt.get("total_amount") or 0
-        flag = ""
-        if chosen_total and at and at < chosen_total * 0.7:
-            flag = "  ← **cheaper; check the candidate set**"
-        out.append(f"{indent}  alt: {alt.get('quantity')} × {alt.get('vehicle_name')} → {money(at)}{flag}")
     return out
 
 
@@ -300,9 +289,9 @@ def ingest_options(a, raw):
         sys.exit(2)
     out = os.path.join(a.dir, "responses")
     os.makedirs(out, exist_ok=True)
-    if not a.without_presentation:       # the response exactly as Core returned it, kept beside the per-option packages
-        with open(os.path.join(out, f"{base}.options-response.json"), "w", encoding="utf-8") as fh:
-            json.dump(raw, fh)
+    # the response exactly as the MCP returned it, kept beside the per-option packages
+    with open(os.path.join(out, f"{base}.options-response.json"), "w", encoding="utf-8") as fh:
+        json.dump(raw, fh)
     for name, res, units, total, o in saved:
         res["_ingest"] = {"from_options_response": base, "option_key": o.get("key"), "option_label": o.get("label")}
         with open(os.path.join(out, f"{name}.json"), "w", encoding="utf-8") as fh:
@@ -319,9 +308,6 @@ def ingest(a):
         raw = json.loads(text)
     except ValueError as e:
         sys.exit(f"REJECTED (nothing written): not valid JSON ({e}). Paste the whole response, unedited.")
-    if a.without_presentation and quote_view.is_v2(raw):
-        sys.exit("REJECTED (nothing written): --without-presentation cannot apply here. In this response the "
-                 "presentation IS the whole quote; save it as returned.")
     if shape_of(raw) == "scenarios":
         return ingest_options(a, raw)
     problems, units, total = check_response(raw)
@@ -334,13 +320,6 @@ def ingest(a):
     os.makedirs(out, exist_ok=True)
     name = re.sub(r"[^A-Za-z0-9_-]+", "-", a.name).strip("-") or "A"
     path = os.path.join(out, f"{name}.json")
-    if a.without_presentation:
-        # The ONE declared way to shrink a response too large to paste. Priced units and the
-        # aggregate are untouched (the check above already passed on them), and the file says
-        # what was left out so nothing downstream mistakes it for the whole response.
-        raw.pop("presentation", None)
-        raw["_ingest"] = {"left_out": ["presentation"], "reason": "too large to paste; declared by the session"}
-        text = json.dumps(raw)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(text)
     print(f"SAVED {path}: {len(units)} units, total {money(total)} (units add up to the response's own total)")
@@ -876,25 +855,7 @@ def capture(a):
     intake = load_json(os.path.join(a.dir, "intake.json"), {}) or {}
     raw = load_json(os.path.join(a.dir, "raw_quote.json"), {}) or {}
 
-    def slim_units(us):
-        out = []
-        for u in us:
-            su = {k: v for k, v in u.items() if k not in ("vehicle_options", "stops", "quote")}
-            su["stops"] = [{k: v for k, v in s.items() if k in ("name", "display_name", "duration", "flight")}
-                           for s in (u.get("stops") or [])]
-            out.append(su)
-        return out
-
-    if raw and quote_view.is_v2(raw):
-        slim = raw          # the version 2 view is already the compact response; nothing to drop
-    elif shape_of(raw) == "scenarios":
-        slim = {"options": [{"key": o.get("key"), "label": o.get("label"),
-                             "aggregate_total": (o.get("result") or {}).get("aggregate_total"),
-                             "quote_units": slim_units((o.get("result") or {}).get("quote_units") or [])}
-                            for o in raw["options"]]}
-    else:
-        slim = {k: v for k, v in raw.items() if k not in ("presentation", "quote_units")}
-        slim["quote_units"] = slim_units(raw.get("quote_units") or [])
+    slim = raw          # the compact view is already small; the capture keeps it whole
     cfg = load_json(CONFIG, {}) or {}
     asset = load_json(os.path.join(HERE, "..", "assets", "capture.json"), {}) or {}
     base = (a.slug or (intake.get("client") or {}).get("name") or "quote").lower()
@@ -952,8 +913,6 @@ def main():
     w.add_argument("--passenger-id", type=int, default=None); w.add_argument("--passenger-name", default=None)
     ig = sub.add_parser("ingest"); ig.add_argument("--name", required=True); ig.add_argument("--dir", default="handoff")
     ig.add_argument("--file", default=None)
-    ig.add_argument("--without-presentation", dest="without_presentation", action="store_true",
-                    help="drop Core's presentation block when the response is too large to paste (recorded in the file)")
     c = sub.add_parser("client"); c.add_argument("name")
     cp = sub.add_parser("capture"); cp.add_argument("--dir", default="handoff"); cp.add_argument("--slug", default=None)
     cp.add_argument("--worked", default=None); cp.add_argument("--change", default=None)

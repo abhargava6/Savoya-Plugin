@@ -41,7 +41,34 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import quote_view as qv  # noqa: E402  -- guards build v1 shapes and read them as the view does
+import quote_view as qv  # noqa: E402  -- the one reader of a quote response
+
+
+def view_unit(**fields):
+    """A quote unit as the MCP's compact view sends it, for a guard to vary. Only what a
+    guard states differs from this ordinary priced hourly leg."""
+    unit = {"key": "u", "label": "L", "quantity": 1, "total_amount": 1000, "per_vehicle_amount": 1000,
+            "passenger_count": 2, "pickup_date": "2027-06-09T09:00:00-07:00",
+            "vehicle_type_id": "6", "vehicle_name": "Coach Bus", "vehicle_capacity": 50,
+            "stops": [{"order": 1, "label": "A", "kind": "address"},
+                      {"order": 2, "label": "B", "kind": "address", "drive_minutes": 6}],
+            "pricing": {"pricing_method": "hourly", "effective_rate_amount": 1000, "billing_unit": "hour",
+                        "adjustments": {"temporary_rate_used": False}},
+            "warnings": []}
+    unit.update(fields)
+    return unit
+
+
+def fixture_units(raw):
+    """A fixture response's quote units, copied, for a guard to vary."""
+    import copy
+    return [copy.deepcopy(u) for u in qv.packages(raw)[0]["units"]]
+
+
+def package_of(units):
+    """A quote_result response holding these units, totalled as Core totals them."""
+    return qv.to_v2({"units": units, "total_cents": sum(u["total_amount"] for u in units),
+                     "estimate_type": "exact", "currency": "USD", "persisted": False})
 SKILL = os.path.dirname(HERE)
 DEFAULT_FIXTURES = os.path.join(SKILL, "evals", "fixtures")
 
@@ -426,18 +453,16 @@ def lint_warning_surfacing():
                         f"normalize_quote.py {nq.SUPPRESSED_WARNING!r}")
 
     unknown = "Vendor surcharge applied for this service area"
-    unit = {
-        "key": "u1", "label": "Leg 1", "quantity": 1, "line_total": 10000,
+    unit = {   # a quote-view unit, the shape unit_lines reads
+        "key": "u1", "label": "Leg 1", "quantity": 1, "total_amount": 10000,
         "passenger_count": 2, "pickup_date": "2027-03-20T09:00:00-07:00",
-        "vehicle_type": {"id": 8, "name": "SUV", "capacity": 6},
-        "stops": [{"name": "A", "travel_time": 0}, {"name": "B", "travel_time": 10}],
-        "pricing_summary": {"status": "priced", "total_amount": 10000,
-                            "pricing_method": "transfer",
-                            "rate": {"effective_rate_amount": 10000, "billing_unit": "trip"},
-                            "calculation": {"quantity": 1}},
+        "vehicle_type_id": "8", "vehicle_name": "SUV", "vehicle_capacity": 6,
+        "stops": [{"order": 1, "label": "A", "kind": "address"},
+                  {"order": 2, "label": "B", "kind": "address", "drive_minutes": 10}],
+        "pricing": {"pricing_method": "transfer", "effective_rate_amount": 10000, "billing_unit": "trip",
+                    "adjustments": {"temporary_rate_used": False}},
         "warnings": [ho.SUPPRESSED_WARNING + " for this quote", unknown],
     }
-    unit = qv.unit_from_v1(unit)          # unit_lines reads quote-view units
     rendered = "\n".join(ho.unit_lines(unit))
 
     # 2. The suppressed one must not appear...
@@ -585,14 +610,13 @@ def lint_presentation_render():
 
 
 def lint_airport_shape():
-    """An airport stop must be recognised in BOTH response shapes.
+    """An airport stop must keep its flight disclosure.
 
-    The connector moved airport identification from a top-level `airport` object on the
-    stop to `location.type == "airport"`. Reading only the old shape made every airport
-    stop normalize as an address and dropped the flight object with it, so the "flight
-    time to be confirmed" disclosure stopped appearing on client documents — silently,
-    because the fixtures all carried the old shape. This guard fails if either shape stops
-    being recognised."""
+    Core has moved airport identification before (a top-level `airport` object, then
+    `location.type == "airport"`), and reading the wrong one made every airport stop an
+    address and dropped the "flight time to be confirmed" disclosure from client documents.
+    The MCP now reads Core's shapes once and sends each stop's `kind`; the plugin must carry
+    an airport's kind and flight through, and must not turn an address into an airport."""
     import importlib.util
     mod = os.path.join(HERE, "normalize_quote.py")
     try:
@@ -600,36 +624,27 @@ def lint_airport_shape():
         nq = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(nq)
     except Exception as e:
-        print(f"  ✗ airport shape: could not import ({e})")
+        print(f"  \u2717 airport shape: could not import ({e})")
         return False
 
-    flight = {"commercial_tbd": True, "flight_type": "departure",
-              "scheduled_time": "2027-09-17T16:00:00.000Z"}
-    shapes = {
-        "legacy top-level airport key": {"airport": {"id": 4655910}, "flight": flight},
-        "current location.type":        {"display_name": "BOS - Boston Logan International",
-                                         "location": {"type": "airport"}, "flight": flight},
-        "echoed stop_type":             {"stop_type": "airport", "flight": flight},
-    }
     problems = []
-    for name, stop in shapes.items():
-        out = nq.normalize_stop(qv.stop_from_v1(stop))
-        if out.get("kind") != "airport":
-            problems.append(f"{name}: normalized as {out.get('kind')!r}, not 'airport'")
-        if not (out.get("flight") or {}).get("tbd"):
-            problems.append(f"{name}: flight object lost — the TBD disclosure cannot fire")
-    # A plain address must NOT be mistaken for an airport.
-    plain = nq.normalize_stop(qv.stop_from_v1({"display_name": "101 Harborside Drive",
-                                               "location": {"type": "city"}}))
-    if plain.get("kind") != "address":
-        problems.append(f"a city stop normalized as {plain.get('kind')!r}")
+    out = nq.normalize_stop({"order": 1, "label": "BOS - Boston Logan International", "kind": "airport",
+                             "flight_type": "departure", "flight_tbd": True,
+                             "flight_time": "2027-09-17T16:00:00.000Z"})
+    if out.get("kind") != "airport":
+        problems.append(f"an airport stop normalized as {out.get('kind')!r}, not 'airport'")
+    if not (out.get("flight") or {}).get("tbd"):
+        problems.append("an airport stop lost its flight object; the TBD disclosure cannot fire")
+    plain = nq.normalize_stop({"order": 1, "label": "101 Harborside Drive", "kind": "address"})
+    if plain.get("kind") != "address" or plain.get("flight"):
+        problems.append(f"an address stop normalized as {plain.get('kind')!r} with a flight")
 
     if problems:
-        print("  ✗ airport shape")
+        print("  \u2717 airport shape")
         for pr in problems:
             print(f"      - {pr}")
         return False
-    print("  ✓ airport shape")
+    print("  \u2713 airport shape")
     return True
 
 
@@ -651,20 +666,11 @@ def lint_positioned_from():
         print(f"  ✗ positioned-from: could not import ({e})")
         return False
 
-    base = {"key": "u", "label": "L", "quantity": 1, "line_total": 1000,
-            "passenger_count": 2, "pickup_date": "2027-06-09T09:00:00-07:00",
-            "vehicle_type": {"id": 6, "name": "Coach Bus", "capacity": 50},
-            "stops": [{"display_name": "A", "travel_time": 0},
-                      {"display_name": "B", "travel_time": 6}],
-            "pricing_summary": {"status": "priced", "total_amount": 1000,
-                                "pricing_method": "hourly",
-                                "rate": {"effective_rate_amount": 1000,
-                                         "billing_unit": "hour"},
-                                "calculation": {"quantity": 1}}}
+    base = view_unit()
     problems = []
 
     def notes(u):
-        leg, _ = nq.normalize_unit(qv.unit_from_v1(u))
+        leg, _ = nq.normalize_unit(u)
         return leg["client_notes"]
 
     cases = {
@@ -835,20 +841,16 @@ def lint_greeter_leg():
         return False
 
     def unit(vt):
-        return {"key": "g", "label": "Greeter", "quantity": 1, "line_total": 40420,
-                "passenger_count": 1, "pickup_date": "2027-03-20T09:00:00-07:00",
-                "vehicle_type": vt, "travel_times": [0, 5],
-                "stops": [{"display_name": "Hotel", "travel_time": 0},
-                          {"display_name": "As Directed", "travel_time": 5,
-                           "as_directed": True, "duration": 4}],
-                "pricing_summary": {"status": "priced", "total_amount": 40420,
-                                    "pricing_method": "hourly",
-                                    "rate": {"effective_rate_amount": 7699,
-                                             "billing_unit": "hour", "minimum_hours": 2},
-                                    "calculation": {"billable_hours": 5.25, "quantity": 1}}}
+        return view_unit(
+            key="g", label="Greeter", total_amount=40420, per_vehicle_amount=40420, passenger_count=1,
+            pickup_date="2027-03-20T09:00:00-07:00", vehicle_type_id=str(vt["id"]), vehicle_name=vt["name"],
+            vehicle_capacity=vt.get("capacity"),
+            stops=[{"order": 1, "label": "Hotel", "kind": "address"},
+                   {"order": 2, "label": "As Directed", "kind": "as_directed", "drive_minutes": 5, "wait_hours": 4}],
+            pricing={"pricing_method": "hourly", "effective_rate_amount": 7699, "billing_unit": "hour",
+                     "minimum_hours": 2, "billable_hours": 5.25, "adjustments": {"temporary_rate_used": False}})
     problems = []
-    g, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 12, "name": "Hourly Greeter/Coordinator",
-                                                   "capacity": None, "greeter": True})))
+    g, _ = nq.normalize_unit(unit({"id": 12, "name": "Hourly Greeter/Coordinator", "capacity": None}))
     if g.get("route"):
         problems.append(f"greeter leg carries a route: {g['route']}")
     if any(s.get("drive_minutes") for s in g["stops"]):
@@ -858,13 +860,13 @@ def lint_greeter_leg():
     if (g["pricing"] or {}).get("line_total_cents") != 40420:
         problems.append("greeter leg lost its price — only the drive time should go")
 
-    # By name alone, when `greeter` isn't on the vehicle_type object.
-    g2, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 13, "name": "Single Greet", "capacity": None})))
+    # A greeter is known by its vehicle name; the view carries no greeter flag.
+    g2, _ = nq.normalize_unit(unit({"id": 13, "name": "Single Greet", "capacity": None}))
     if g2.get("route") or not g2.get("is_greeter"):
         problems.append("a greeter identified by name alone kept its drive time")
 
     # A normal vehicle must keep its drive time.
-    v, _ = nq.normalize_unit(qv.unit_from_v1(unit({"id": 8, "name": "SUV", "capacity": 6})))
+    v, _ = nq.normalize_unit(unit({"id": 8, "name": "SUV", "capacity": 6}))
     if not v.get("route"):
         problems.append("an SUV lost its drive time — suppression is too broad")
 
@@ -2556,13 +2558,17 @@ def lint_review_fixes():
     if "Never say it fits" not in d_src:
         problems.append("decide.py does not warn against claiming a fit")
     # options response
-    def pkg(prefix, rate):     # Core gives every option the same unit keys
-        us = [{"key": "t1", "line_total": rate, "pickup_date": "2027-03-20T08:00:00-07:00", "stops": [{"name": "Hotel"}],
-               "pricing_summary": {"pricing_method": "hourly"}},
-              {"key": "t2", "line_total": rate * 2, "pickup_date": "2027-03-20T14:00:00-07:00", "stops": [{"name": "LAX", "stop_type": "airport"}],
-               "pricing_summary": {"pricing_method": "transfer"}}]
-        return {"quote_units": us, "aggregate_total": rate * 3}
-    resp = {"options": [{"key": "value", "label": "Value", "result": pkg("v", 1000)}, {"key": "elevated", "label": "Elevated", "result": pkg("e", 1500)}]}
+    def scenario(key, label, rate):     # Core gives every option the same unit keys
+        us = [view_unit(key="t1", total_amount=rate, pickup_date="2027-03-20T08:00:00-07:00",
+                        stops=[{"order": 1, "label": "Hotel", "kind": "address"}]),
+              view_unit(key="t2", total_amount=rate * 2, pickup_date="2027-03-20T14:00:00-07:00",
+                        stops=[{"order": 1, "label": "LAX", "kind": "airport"}],
+                        pricing={"pricing_method": "transfer", "adjustments": {"temporary_rate_used": False}})]
+        return {"key": key, "label": label, "total_amount": rate * 3, "quote_units": us, "warnings": [],
+                "warnings_on_every_unit": [], "persisted": False}
+    resp = {"presentation": {"version": 2, "view": "scenario_comparison", "status": "ready", "estimate_type": "exact",
+                             "title": "Quote scenarios", "currency_code": "USD", "amount_unit": "cents", "warnings": [],
+                             "data": {"scenarios": [scenario("value", "Value", 1000), scenario("elevated", "Elevated", 1500)]}}}
     with tempfile.TemporaryDirectory() as d:
         r = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py"), "ingest", "--name", "A", "--dir", d],
                            input=_json.dumps(resp), capture_output=True, text=True)
@@ -2584,7 +2590,7 @@ def lint_review_fixes():
         except SystemExit as e:
             problems.append(f"merging ingested options stopped: {e}")
         bad = _json.loads(_json.dumps(resp))
-        bad["options"][1]["result"]["aggregate_total"] += 1
+        bad["presentation"]["data"]["scenarios"][1]["total_amount"] += 1
         r = subprocess.run([sys.executable, os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py"), "ingest", "--name", "B", "--dir", d],
                            input=_json.dumps(bad), capture_output=True, text=True)
         if r.returncode != 2 or os.path.exists(os.path.join(d, "responses", "B_value.json")):
@@ -2654,13 +2660,11 @@ def lint_user_guidance():
     decide = os.path.join(HERE, "decide.py")
     fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
     raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
-    units = [copy.deepcopy(u) for u in raw["quote_units"][0:1]]
+    units = fixture_units(raw)[0:1]
     for u in units:
         u["passenger_count"] = 75
-        (u.setdefault("pricing_summary", {}).setdefault("adjustments", {})).pop("discount_basis_points", None)
-    base = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
-    def pkg(us):
-        return dict(base, quote_units=us, aggregate_total=sum(u["line_total"] for u in us))
+        (u.setdefault("pricing", {}).setdefault("adjustments", {})).pop("discount_basis_points", None)
+    pkg = package_of
     with tempfile.TemporaryDirectory() as d:
         def run(args, stdin=None):
             return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
@@ -2672,7 +2676,7 @@ def lint_user_guidance():
         if r.returncode == 0 or "prospect" not in (r.stderr + r.stdout):
             problems.append("a stand-in client was accepted without the real client's name")
         disc = copy.deepcopy(units)
-        disc[0]["pricing_summary"]["adjustments"]["discount_basis_points"] = 1000
+        disc[0].setdefault("pricing", {}).setdefault("adjustments", {})["discount_basis_points"] = 1000
         run([intake, "ingest", "--name", "D"], _json.dumps(pkg(disc)))
         wd = list(w); wd[wd.index("A")] = "D"
         r = run(wd + ["--prospect", "Real Client Inc"])
@@ -2760,15 +2764,14 @@ def lint_noise_fixes():
     decide = os.path.join(HERE, "decide.py")
     fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
     raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
-    units = [copy.deepcopy(x) for x in raw["quote_units"][0:1]]
+    units = fixture_units(raw)[0:1]
     for x in units:
         x["passenger_count"] = 75
-    base = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
     with tempfile.TemporaryDirectory() as d:
         def run(args, stdin=None):
             return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
         shutil.copy(os.path.join(fx, "request.md"), os.path.join(d, "request.md"))
-        run([intake, "ingest", "--name", "A"], _json.dumps(dict(base, quote_units=units, aggregate_total=sum(x["line_total"] for x in units))))
+        run([intake, "ingest", "--name", "A"], _json.dumps(package_of(units)))
         r = run([intake, "write", "--client", "Req Co", "--profile-id", "1", "--request", "request.md", "--package", "A",
                  "--headcount", "75", "--final", "--client-question", "Wi-Fi on board"])
         if r.returncode:
@@ -3052,7 +3055,7 @@ def lint_blocked_capture():
             problems.append("declined consent: a blocked session wrote a record")
         run("--consent", "yes")
         os.makedirs(os.path.join(d, "handoff", "responses"))
-        _json.dump({"aggregate_total": 100, "quote_units": [{"key": "u1", "label": "L", "line_total": 100}]},
+        _json.dump(package_of([view_unit(key="u1", total_amount=100)]),
                    open(os.path.join(d, "handoff", "responses", "A.json"), "w"))
         open(os.path.join(d, "req.md"), "w").write("the request")
         r = run("--blocked", "responses could not be saved", "--slug", "blk", "--client", "Blk", "--request", "req.md")
@@ -3108,29 +3111,32 @@ def lint_handoff_packages():
     intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
     fx = os.path.join(DEFAULT_FIXTURES, "yerdle-iol-whistler-options")
     raw = _json.load(open(os.path.join(fx, "handoff", "raw_quote.json"), encoding="utf-8"))
-    us = raw["quote_units"]
+    us = fixture_units(raw)
+
+    def total(p_):
+        return p_["presentation"]["data"]["total_amount"]
 
     def pkg(units, headcount=75):
-        d = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
         # R91: units serving one trip carry a share of the headcount that adds up to it
         # (the first takes the remainder, the rest 25 each), never the whole headcount each
         groups = {}
         for u in units:
-            groups.setdefault((u.get("pickup_date"), str([x.get("name") for x in u.get("stops") or []])), []).append(u)
-        d["quote_units"] = []
+            groups.setdefault((u.get("pickup_date"), str([x.get("label") for x in u.get("stops") or []])), []).append(u)
+        out = []
         for g in groups.values():
             for i_, u in enumerate(g):
                 pc = None if headcount is None else (headcount - 25 * (len(g) - 1) if i_ == 0 else 25)
-                d["quote_units"].append(dict(copy.deepcopy(u), passenger_count=pc))
-        d["aggregate_total"] = sum(u["line_total"] for u in units)
-        return d
+                out.append(dict(copy.deepcopy(u), passenger_count=pc))
+        return package_of(out)
     A = pkg(us[0:2])
     twin = copy.deepcopy(us[1]); twin["key"] = "optB_jun10_coach"
     B = pkg([us[2], us[3], twin])
     with tempfile.TemporaryDirectory() as d:
         def run(args, stdin=None):
             return subprocess.run([sys.executable] + args, capture_output=True, text=True, cwd=d, input=stdin)
-        bad = _json.dumps(dict(B, aggregate_total=B["aggregate_total"] + 1))
+        bad_b = copy.deepcopy(B)
+        bad_b["presentation"]["data"]["total_amount"] += 1
+        bad = _json.dumps(bad_b)
         r = run([intake, "ingest", "--name", "B"], bad)
         if r.returncode != 2 or os.path.exists(os.path.join(d, "handoff", "responses", "B.json")):
             problems.append("ingest accepted a response whose units do not add up to its own total")
@@ -3187,10 +3193,10 @@ def lint_handoff_packages():
             else:
                 run([os.path.join(HERE, "apply_adjustments.py"), "q.json", "--commission-pct", "5"])
                 q = _json.load(open(qp))
-                if q.get("total_cents") != A["aggregate_total"]:
-                    problems.append(f"Option A total {q.get('total_cents')} is not package A's own {A['aggregate_total']}")
-                if (q.get("option_b") or {}).get("total_cents") != B["aggregate_total"]:
-                    problems.append(f"Option B total {(q.get('option_b') or {}).get('total_cents')} is not package B's own {B['aggregate_total']}")
+                if q.get("total_cents") != total(A):
+                    problems.append(f"Option A total {q.get('total_cents')} is not package A's own {total(A)}")
+                if (q.get("option_b") or {}).get("total_cents") != total(B):
+                    problems.append(f"Option B total {(q.get('option_b') or {}).get('total_cents')} is not package B's own {total(B)}")
                 if not any("guard reading" in x for x in (q.get("internal") or {}).get("placeholders", [])):
                     problems.append("a scenario reading did not reach the placeholders the confirm step lists")
         # R78 amendment: the same unit key in two packages is namespaced by the merge, and the
@@ -3212,10 +3218,7 @@ def lint_handoff_packages():
             for i_, c in enumerate(counts):
                 u_ = dict(copy.deepcopy(u0), passenger_count=c, key=f"s{i_}")
                 out.append(u_)
-            d_ = {k: v for k, v in raw.items() if k not in ("quote_units", "aggregate_total")}
-            d_["quote_units"] = out
-            d_["aggregate_total"] = sum(u_["line_total"] for u_ in out)
-            return d_
+            return package_of(out)
         def write_one(name, counts):
             run([intake, "ingest", "--name", name], _json.dumps(one_trip(counts)))
             return run([intake, "write", "--client", "Yerdle", "--profile-id", "1", "--request", "request.md",
@@ -3243,12 +3246,12 @@ def lint_handoff_packages():
             problems.append("a good write did not end the refusal")
         if _json.load(open(os.path.join(d, "handoff", "intake.json"))).get("written_by") != "handoff.py write":
             problems.append("intake.json does not say it was written by handoff.py")
-        # a response too large to paste may leave out its presentation block, declared and recorded
-        withp = dict(pkg(us[0:1]), presentation={"version": 1, "data": {"big": "x" * 50}})
-        r = run([intake, "ingest", "--name", "P", "--without-presentation"], _json.dumps(withp))
-        sp = _json.load(open(os.path.join(d, "handoff", "responses", "P.json"))) if r.returncode == 0 else {}
-        if "presentation" in sp or (sp.get("_ingest") or {}).get("left_out") != ["presentation"]:
-            problems.append("--without-presentation did not drop the block and record that it did")
+        # a response in a presentation version this build does not read is refused, nothing saved
+        old = _json.dumps({"presentation": {"version": 1, "view": "quote_result", "data": {}}})
+        r = run([intake, "ingest", "--name", "V"], old)
+        if r.returncode == 0 or os.path.exists(os.path.join(d, "handoff", "responses", "V.json")) \
+                or "Update the savoya-quoting plugin" not in r.stderr + r.stdout:
+            problems.append("a presentation version this build cannot read was ingested, or not refused with 'update the plugin'")
     text = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
     for needle in ("handoff.py ingest", "--package", "--reading", "--stop-note", "--headcount", "British Columbia"):
         if needle not in text:
@@ -3410,15 +3413,15 @@ def lint_inventory_override():
         nq = None
     if nq is not None:
         warning = "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."
-        unit = {"key": "t1", "label": "t1", "quantity": 7, "line_total": 540078, "passenger_count": 80,
-                "pickup_date": "2027-03-20T07:40:00-07:00",
-                "vehicle_type": {"id": 26, "name": "Mercedes Sprinter Van", "capacity": 13},
-                "stops": [{"display_name": "A", "travel_time": 0}, {"display_name": "B", "travel_time": 20}],
-                "warnings": [warning],
-                "pricing_summary": {"status": "priced", "total_amount": 540078, "pricing_method": "hourly",
-                                    "rate": {"effective_rate_amount": 38577, "billing_unit": "hour"},
-                                    "calculation": {"quantity": 7}}}
-        leg, internal = nq.normalize_unit(qv.unit_from_v1(unit))
+        unit = view_unit(key="t1", label="t1", quantity=7, total_amount=540078, per_vehicle_amount=77154,
+                         passenger_count=80, pickup_date="2027-03-20T07:40:00-07:00",
+                         vehicle_type_id="26", vehicle_name="Mercedes Sprinter Van", vehicle_capacity=13,
+                         stops=[{"order": 1, "label": "A", "kind": "address"},
+                                {"order": 2, "label": "B", "kind": "address", "drive_minutes": 20}],
+                         pricing={"pricing_method": "hourly", "effective_rate_amount": 38577, "billing_unit": "hour",
+                                  "adjustments": {"temporary_rate_used": False}},
+                         warnings=[warning])
+        leg, internal = nq.normalize_unit(unit)
         if warning not in internal["warnings"]:
             problems.append("an Inventory override warning did not reach the internal warnings")
         if "Inventory override" in _json.dumps(leg):
@@ -3849,96 +3852,26 @@ def lint_email_reconciles():
     return True
 
 
-def lint_v1_v2_parity():
-    """GREEN-380: the same quote must normalize identically from either MCP response shape.
-
-    The MCP now sends a compact presentation (version 2) instead of the raw Core payload
-    plus a version 1 presentation. Every fixture that has a `raw_quote.v2.json` beside its
-    `raw_quote.json` (generated from it by tests/tools/make_v2_fixture.mts, through the MCP's
-    own mapping) is normalized both ways, and the two quote.json files must be equal apart
-    from the dates stamped at run time. Every document is rendered from quote.json alone, so
-    an equal quote.json is an equal document. A handoff fixture is read with --from-handoff;
-    a response that is not a priced quote (blocked, a rate preview) must be refused the same
-    way in both shapes."""
-    import json as _json
-    import shutil
-    import tempfile
-    nq = os.path.join(HERE, "normalize_quote.py")
-    problems, checked = [], 0
-
-    def stamp_free(path):
-        q = _json.load(open(path, encoding="utf-8"))
-        for k in ("prepared_on", "valid_until"):
-            q.get("meta", {}).pop(k, None)
-        return q
-
-    pairs = sorted(glob.glob(os.path.join(HERE, "..", "..", "*", "evals", "fixtures", "**", "raw_quote.v2.json"),
-                         recursive=True))
-    if not pairs:
-        problems.append("no raw_quote.v2.json fixtures found; regenerate them with tests/tools/make_v2_fixture.mts")
-    for v2 in pairs:
-        v1 = os.path.join(os.path.dirname(v2), "raw_quote.json")
-        name = os.path.relpath(os.path.dirname(v2), os.path.join(HERE, "..", ".."))
-        raw = _json.load(open(v1, encoding="utf-8"))
+def lint_presentation_version():
+    """GREEN-380: the plugin reads the MCP's compact quote view (presentation version 2) only.
+    Any other version must be refused with a message that says to update the plugin, never
+    read on: a newer MCP's fields would be guessed at, and an older raw payload is gone."""
+    problems = []
+    for found, raw in ((1, {"presentation": {"version": 1, "view": "quote_result", "data": {}}}),
+                       (3, {"presentation": {"version": 3, "view": "quote_result", "data": {}}}),
+                       (None, {"quote_units": [], "aggregate_total": 0})):
         try:
-            pkgs = qv.packages(raw)
+            qv.packages(raw)
+            problems.append(f"presentation version {found} was read instead of refused")
         except qv.QuoteViewError as e:
-            try:
-                qv.packages(_json.load(open(v2, encoding="utf-8")))
-                problems.append(f"{name}: v1 is refused ({e}) but v2 reads as a quote")
-            except qv.QuoteViewError:
-                checked += 1
-            continue
-        handoff = os.path.exists(os.path.join(os.path.dirname(v1), "intake.json"))
-        options = [p["key"] for p in pkgs] if qv.is_options(raw) else [None]
-        for opt in options:
-            with tempfile.TemporaryDirectory() as t:
-                outs = []
-                for tag, src in (("v1", v1), ("v2", v2)):
-                    out = os.path.join(t, f"{tag}.json")
-                    if handoff:
-                        d = os.path.join(t, f"h{tag}")
-                        shutil.copytree(os.path.dirname(v1), d)
-                        shutil.copy(src, os.path.join(d, "raw_quote.json"))
-                        cmd = [sys.executable, nq, "--from-handoff", d, out, "--prepared-by", "Parity"]
-                    else:
-                        cmd = [sys.executable, nq, src, out, "--client", "Parity"] + (["--option", opt] if opt else [])
-                    r = subprocess.run(cmd, capture_output=True, text=True, cwd=t)
-                    if r.returncode:
-                        problems.append(f"{name} {opt or ''} ({tag}): normalize failed: {(r.stderr or r.stdout).strip()[-160:]}")
-                        break
-                    outs.append(stamp_free(out))
-                if len(outs) == 2:
-                    checked += 1
-                    if outs[0] != outs[1]:
-                        diff = [k for k in sorted(set(outs[0]) | set(outs[1])) if outs[0].get(k) != outs[1].get(k)]
-                        problems.append(f"{name} {opt or ''}: v1 and v2 normalize differently (in {diff})")
-    # A newer MCP than this plugin reads is refused, loudly, never read on.
-    try:
-        qv.packages({"presentation": {"version": 3, "view": "quote_result", "data": {}}})
-        problems.append("presentation version 3 was read instead of refused")
-    except qv.QuoteViewError as e:
-        if "Update the savoya-quoting plugin" not in str(e):
-            problems.append(f"the version refusal does not tell the user to update the plugin: {e}")
-    # The CSM's intake summary reads both shapes the same way.
-    intake = os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py")
-    for v2 in pairs:
-        v1 = os.path.join(os.path.dirname(v2), "raw_quote.json")
-        outs = [subprocess.run([sys.executable, intake, "summarize", f], capture_output=True, text=True)
-                for f in (v1, v2)]
-        # Old v1 captures list the vehicles Core priced and did not choose ("alt:"). The exact
-        # tools take one vehicle per unit, so a v2 response never has any; that line alone may differ.
-        same = [ln for ln in outs[0].stdout.splitlines() if not ln.lstrip().startswith("alt:")] == \
-            outs[1].stdout.splitlines()
-        if outs[0].returncode == 0 and (outs[1].returncode or not same):
-            problems.append(f"{os.path.relpath(os.path.dirname(v2), os.path.join(HERE, '..', '..'))}: "
-                            "handoff.py summarize differs between v1 and v2")
+            if found is not None and "Update the savoya-quoting plugin" not in str(e):
+                problems.append(f"the version {found} refusal does not say to update the plugin: {e}")
     if problems:
-        print("  \u2717 v1/v2 parity")
+        print("  \u2717 presentation version")
         for b in problems:
             print(f"      - {b}")
         return False
-    print(f"  \u2713 v1/v2 parity ({checked} fixture readings normalize identically from either MCP response shape)")
+    print("  \u2713 presentation version (only the compact view is read; other versions are refused)")
     return True
 
 
@@ -4014,33 +3947,26 @@ def lint_sourced_line():
     import normalize_quote
 
     def unit(stop_area, source, primary, excess):
-        # Core's real shape for a place outside every market: the key is present and
-        # null. An ABSENT location means "unknown" and must not read as "nowhere".
-        loc = {"service_area": {"id": 1, "name": stop_area} if stop_area else None}
-        return {
-            "key": "u1", "label": "u1", "pickup_date": "2027-03-20T07:40:00-07:00",
-            "passenger_count": 4, "quantity": 1, "line_total": 100000,
-            "source_service_area": {"id": 2, "name": source} if source else None,
-            "primary_service_area": {"id": 3, "name": primary} if primary else None,
-            "excess_drive_time": excess,
-            "vehicle_type": {"id": 7, "name": "Mini Bus", "capacity": 41},
-            "stops": [{"display_name": "A", "name": "A", "travel_time": 0, "location": dict(loc),
-                       "position": {"latitude": 33.6, "longitude": -117.8}},
-                      {"display_name": "B", "name": "B", "travel_time": 14, "location": dict(loc),
-                       "position": {"latitude": 33.7, "longitude": -117.7}}],
-            "pricing_summary": {"status": "priced", "pricing_method": "transfer",
-                                "total_amount": 100000, "per_vehicle_total_amount": 100000,
-                                "rate": {"base_rate_amount": 100000,
-                                         "effective_rate_amount": 100000,
-                                         "billing_unit": "trip"},
-                                "calculation": {"quantity": 1, "passenger_count": 4},
-                                "adjustments": {}, "cancellation_hours": 2},
-            "value_option": None,
-        }
+        # The view's stop `service_area` is null for a place Core says is in no market; the
+        # key is absent when Core did not say, which must not read as "nowhere".
+        stops = [{"order": 1, "label": "A", "kind": "address", "service_area": stop_area,
+                  "latitude": 33.6, "longitude": -117.8},
+                 {"order": 2, "label": "B", "kind": "address", "service_area": stop_area,
+                  "latitude": 33.7, "longitude": -117.7, "drive_minutes": 14}]
+        fields = dict(key="u1", label="u1", pickup_date="2027-03-20T07:40:00-07:00", passenger_count=4,
+                      total_amount=100000, per_vehicle_amount=100000,
+                      vehicle_type_id="7", vehicle_name="Mini Bus", vehicle_capacity=41, stops=stops,
+                      source_service_area=source, primary_service_area=primary,
+                      pricing={"pricing_method": "transfer", "base_rate_amount": 100000,
+                               "effective_rate_amount": 100000, "billing_unit": "trip", "cancellation_hours": 2,
+                               "adjustments": {"temporary_rate_used": False}})
+        if excess:
+            fields["excess_drive_time"] = True
+        return view_unit(**fields)
 
     # (a) sourced AND excess_drive_time -> the marker, and NOT the legacy line note.
     leg, _ = normalize_quote.normalize_unit(
-        qv.unit_from_v1(unit("Orange County, CA", "San Diego, CA", "Orange County, CA", True)))
+        unit("Orange County, CA", "San Diego, CA", "Orange County, CA", True))
     if leg is None:
         problems.append("normalize_unit rejected the sourced+excess test unit")
     else:
@@ -4053,7 +3979,7 @@ def lint_sourced_line():
 
     # (b) no stop in any service area -> still sourced, with the money in the internals.
     leg, internal = normalize_quote.normalize_unit(
-        qv.unit_from_v1(unit(None, "Naples, Italy", "Naples, Italy", True)))
+        unit(None, "Naples, Italy", "Naples, Italy", True))
     if leg is None:
         problems.append("normalize_unit rejected the no-service-area test unit")
     else:
@@ -4068,7 +3994,7 @@ def lint_sourced_line():
 
     # (c) ordinary single-market unit -> neither.
     leg, _ = normalize_quote.normalize_unit(
-        qv.unit_from_v1(unit("Boston, MA", "Boston, MA", "Boston, MA", False)))
+        unit("Boston, MA", "Boston, MA", "Boston, MA", False))
     if leg and leg.get("sourced_from_other_market"):
         problems.append("an ordinary single-market unit was marked as sourced")
 
@@ -4135,33 +4061,26 @@ def lint_core_coordinates():
     which no public geocoder resolves. Two failures, no map, and the data was in the
     response the whole time.
 
-    Checks both halves: every shape Core is known to use is picked up, and a quote
-    whose stops carry coordinates makes zero network calls.
+    The MCP now reads Core's coordinates into the view. Checks both halves: the view's
+    coordinates reach quote.json, and a quote whose stops carry coordinates makes zero
+    network calls.
     """
     sys.path.insert(0, HERE)
     import normalize_quote
     import route_map
 
-    shapes = [
-        ("position.latitude", {"position": {"latitude": 32.78, "longitude": -96.80}}),
-        ("location.latitude", {"location": {"latitude": 32.78, "longitude": -96.80}}),
-        ("geo.lat/lng", {"geo": {"lat": 32.78, "lng": -96.80}}),
-        ("top-level lat/lon", {"lat": 32.78, "lon": -96.80}),
-    ]
+    # The MCP reads Core's coordinates, from whichever key Core used, into each view stop's
+    # latitude/longitude. The first half: they reach quote.json, whole pairs only.
     problems = []
-    # coordinates_of() warns on stderr when it finds an undocumented shape, which is
-    # the point of it — but these cases exercise those shapes deliberately, so the
-    # warnings are noise here rather than signal.
-    import contextlib
-    import io
-    with contextlib.redirect_stderr(io.StringIO()):
-        for label, stop in shapes:
-            if normalize_quote.coordinates_of(dict(stop)) is None:
-                problems.append(f"coordinates under {label} are dropped")
-        if normalize_quote.coordinates_of({"address": "nowhere"}) is not None:
-            problems.append("invented coordinates for a stop that has none")
-        if normalize_quote.coordinates_of({"position": {"latitude": 1}}) is not None:
-            problems.append("accepted half a coordinate pair")
+    def norm(stop):
+        return normalize_quote.normalize_stop(dict({"order": 1, "label": "A", "kind": "address"}, **stop))
+    got = norm({"latitude": 32.78, "longitude": -96.80})
+    if (got.get("lat"), got.get("lon")) != (32.78, -96.80):
+        problems.append(f"the view's coordinates did not reach quote.json: {got}")
+    if "lat" in norm({}) or "lon" in norm({}):
+        problems.append("invented coordinates for a stop that has none")
+    if "lat" in norm({"latitude": 1}):
+        problems.append("accepted half a coordinate pair")
 
     # The second half: with coordinates present, geocode() must never be reached.
     called = []
@@ -4184,7 +4103,7 @@ def lint_core_coordinates():
         for b in problems:
             print(f"      - {b}")
         return False
-    print(f"  \u2713 core coordinates ({len(shapes)} shapes read, none geocoded)")
+    print("  \u2713 core coordinates (the view's coordinates reach quote.json, none geocoded)")
     return True
 
 
@@ -4541,7 +4460,7 @@ def main():
     lint_ok = lint_greeter_leg() and lint_ok
     lint_ok = lint_handoff_contract() and lint_ok
     lint_ok = lint_sourced_line() and lint_ok
-    lint_ok = lint_v1_v2_parity() and lint_ok
+    lint_ok = lint_presentation_version() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok

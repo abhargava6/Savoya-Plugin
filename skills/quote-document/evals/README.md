@@ -14,7 +14,6 @@ Run `python3 scripts/regress.py --pdf` before every repackage. Zero failures or 
 | three-city-suv-special-event | multi-market, special-event override on one leg |
 | access-tca-wedding | group discount + compounding fuel surcharge, wave-based charter, line notes, CSM benchmark numbers |
 | whistler-iol-invitational | engine-applied discount surfaced as a line, Option A/B scenarios, out-of-market sourcing note, custom rate with no minimum |
-| boston-exact-path | exact path: standard rates on lines, contracted discount as a document line, engine drive times, airport label from display_name |
 | nine-leg-pagination | synthetic >7 lines → multi-page quote, summary on its own page, null-date fallback |
 | boston-offsite-options | vehicle-swap Option B (Sprinters vs Mini Bus) with fuel surcharge; program-total math |
 

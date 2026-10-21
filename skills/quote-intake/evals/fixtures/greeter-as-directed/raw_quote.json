@@ -1,195 +1,88 @@
 {
- "contract_version": 1,
- "quote_units": [
-  {
-   "key": "greeter_as_directed_4h",
-   "label": "Greeter — 4 hours as directed",
-   "quantity": 1,
-   "unit_total": 40420,
-   "line_total": 40420,
-   "currency": "USD",
-   "vehicle_type": {
-    "id": 12,
-    "name": "Hourly Greeter/Coordinator",
-    "capacity": null,
-    "classification": "other"
-   },
-   "passenger_count": 1,
-   "passenger_count_source": "provided",
-   "passenger_selection_source": "quote_only_fallback",
-   "pickup_date": "2027-03-20T09:00:00-07:00",
-   "timezone": "America/Los_Angeles",
-   "persisted": false,
-   "pricing_summary": {
+  "presentation": {
+    "version": 2,
+    "view": "quote_result",
+    "status": "ready",
     "estimate_type": "exact",
+    "title": "Exact quote",
     "currency_code": "USD",
-    "status": "priced",
-    "total_amount": 40420,
-    "per_vehicle_total_amount": 40420,
-    "pricing_method": "hourly",
-    "rate": {
-     "id": 55549,
-     "source": "rack",
-     "base_rate_amount": 10000,
-     "effective_rate_amount": 7699,
-     "billing_unit": "hour",
-     "minimum_hours": 2
-    },
-    "calculation": {
-     "billable_hours": 5.25,
-     "passenger_count": 1,
-     "requested_quantity": 1,
-     "required_quantity": 1,
-     "quantity": 1
-    },
-    "adjustments": {
-     "discount_basis_points": 3000,
-     "special_handling_basis_points": 0,
-     "fuel_surcharge_basis_points": 1000,
-     "temporary_rate_used": false
-    },
-    "cancellation_hours": 2,
+    "amount_unit": "cents",
     "warnings": [
-     "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-    ]
-   },
-   "travel_times": [
-    0,
-    5
-   ],
-   "limited_availability": true,
-   "excess_drive_time": false,
-   "warnings": [
-    "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   ],
-   "stops": [
-    {
-     "name": "Irvine Marriott",
-     "display_name": "18000 Von Karman Avenue, Irvine, California, US",
-     "address": "18000 Von Karman Avenue",
-     "travel_time": 0,
-     "timezone": "America/Los_Angeles",
-     "stop_number": 1,
-     "location_type": "pickup_stop",
-     "postal_code": "92612",
-     "position": {
-      "latitude": 33.6783214,
-      "longitude": -117.8497412
-     },
-     "duration": 0
-    },
-    {
-     "name": "As Directed",
-     "display_name": "As Directed - Irvine, California",
-     "travel_time": 5,
-     "timezone": "America/Los_Angeles",
-     "stop_number": 2,
-     "location_type": "dropoff_stop",
-     "position": {
-      "latitude": null,
-      "longitude": null
-     },
-     "duration": 4,
-     "as_directed": true
-    }
-   ]
-  }
- ],
- "aggregate_total": 40420,
- "currency": "USD",
- "persisted": false,
- "pricing_summary": {
-  "estimate_type": "exact",
-  "currency_code": "USD",
-  "status": "priced",
-  "total_amount": 40420,
-  "calculation": {
-   "quote_unit_count": 1
-  },
-  "warnings": [
-   "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-  ]
- },
- "warnings": [
-  "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
- ],
- "presentation": {
-  "version": 1,
-  "view": "quote_result",
-  "status": "ready",
-  "estimate_type": "exact",
-  "title": "Exact quote",
-  "currency_code": "USD",
-  "warnings": [
-   {
-    "severity": "warning",
-    "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-   }
-  ],
-  "actions": [
-   {
-    "id": "refine_quote",
-    "label": "Refine this quote",
-    "intent": "refine_quote"
-   }
-  ],
-  "data": {
-   "total_amount": 40420,
-   "quote_units": [
-    {
-     "key": "greeter_as_directed_4h",
-     "label": "Greeter — 4 hours as directed",
-     "quantity": 1,
-     "total_amount": 40420,
-     "vehicle_name": "Hourly Greeter/Coordinator",
-     "passenger_count": 1,
-     "passenger_count_source": "provided",
-     "passenger_selection_source": "quote_only_fallback",
-     "pickup_date": "2027-03-20T09:00:00-07:00",
-     "timezone": "America/Los_Angeles",
-     "stops": [
       {
-       "order": 1,
-       "label": "18000 Von Karman Avenue, Irvine, California, US",
-       "address": "18000 Von Karman Avenue",
-       "timezone": "America/Los_Angeles"
-      },
-      {
-       "order": 2,
-       "drive_minutes": 5,
-       "label": "As Directed - Irvine, California",
-       "timezone": "America/Los_Angeles"
+        "severity": "warning",
+        "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
       }
-     ],
-     "estimated_drive_minutes": 5,
-     "pricing": {
-      "pricing_method": "hourly",
-      "rate_source": "rack",
-      "base_rate_amount": 10000,
-      "effective_rate_amount": 7699,
-      "rate_amount": 7699,
-      "billing_unit": "hour",
-      "minimum_hours": 2,
-      "billable_hours": 5.25,
-      "cancellation_hours": 2,
-      "adjustments": {
-       "discount_basis_points": 3000,
-       "special_handling_basis_points": 0,
-       "fuel_surcharge_basis_points": 1000,
-       "temporary_rate_used": false
+    ],
+    "data": {
+      "total_amount": 40420,
+      "persisted": false,
+      "quote_units": [
+        {
+          "key": "greeter_as_directed_4h",
+          "label": "Greeter — 4 hours as directed",
+          "quantity": 1,
+          "total_amount": 40420,
+          "per_vehicle_amount": 40420,
+          "requested_quantity": 1,
+          "required_quantity": 1,
+          "vehicle_type_id": "12",
+          "vehicle_name": "Hourly Greeter/Coordinator",
+          "passenger_count": 1,
+          "passenger_count_source": "provided",
+          "passenger_selection_source": "quote_only_fallback",
+          "pickup_date": "2027-03-20T09:00:00-07:00",
+          "timezone": "America/Los_Angeles",
+          "stops": [
+            {
+              "order": 1,
+              "label": "Irvine Marriott",
+              "address": "18000 Von Karman Avenue, Irvine, California, US",
+              "kind": "address",
+              "latitude": 33.678321,
+              "longitude": -117.849741,
+              "timezone": "America/Los_Angeles"
+            },
+            {
+              "order": 2,
+              "drive_minutes": 5,
+              "label": "As Directed",
+              "address": "As Directed - Irvine, California",
+              "kind": "as_directed",
+              "wait_hours": 4,
+              "timezone": "America/Los_Angeles"
+            }
+          ],
+          "estimated_drive_minutes": 5,
+          "pricing": {
+            "pricing_method": "hourly",
+            "rate_source": "rack",
+            "rate_id": "55549",
+            "base_rate_amount": 10000,
+            "effective_rate_amount": 7699,
+            "rate_amount": 7699,
+            "billing_unit": "hour",
+            "minimum_hours": 2,
+            "billable_hours": 5.25,
+            "cancellation_hours": 2,
+            "adjustments": {
+              "discount_basis_points": 3000,
+              "special_handling_basis_points": 0,
+              "fuel_surcharge_basis_points": 1000,
+              "temporary_rate_used": false
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "warnings_on_every_unit": [
+        "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+      ],
+      "unquoteable_unit_keys": [],
+      "pricing": {
+        "adjustments": {
+          "temporary_rate_used": false
+        }
       }
-     },
-     "warnings": [
-      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
-     ]
     }
-   ],
-   "unquoteable_unit_keys": [],
-   "pricing": {
-    "adjustments": {
-     "temporary_rate_used": false
-    }
-   }
   }
- }
 }

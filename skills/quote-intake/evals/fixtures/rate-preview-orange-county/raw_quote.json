@@ -1,1 +1,257 @@
-{"contract_version":1,"previews":[{"key":"irvine_to_anaheim","label":"Irvine Marriott → Anaheim Convention Center","result":{"timezone":"America/Los_Angeles","hourly_rates":[{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54129,"type":"HourlyRate","amount":17325,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":1,"name":"Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"sedan","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":53439,"type":"HourlyRate","amount":20944,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":143,"name":"Premium Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"s_class","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":53438,"type":"HourlyRate","amount":18634,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":8,"name":"SUV","capacity":6,"limited_availability":false,"client_can_book":true,"classification":"suv","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54170,"type":"HourlyRate","amount":38577,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":26,"name":"Mercedes Sprinter Van","capacity":13,"limited_availability":true,"client_can_book":true,"classification":"other","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54247,"type":"HourlyRate","amount":31492,"minimum":5,"cancellation_hours":72,"vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"limited_availability":true,"client_can_book":false,"classification":"other","bus":true,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null}],"transfer_rates":[],"vehicle_rate_evaluations":[{"vehicle_type":{"id":1,"name":"Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"sedan","bus":false,"greeter":false},"market_vehicle_count":16,"hourly_rate":{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54129,"type":"HourlyRate","amount":17325,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":1,"name":"Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"sedan","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},"transfer_rate":null,"availability":{"hourly":"available","transfer":"unavailable","any_rate":true},"reason_codes":["transfer_rate_not_found"]},{"vehicle_type":{"id":143,"name":"Premium Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"s_class","bus":false,"greeter":false},"market_vehicle_count":4,"hourly_rate":{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":53439,"type":"HourlyRate","amount":20944,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":143,"name":"Premium Sedan","capacity":3,"limited_availability":false,"client_can_book":true,"classification":"s_class","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},"transfer_rate":null,"availability":{"hourly":"available","transfer":"unavailable","any_rate":true},"reason_codes":["transfer_rate_not_found"]},{"vehicle_type":{"id":8,"name":"SUV","capacity":6,"limited_availability":false,"client_can_book":true,"classification":"suv","bus":false,"greeter":false},"market_vehicle_count":23,"hourly_rate":{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":53438,"type":"HourlyRate","amount":18634,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":8,"name":"SUV","capacity":6,"limited_availability":false,"client_can_book":true,"classification":"suv","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},"transfer_rate":null,"availability":{"hourly":"available","transfer":"unavailable","any_rate":true},"reason_codes":["transfer_rate_not_found"]},{"vehicle_type":{"id":25,"name":"Exec Van","capacity":14,"limited_availability":false,"client_can_book":true,"classification":"other","bus":false,"greeter":false},"market_vehicle_count":3,"hourly_rate":null,"transfer_rate":null,"availability":{"hourly":"unavailable","transfer":"unavailable","any_rate":false},"reason_codes":["hourly_rate_not_found","transfer_rate_not_found"]},{"vehicle_type":{"id":26,"name":"Mercedes Sprinter Van","capacity":13,"limited_availability":true,"client_can_book":true,"classification":"other","bus":false,"greeter":false},"market_vehicle_count":3,"hourly_rate":{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54170,"type":"HourlyRate","amount":38577,"minimum":2,"cancellation_hours":2,"vehicle_type":{"id":26,"name":"Mercedes Sprinter Van","capacity":13,"limited_availability":true,"client_can_book":true,"classification":"other","bus":false,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},"transfer_rate":null,"availability":{"hourly":"available","transfer":"unavailable","any_rate":true},"reason_codes":["transfer_rate_not_found"]},{"vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"limited_availability":true,"client_can_book":false,"classification":"other","bus":true,"greeter":false},"market_vehicle_count":10,"hourly_rate":{"adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}],"id":54247,"type":"HourlyRate","amount":31492,"minimum":5,"cancellation_hours":72,"vehicle_type":{"id":7,"name":"Mini Bus","capacity":41,"limited_availability":true,"client_can_book":false,"classification":"other","bus":true,"greeter":false},"service_area":{"id":11554,"name":"Orange County, CA"},"primary_location":null,"secondary_location":null},"transfer_rate":null,"availability":{"hourly":"available","transfer":"unavailable","any_rate":true},"reason_codes":["transfer_rate_not_found"]},{"vehicle_type":{"id":6,"name":"Coach Bus","capacity":50,"limited_availability":true,"client_can_book":false,"classification":"other","bus":true,"greeter":false},"market_vehicle_count":3,"hourly_rate":null,"transfer_rate":null,"availability":{"hourly":"unavailable","transfer":"unavailable","any_rate":false},"reason_codes":["hourly_rate_not_found","transfer_rate_not_found"]}],"vehicle_scope":{"kind":"market","service_area":{"id":11554,"name":"Orange County, CA"},"inventory_date":"2027-03-20"},"special_event":null,"warnings":["No transfer rates found"]}}],"presentation":{"version":1,"view":"rate_preview","status":"ready","title":"Available Savoya rates","currency_code":"USD","warnings":[],"actions":[],"data":{"groups":[{"key":"irvine_to_anaheim","label":"Irvine Marriott → Anaheim Convention Center","date":{"kind":"date","value":"2027-03-20"},"timezone":"America/Los_Angeles","service_area":"Orange County, CA","service_area_id":"11554","market_inventory":true,"rows":[{"vehicle_type_id":"1","vehicle_name":"Sedan","vehicle_capacity":3,"market_vehicle_count":16,"limited_availability":false,"availability":"available","hourly_availability":"available","transfer_availability":"unavailable","reason_codes":["transfer_rate_not_found"],"minimum_hours":2,"cancellation_hours":2,"rate_source":"HourlyRate","hourly":{"availability":"available","amount":17325,"minimum_hours":2,"cancellation_hours":2,"source":"HourlyRate","adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}]},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"143","vehicle_name":"Premium Sedan","vehicle_capacity":3,"market_vehicle_count":4,"limited_availability":false,"availability":"available","hourly_availability":"available","transfer_availability":"unavailable","reason_codes":["transfer_rate_not_found"],"minimum_hours":2,"cancellation_hours":2,"rate_source":"HourlyRate","hourly":{"availability":"available","amount":20944,"minimum_hours":2,"cancellation_hours":2,"source":"HourlyRate","adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}]},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"8","vehicle_name":"SUV","vehicle_capacity":6,"market_vehicle_count":23,"limited_availability":false,"availability":"available","hourly_availability":"available","transfer_availability":"unavailable","reason_codes":["transfer_rate_not_found"],"minimum_hours":2,"cancellation_hours":2,"rate_source":"HourlyRate","hourly":{"availability":"available","amount":18634,"minimum_hours":2,"cancellation_hours":2,"source":"HourlyRate","adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}]},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"25","vehicle_name":"Exec Van","vehicle_capacity":14,"market_vehicle_count":3,"limited_availability":false,"availability":"unavailable","hourly_availability":"unavailable","transfer_availability":"unavailable","reason_codes":["hourly_rate_not_found","transfer_rate_not_found"],"hourly":{"availability":"unavailable"},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"26","vehicle_name":"Mercedes Sprinter Van","vehicle_capacity":13,"market_vehicle_count":3,"limited_availability":true,"availability":"available","hourly_availability":"available","transfer_availability":"unavailable","reason_codes":["transfer_rate_not_found"],"minimum_hours":2,"cancellation_hours":2,"rate_source":"HourlyRate","hourly":{"availability":"available","amount":38577,"minimum_hours":2,"cancellation_hours":2,"source":"HourlyRate","adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}]},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"7","vehicle_name":"Mini Bus","vehicle_capacity":41,"market_vehicle_count":10,"limited_availability":true,"availability":"available","hourly_availability":"available","transfer_availability":"unavailable","reason_codes":["transfer_rate_not_found"],"minimum_hours":5,"cancellation_hours":72,"rate_source":"HourlyRate","hourly":{"availability":"available","amount":31492,"minimum_hours":5,"cancellation_hours":72,"source":"HourlyRate","adjustments":[{"kind":"discount","basis_points":3000,"source":"company"},{"kind":"fuel_surcharge","basis_points":1000}]},"transfer":{"availability":"unavailable"}},{"vehicle_type_id":"6","vehicle_name":"Coach Bus","vehicle_capacity":50,"market_vehicle_count":3,"limited_availability":true,"availability":"unavailable","hourly_availability":"unavailable","transfer_availability":"unavailable","reason_codes":["hourly_rate_not_found","transfer_rate_not_found"],"hourly":{"availability":"unavailable"},"transfer":{"availability":"unavailable"}}],"has_usable_rates":true,"missing_vehicle_type_ids":[],"warnings":[]}]}}}
+{
+  "presentation": {
+    "version": 2,
+    "view": "rate_preview",
+    "status": "ready",
+    "title": "Available Savoya rates",
+    "currency_code": "USD",
+    "amount_unit": "cents",
+    "warnings": [],
+    "data": {
+      "groups": [
+        {
+          "key": "irvine_to_anaheim",
+          "label": "Irvine Marriott → Anaheim Convention Center",
+          "date": {
+            "kind": "date",
+            "value": "2027-03-20"
+          },
+          "timezone": "America/Los_Angeles",
+          "service_area": "Orange County, CA",
+          "service_area_id": "11554",
+          "market_inventory": true,
+          "rows": [
+            {
+              "vehicle_type_id": "1",
+              "vehicle_name": "Sedan",
+              "vehicle_capacity": 3,
+              "market_vehicle_count": 16,
+              "limited_availability": false,
+              "availability": "available",
+              "hourly_availability": "available",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "transfer_rate_not_found"
+              ],
+              "minimum_hours": 2,
+              "cancellation_hours": 2,
+              "rate_source": "HourlyRate",
+              "hourly": {
+                "availability": "available",
+                "amount": 17325,
+                "minimum_hours": 2,
+                "cancellation_hours": 2,
+                "source": "HourlyRate",
+                "adjustments": [
+                  {
+                    "kind": "discount",
+                    "basis_points": 3000,
+                    "source": "company"
+                  },
+                  {
+                    "kind": "fuel_surcharge",
+                    "basis_points": 1000
+                  }
+                ]
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "143",
+              "vehicle_name": "Premium Sedan",
+              "vehicle_capacity": 3,
+              "market_vehicle_count": 4,
+              "limited_availability": false,
+              "availability": "available",
+              "hourly_availability": "available",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "transfer_rate_not_found"
+              ],
+              "minimum_hours": 2,
+              "cancellation_hours": 2,
+              "rate_source": "HourlyRate",
+              "hourly": {
+                "availability": "available",
+                "amount": 20944,
+                "minimum_hours": 2,
+                "cancellation_hours": 2,
+                "source": "HourlyRate",
+                "adjustments": [
+                  {
+                    "kind": "discount",
+                    "basis_points": 3000,
+                    "source": "company"
+                  },
+                  {
+                    "kind": "fuel_surcharge",
+                    "basis_points": 1000
+                  }
+                ]
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "8",
+              "vehicle_name": "SUV",
+              "vehicle_capacity": 6,
+              "market_vehicle_count": 23,
+              "limited_availability": false,
+              "availability": "available",
+              "hourly_availability": "available",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "transfer_rate_not_found"
+              ],
+              "minimum_hours": 2,
+              "cancellation_hours": 2,
+              "rate_source": "HourlyRate",
+              "hourly": {
+                "availability": "available",
+                "amount": 18634,
+                "minimum_hours": 2,
+                "cancellation_hours": 2,
+                "source": "HourlyRate",
+                "adjustments": [
+                  {
+                    "kind": "discount",
+                    "basis_points": 3000,
+                    "source": "company"
+                  },
+                  {
+                    "kind": "fuel_surcharge",
+                    "basis_points": 1000
+                  }
+                ]
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "25",
+              "vehicle_name": "Exec Van",
+              "vehicle_capacity": 14,
+              "market_vehicle_count": 3,
+              "limited_availability": false,
+              "availability": "unavailable",
+              "hourly_availability": "unavailable",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "hourly_rate_not_found",
+                "transfer_rate_not_found"
+              ],
+              "hourly": {
+                "availability": "unavailable"
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "26",
+              "vehicle_name": "Mercedes Sprinter Van",
+              "vehicle_capacity": 13,
+              "market_vehicle_count": 3,
+              "limited_availability": true,
+              "availability": "available",
+              "hourly_availability": "available",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "transfer_rate_not_found"
+              ],
+              "minimum_hours": 2,
+              "cancellation_hours": 2,
+              "rate_source": "HourlyRate",
+              "hourly": {
+                "availability": "available",
+                "amount": 38577,
+                "minimum_hours": 2,
+                "cancellation_hours": 2,
+                "source": "HourlyRate",
+                "adjustments": [
+                  {
+                    "kind": "discount",
+                    "basis_points": 3000,
+                    "source": "company"
+                  },
+                  {
+                    "kind": "fuel_surcharge",
+                    "basis_points": 1000
+                  }
+                ]
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "7",
+              "vehicle_name": "Mini Bus",
+              "vehicle_capacity": 41,
+              "market_vehicle_count": 10,
+              "limited_availability": true,
+              "availability": "available",
+              "hourly_availability": "available",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "transfer_rate_not_found"
+              ],
+              "minimum_hours": 5,
+              "cancellation_hours": 72,
+              "rate_source": "HourlyRate",
+              "hourly": {
+                "availability": "available",
+                "amount": 31492,
+                "minimum_hours": 5,
+                "cancellation_hours": 72,
+                "source": "HourlyRate",
+                "adjustments": [
+                  {
+                    "kind": "discount",
+                    "basis_points": 3000,
+                    "source": "company"
+                  },
+                  {
+                    "kind": "fuel_surcharge",
+                    "basis_points": 1000
+                  }
+                ]
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            },
+            {
+              "vehicle_type_id": "6",
+              "vehicle_name": "Coach Bus",
+              "vehicle_capacity": 50,
+              "market_vehicle_count": 3,
+              "limited_availability": true,
+              "availability": "unavailable",
+              "hourly_availability": "unavailable",
+              "transfer_availability": "unavailable",
+              "reason_codes": [
+                "hourly_rate_not_found",
+                "transfer_rate_not_found"
+              ],
+              "hourly": {
+                "availability": "unavailable"
+              },
+              "transfer": {
+                "availability": "unavailable"
+              }
+            }
+          ],
+          "has_usable_rates": true,
+          "missing_vehicle_type_ids": [],
+          "warnings": []
+        }
+      ]
+    }
+  }
+}
