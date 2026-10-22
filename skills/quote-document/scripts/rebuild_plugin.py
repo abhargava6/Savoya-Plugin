@@ -9,9 +9,11 @@ skill is mounted — e.g. a claude.ai / Cowork chat doing the weekly pass.
 Usage: rebuild_plugin.py <skill_dir> <out_dir> [--bump patch|minor|major] [--package out.plugin]
                          [--mcp-url https://public-tunnel/mcp] [--package-version x.y.z-local.n]
 
---mcp-url and --package-version change only the assembled copy, for a local test build:
-the checked-in .mcp.json stays on acceptance and no repo manifest is rewritten.
-`build.py` at the repo root sets both from .env; prefer it over calling this directly.
+--mcp-url points the assembled copy at another MCP environment or a local tunnel;
+--package-version labels a local test build. Both change only the assembled copy: the
+checked-in .mcp.json stays on the default environment and no repo manifest is rewritten.
+`build.py` at the repo root sets both from --env, --mcp-url or .env; prefer it over
+calling this directly.
 """
 import argparse, json, os, shutil, zipfile
 

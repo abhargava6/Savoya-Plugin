@@ -17,7 +17,7 @@ Bundles the Savoya MCP connector with a `quote-document` skill that turns engine
 ## Components
 | Component | Purpose |
 |---|---|
-| `.mcp.json` | Savoya quoting MCP — acceptance URL. For production, change the URL and bump the version (env-var expansion isn't relied on). Auth is OAuth via `dev.auth.savoya.net`, scope `access:savoya_mcp`; CSM accounts need that scope. |
+| `.mcp.json` | Savoya quoting MCP URL for the environment this package was built for. Each CSM signs in individually with their Savoya account; the plugin bundles no OAuth client. |
 | `skills/quote-intake` | Client request → **exact** engine quote (`generate_quote_options` / `calculate_quote_units`): resolve client + stops (parallel), two questions, value/elevated summary, refine loop, handoff |
 | `skills/quote-document` | Handoff → client-facing document: six forced questions (discount, commission, format, cover, personalization, map), then PDF / email copy / HTML / DOCX / XLSX |
 
@@ -25,11 +25,11 @@ Bundles the Savoya MCP connector with a `quote-document` skill that turns engine
 Savoya ops, sales, and CSMs building quotes for clients. Not for client-side coordinators.
 
 ## Connecting to Savoya (every CSM, first use)
-The plugin registers the Savoya MCP server at `https://mcp-acceptance.savoya.net/mcp`. On first tool call Cowork starts an OAuth sign-in with `dev.auth.savoya.net`.
+The plugin registers the Savoya MCP server for the environment it was built for; the URL is in the plugin's `.mcp.json`. On first tool call Cowork starts a sign-in on that environment's Savoya login page.
 
-Sign in with your Savoya account. **There is no client ID to paste and no secret to fill in** — Claude discovers its own OAuth client identity, and the plugin bundles neither. If a client ID or secret field still appears, leave both blank. Your account must carry the `access:savoya_mcp` scope — if sign-in succeeds but tool calls fail with 403, ask engineering to grant that scope; it's not a plugin problem.
+Sign in with your Savoya account. **There is no client ID to paste and no secret to fill in** — Claude discovers its own OAuth client identity, and the plugin bundles neither. If a client ID or secret field still appears, leave both blank. If sign-in succeeds but tool calls fail with 403, ask engineering to check your Savoya role and that environment's Auth0 setup; it's not a plugin problem.
 
-For **Claude Code**, use `claude mcp add --transport http savoya https://mcp-acceptance.savoya.net/mcp` and let it register its own client via Auth0's dynamic registration endpoint.
+For **Claude Code**, use `claude mcp add --transport http savoya <MCP URL from .mcp.json>`. It signs in with Claude Code's own client identity, which works only where engineering has imported that identity into the environment's Auth0 tenant.
 
 ## Before handing this to a CSM
 Run `python3 skills/quote-document/scripts/preflight.py --admin` on their machine and follow `SETUP.md`. Without it everything still works except native PDF, full verification and route maps — and CSMs are never shown install commands.
@@ -76,11 +76,24 @@ python3 skills/quote-document/scripts/regress.py --pdf
 python3 build.py --bump patch
 ```
 
-`build.py` packages for the MCP named by `SAVOYA_MCP_URL` in `.env` (copy `.env.example`).
-Leave it empty for an acceptance build. Set it to a public HTTPS tunnel for a local test
-build, labelled `<version>-local.<timestamp>`; a local build never changes a version in the
-repo, so it refuses `--bump`. The package lands in `build/` and is checked before its path
-is printed.
+`build.py` packages for one MCP environment:
+
+```bash
+python3 build.py                                  # whatever SAVOYA_MCP_URL in .env names
+python3 build.py --env staging --bump patch       # a named environment, ignoring .env
+python3 build.py --mcp-url https://<tunnel>/mcp   # a local tunnel, ignoring .env
+```
+
+Without `--env` or `--mcp-url`, it uses `SAVOYA_MCP_URL` from the environment or `.env`
+(copy `.env.example`), and falls back to the checked-in `.mcp.json` (acceptance).
+The named environments are listed in `ENVIRONMENTS` at the top of `build.py`:
+`acceptance` is `https://mcp-acceptance.savoya.net/mcp` and `staging` is `https://mcp-staging.savoya.net/mcp`.
+
+A named environment is a release build, packaged as `savoya-quoting-<version>-<env>.plugin`.
+Any other URL is a local test build labelled `<version>-local.<timestamp>`; it never changes a
+version in the repo, so it refuses `--bump`. Only the packaged `.mcp.json` changes; the
+checked-in one stays on acceptance. The package lands in `build/` and is checked before its
+path is printed.
 
 **Never bump a version by hand.** The build reads
 `skills/quote-document/assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the
@@ -89,8 +102,9 @@ never reads. Edit the obvious file and the package comes out labelled with the n
 carrying the old content. `--bump major|minor|patch` or `PLUGIN_VERSION=x.y.z` writes every
 copy. The paired-docs guard catches the mismatch now; the habit is the real control.
 
-Zip the contents of the build folder as `savoya-quoting.plugin` and upload it over the
-existing plugin. **Plugin content is read into a session's container when that session
+Upload the package from `build/` over the existing plugin.
+Every environment's package is named `savoya-quoting`, so a Claude organization holds one
+environment at a time; uploading another environment's package replaces it. **Plugin content is read into a session's container when that session
 starts**, so test in a brand-new chat — an open one keeps the old copy.
 
 ### What the regression suite checks

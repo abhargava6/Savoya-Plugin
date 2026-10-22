@@ -27,9 +27,11 @@ python3 skills/quote-document/scripts/regress.py --pdf     # must be green
 python3 build.py --bump patch                               # package into build/
 ```
 
-`build.py` reads `SAVOYA_MCP_URL` from `.env` (see `.env.example`): empty builds for
-acceptance, a public HTTPS tunnel builds a `<version>-local.<timestamp>` test package that
-changes nothing in the repo.
+`build.py --env acceptance|staging` builds a release for that MCP environment
+(`savoya-quoting-<version>-<env>.plugin`); `--mcp-url https://<tunnel>/mcp` builds a
+`<version>-local.<timestamp>` test package that changes nothing in the repo. With neither,
+it reads `SAVOYA_MCP_URL` from `.env` (see `.env.example`) and falls back to acceptance.
+Named environments live in `ENVIRONMENTS` in `build.py`.
 
 **Never hand-edit a version number.** The build reads
 `assets/plugin-root/plugin.json`; `.claude-plugin/plugin.json` is the obvious file to
@@ -216,8 +218,8 @@ promoted fixtures come in.
 
 - `covers-src/` (the source cover PDFs behind `assets/covers/*.jpg`) is not in this repo.
   `make_covers.py` needs it; ask Ayush for the originals before regenerating covers.
-- `.mcp.json` points at `mcp-acceptance.savoya.net`. Production needs a URL change and a
-  version bump.
+- `.mcp.json` points at `mcp-acceptance.savoya.net`; `build.py --env` rewrites only the
+  packaged copy. Production needs an entry in `ENVIRONMENTS` and a version bump.
 - **Special-event pricing has no fixture.** `three-city-suv-special-event` is now a misnomer;
   reproducing that path needs a service date with a known event.
 - **A comparison where no option has a stored rate cannot be captured.**
