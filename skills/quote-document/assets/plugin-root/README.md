@@ -17,7 +17,7 @@ Bundles the Savoya MCP connector with a `quote-document` skill that turns engine
 ## Components
 | Component | Purpose |
 |---|---|
-| `.mcp.json` | Savoya quoting MCP — acceptance URL. For production, change the URL and bump the version (env-var expansion isn't relied on). Auth is OAuth via `dev.auth.savoya.net`, scope `access:savoya_mcp`; CSM accounts need that scope. |
+| `.mcp.json` | Savoya quoting MCP URL for the environment this package was built for. Each CSM signs in individually with their Savoya account; the plugin bundles no OAuth client. |
 | `skills/quote-intake` | Client request → **exact** engine quote (`generate_quote_options` / `calculate_quote_units`): resolve client + stops (parallel), two questions, value/elevated summary, refine loop, handoff |
 | `skills/quote-document` | Handoff → client-facing document: six forced questions (discount, commission, format, cover, personalization, map), then PDF / email copy / HTML / DOCX / XLSX |
 
@@ -25,11 +25,11 @@ Bundles the Savoya MCP connector with a `quote-document` skill that turns engine
 Savoya ops, sales, and CSMs building quotes for clients. Not for client-side coordinators.
 
 ## Connecting to Savoya (every CSM, first use)
-The plugin registers the Savoya MCP server at `https://mcp-acceptance.savoya.net/mcp`. On first tool call Cowork starts an OAuth sign-in with `dev.auth.savoya.net`.
+The plugin registers the Savoya MCP server for the environment it was built for; the URL is in the plugin's `.mcp.json`. On first tool call Cowork starts a sign-in on that environment's Savoya login page.
 
-Sign in with your Savoya account. **There is no client ID to paste and no secret to fill in** — Claude discovers its own OAuth client identity, and the plugin bundles neither. If a client ID or secret field still appears, leave both blank. Your account must carry the `access:savoya_mcp` scope — if sign-in succeeds but tool calls fail with 403, ask engineering to grant that scope; it's not a plugin problem.
+Sign in with your Savoya account. **There is no client ID to paste and no secret to fill in** — Claude discovers its own OAuth client identity, and the plugin bundles neither. If a client ID or secret field still appears, leave both blank. If sign-in succeeds but tool calls fail with 403, ask engineering to check your Savoya role and that environment's Auth0 setup; it's not a plugin problem.
 
-For **Claude Code**, use `claude mcp add --transport http savoya https://mcp-acceptance.savoya.net/mcp` and let it register its own client via Auth0's dynamic registration endpoint.
+For **Claude Code**, use `claude mcp add --transport http savoya <MCP URL from .mcp.json>`. It signs in with Claude Code's own client identity, which works only where engineering has imported that identity into the environment's Auth0 tenant.
 
 ## Before handing this to a CSM
 Run `python3 skills/quote-document/scripts/preflight.py --admin` on their machine and follow `SETUP.md`. Without it everything still works except native PDF, full verification and route maps — and CSMs are never shown install commands.
