@@ -1,0 +1,23 @@
+{
+  "ts": "2026-10-24T23:56:46+00:00",
+  "user": "Ayush Bhargava",
+  "client": "Yerdle",
+  "deliverable": "pdf",
+  "feedback": {
+    "worked": null,
+    "change": null,
+    "fixed": null,
+    "workaround": null,
+    "resolved_in_session": false,
+    "pass": "render",
+    "status": "pending",
+    "answered": false,
+    "declined": false
+  },
+  "placeholders": [
+    "Scenario reading: Transfer 1: 4 Sprinter Vans (52 pax) + 5 SUVs (28 pax), 7:40am 3/20/2027, Sprinter inventory overridden by CSM",
+    "Scenario reading: Transfer 2: 2 Sprinter Vans, 25 pax, 2:15pm 3/20/2027, separate transfer (6.5h gap)"
+  ],
+  "plugin_version": "0.27.6",
+  "version": 1
+}

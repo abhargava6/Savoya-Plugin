@@ -6,8 +6,8 @@ The MCP returns a successful quote as `{ "presentation": {...} }` and nothing el
 compact quote view, presentation version 2 (savoya-quote-mcp
 `src/domains/quotes/presentationContracts.ts`). The MCP has already read Core's raw
 payload, so airports, service areas, coordinates and drive times arrive in one shape.
-Any other presentation version is REFUSED, loudly, with a message saying to update the
-plugin: reading on would be guessing.
+Any other presentation version is REFUSED, loudly: a newer one says to update the plugin, an
+older one says the connector is behind. Reading on would be guessing.
 
     packages(raw) -> [{key, label, strategy, total_cents, units, estimate_type,
                        currency, persisted, warnings, unpriced}]
@@ -37,14 +37,29 @@ def version(raw):
         raise QuoteViewError("The quote response is not a JSON object.")
     presentation = raw.get("presentation")
     if not isinstance(presentation, dict):
+        if "quote_units" in raw or "aggregate_total" in raw:
+            # The raw Core payload the connector sent before the compact view existed.
+            raise QuoteViewError(
+                "This quote came back as the old raw payload, not the compact quote view this build "
+                f"of the savoya-quoting plugin reads (presentation version {PRESENTATION_VERSION}). The Savoya quoting "
+                "connector is older than this plugin. Do not use this result; tell Savoya engineering "
+                "the connector needs to serve the compact quote view, then run the quote again.")
         raise QuoteViewError("The response carries no presentation, so it is not a Savoya quote result. "
                              "Paste the whole tool result, unedited.")
     found = presentation.get("version")
-    if found != PRESENTATION_VERSION:
+    if isinstance(found, int) and found > PRESENTATION_VERSION:
+        # The MCP is newer than this plugin: the fix is on the user's side.
         raise QuoteViewError(
             f"This quote came back in MCP presentation version {found}, which this build of the "
             f"savoya-quoting plugin cannot read (it reads version {PRESENTATION_VERSION}). Update the "
             "savoya-quoting plugin, start a new chat, and run the quote again.")
+    if found != PRESENTATION_VERSION:
+        # The MCP is older than this plugin (or sent no version): updating the plugin cannot help.
+        raise QuoteViewError(
+            f"This quote came back in MCP presentation version {found}, but this build of the "
+            f"savoya-quoting plugin reads version {PRESENTATION_VERSION} only. The Savoya quoting "
+            "connector is older than this plugin. Do not use this result; tell Savoya engineering "
+            "the connector needs to serve the compact quote view, then run the quote again.")
     return found
 
 

@@ -1,0 +1,237 @@
+{
+ "presentation": {
+  "version": 2,
+  "view": "quote_result",
+  "status": "ready",
+  "estimate_type": "exact",
+  "title": "Exact quote",
+  "currency_code": "USD",
+  "amount_unit": "cents",
+  "warnings": [
+   {
+    "severity": "warning",
+    "message": "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 4 requested."
+   },
+   {
+    "severity": "warning",
+    "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+   }
+  ],
+  "data": {
+   "total_amount": 520020,
+   "quote_units": [
+    {
+     "key": "t1_sprinters",
+     "label": "Transfer 1: Sprinter Vans, 18000 Von Karman Ave to 6001 Oak Canyon",
+     "quantity": 4,
+     "total_amount": 204480,
+     "per_vehicle_amount": 51120,
+     "requested_quantity": 4,
+     "required_quantity": 4,
+     "quoted_hours": 1.25,
+     "vehicle_type_id": "26",
+     "vehicle_name": "Mercedes Sprinter Van",
+     "vehicle_capacity": 13,
+     "passenger_count": 52,
+     "passenger_count_source": "provided",
+     "passenger_selection_source": "quote_only_fallback",
+     "pickup_date": "2027-03-20T07:40:00-07:00",
+     "timezone": "America/Los_Angeles",
+     "primary_service_area": "Orange County, CA",
+     "source_service_area": "Orange County, CA",
+     "stops": [
+      {
+       "order": 1,
+       "label": "18000 Von Karman Ave",
+       "address": "18000 Von Karman Avenue, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.67833,
+       "longitude": -117.849596,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      },
+      {
+       "order": 2,
+       "drive_minutes": 14,
+       "label": "6001 Oak Canyon",
+       "address": "6001 Oak Canyon, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.680369,
+       "longitude": -117.768421,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      }
+     ],
+     "estimated_drive_minutes": 14,
+     "pricing": {
+      "pricing_method": "hourly",
+      "rate_source": "rack",
+      "rate_id": "53066",
+      "base_rate_amount": 28400,
+      "effective_rate_amount": 25560,
+      "billing_unit": "hour",
+      "minimum_hours": 2,
+      "billable_hours": 2,
+      "cancellation_hours": 2,
+      "adjustments": {
+       "discount_basis_points": 1000,
+       "special_handling_basis_points": 0,
+       "fuel_surcharge_basis_points": 0,
+       "temporary_rate_used": false
+      }
+     },
+     "warnings": [
+      "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 4 requested.",
+      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+     ]
+    },
+    {
+     "key": "t1_suvs",
+     "label": "Transfer 1: SUVs, 18000 Von Karman Ave to 6001 Oak Canyon",
+     "quantity": 5,
+     "total_amount": 213300,
+     "per_vehicle_amount": 42660,
+     "requested_quantity": 1,
+     "required_quantity": 5,
+     "quoted_hours": 1.25,
+     "vehicle_type_id": "8",
+     "vehicle_name": "SUV",
+     "vehicle_capacity": 6,
+     "passenger_count": 28,
+     "passenger_count_source": "provided",
+     "passenger_selection_source": "quote_only_fallback",
+     "pickup_date": "2027-03-20T07:40:00-07:00",
+     "timezone": "America/Los_Angeles",
+     "primary_service_area": "Orange County, CA",
+     "source_service_area": "Orange County, CA",
+     "stops": [
+      {
+       "order": 1,
+       "label": "18000 Von Karman Ave",
+       "address": "18000 Von Karman Avenue, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.67833,
+       "longitude": -117.849596,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      },
+      {
+       "order": 2,
+       "drive_minutes": 14,
+       "label": "6001 Oak Canyon",
+       "address": "6001 Oak Canyon, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.680369,
+       "longitude": -117.768421,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      }
+     ],
+     "estimated_drive_minutes": 14,
+     "pricing": {
+      "pricing_method": "hourly",
+      "rate_source": "rack",
+      "rate_id": "52264",
+      "base_rate_amount": 23700,
+      "effective_rate_amount": 21330,
+      "billing_unit": "hour",
+      "minimum_hours": 2,
+      "billable_hours": 2,
+      "cancellation_hours": 2,
+      "adjustments": {
+       "discount_basis_points": 1000,
+       "special_handling_basis_points": 0,
+       "fuel_surcharge_basis_points": 0,
+       "temporary_rate_used": false
+      }
+     },
+     "warnings": [
+      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+     ]
+    },
+    {
+     "key": "t2",
+     "label": "Transfer 2: 6001 Oak Canyon to 18000 Von Karman Ave",
+     "quantity": 2,
+     "total_amount": 102240,
+     "per_vehicle_amount": 51120,
+     "requested_quantity": 1,
+     "required_quantity": 2,
+     "quoted_hours": 1.25,
+     "vehicle_type_id": "26",
+     "vehicle_name": "Mercedes Sprinter Van",
+     "vehicle_capacity": 13,
+     "passenger_count": 25,
+     "passenger_count_source": "provided",
+     "passenger_selection_source": "quote_only_fallback",
+     "pickup_date": "2027-03-20T14:15:00-07:00",
+     "timezone": "America/Los_Angeles",
+     "primary_service_area": "Orange County, CA",
+     "source_service_area": "Orange County, CA",
+     "stops": [
+      {
+       "order": 1,
+       "label": "6001 Oak Canyon",
+       "address": "6001 Oak Canyon, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.680369,
+       "longitude": -117.768421,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      },
+      {
+       "order": 2,
+       "drive_minutes": 15,
+       "label": "18000 Von Karman Ave",
+       "address": "18000 Von Karman Avenue, Irvine, California, US",
+       "kind": "address",
+       "latitude": 33.67833,
+       "longitude": -117.849596,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Orange County, CA"
+      }
+     ],
+     "estimated_drive_minutes": 15,
+     "pricing": {
+      "pricing_method": "hourly",
+      "rate_source": "rack",
+      "rate_id": "53066",
+      "base_rate_amount": 28400,
+      "effective_rate_amount": 25560,
+      "billing_unit": "hour",
+      "minimum_hours": 2,
+      "billable_hours": 2,
+      "cancellation_hours": 2,
+      "adjustments": {
+       "discount_basis_points": 1000,
+       "special_handling_basis_points": 0,
+       "fuel_surcharge_basis_points": 0,
+       "temporary_rate_used": false
+      }
+     },
+     "warnings": [
+      "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+     ]
+    }
+   ],
+   "unquoteable_unit_keys": [],
+   "warnings_on_every_unit": [],
+   "persisted": false,
+   "pricing": {
+    "adjustments": {
+     "temporary_rate_used": false
+    }
+   }
+  }
+ },
+ "merged_packages": {
+  "A": {
+   "aggregate_total": 520020,
+   "unit_keys": [
+    "t1_sprinters",
+    "t1_suvs",
+    "t2"
+   ]
+  }
+ }
+}

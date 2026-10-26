@@ -1,7 +1,8 @@
 <title>Quoting MCP Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
 <style>
-  /* Layout: a short contents list, then ten sections, each one diagram in a scrolling
+  /* Layout: a short contents list, a security review, then thirteen sections, each one diagram in a scrolling
      frame with the reasoning beneath it rather than inside the picture. */
   :root{
     --bg:#FAF8F5; --ink:#1A1A1A; --muted:#6B6560; --rule:#E6E1DC;
@@ -30,7 +31,8 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
-       line-height:1.55;-webkit-font-smoothing:antialiased;padding-inline:16px}
+       line-height:1.55;-webkit-font-smoothing:antialiased;
+       padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .wrap{max-width:1300px;margin:0 auto;padding-block:30px 72px}
   h1{font-family:var(--display);font-weight:400;font-size:clamp(23px,3.6vw,32px);
      margin:0 0 6px;text-wrap:balance}
@@ -69,10 +71,11 @@
 
 <div class="wrap">
   <h1>Quoting MCP — architecture diagrams</h1>
-  <p class="sub">Companion to <code>PRD_TDD_Quoting_MCP.md</code> — the same diagrams, rendered large. Source of truth for the logic itself is <code>skills/quote-intake/references/decision-tree.md</code>; this page is the system-level picture around it.</p>
-  <p class="ver">plugin v0.27.6 · twelve-tool contract · refreshed 18 Oct 2026 against the plugin source</p>
+  <p class="sub">Companion to <code>PRD_TDD_Quoting_MCP.md</code> — the same diagrams, rendered large. Source of truth for the logic itself is <code>skills/quote-intake/references/decision-tree.md</code>; this page is the system-level picture around it, across all three codebases.</p>
+  <p class="ver">plugin savoya-quoting v0.27.6 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · reconciled 24 Oct 2026 against all three sources</p>
 
   <ul class="toc">
+    <li><a href="#security">Security review for go-live</a></li>
     <li><a href="#arch">1 · System architecture</a></li>
     <li><a href="#tools">2 · The twelve tools</a></li>
     <li><a href="#money">3 · Money ownership — C1–C5</a></li>
@@ -82,21 +85,72 @@
     <li><a href="#document">7 · quote-document flow</a></li>
     <li><a href="#capture">8 · The capture loop</a></li>
     <li><a href="#core">9 · Core QuoteBuilder</a></li>
-    <li><a href="#auth">10 · Auth — today vs. planned</a></li>
+    <li><a href="#auth">10 · Authentication</a></li>
     <li><a href="#setup">11 · Setup, and how it fails</a></li>
+    <li><a href="#answered">12 · Open questions the code answers</a></li>
+    <li><a href="#approval">13 · Rollout and what approval covers</a></li>
   </ul>
+
+  <div class="note new"><b>What changed on 19 Oct: this page now reads all three codebases, and answers the architecture review.</b> Earlier revisions described the MCP server and Core from Ethan's change inventory. This one is checked against the source of <code>savoya-mcp</code> (TypeScript) and the Core branch <code>feat/savoya-mcp-main</code> (Rails). The largest correction: <b><code>QuoteBuilder</code> is not a future parallel path. It is the Core API behind every one of the twelve tools today</b>, and the MCP server calls nothing else in Core. §1, §9 and §10 are rewritten to match, §12 closes the decision items that assumed otherwise, and the new security review below answers the go-live questions point by point.</div>
+  <div class="note new"><b>What changed on 24 Oct, from the Core and MCP commits of 20–22 Oct.</b> <b>Sales agents may now use the quote builder</b> (GREEN-389), alongside manager, admin and Groundwork manager. <b>Nearby markets page</b>: three per page, up to 12 per trip, and any market the CSM names at any distance; one itinerary may draw on up to seven markets. <b>Inventory override</b>: a quote unit marked <code>inventory_override</code> prices past a shortfall with a warning instead of being refused. <b>MCP traffic is labelled</b> in Core's request logs with <code>App-Name: savoya-mcp</code> and the AI tool as <code>Device-Name</code>, replacing <code>X-Savoya-Client</code>. Core was rebased onto master and cleaned up for release, which closed three loose ends in §9.</div>
+
+  <h2 id="security">Security review for go-live</h2>
+  <p class="sub">The questions raised for go-live, answered from the code as it stands, with gaps stated as gaps. Status: <b>Built</b> is in the code today, <b>Gap</b> is not handled yet, <b>Planned</b> is agreed but not built.</p>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Question</th><th>Answer</th><th>Status</th></tr>
+    <tr><td>How is security implemented?</td><td>Every call runs as the signed-in Savoya employee. Auth0 proves who they are; the MCP exchanges their token for a Core token naming the same person; Core applies its own role check and a feature flag. No shared service account, no client secret on the AI side, no machine-to-machine path. Detail and both diagrams in <a href="#auth">§10</a></td><td><b>Built</b></td></tr>
+    <tr><td>How are we rate limiting?</td><td>At the MCP, per user and per AI client: <b>60 tool calls a minute, burst 20, 4 at once per user, 100 at once per server task</b>, rejected with HTTP 429 and <code>Retry-After</code> before any Core call. At Core, every request has a work ceiling (below), and Core's existing Rack::Attack limit of 1,000 requests a minute per IP and token applies in production. The MCP limit is per server task, not shared across tasks</td><td><b>Built</b></td></tr>
+    <tr><td>What defends against misuse of the exposed tools?</td><td>Twelve tools, all read-only and labelled so. Every input is schema-validated before Core is called. Stops and nearby markets are passed as <b>signed, expiring references</b> that Core issued, so a caller cannot swap in a different service area or price location. Core caps the work in one request. Responses that do not match the contract are blocked, not passed on</td><td><b>Built</b></td></tr>
+    <tr><td>Is traffic from the MCP scoped at Core?</td><td><b>Not yet.</b> Core restricts <i>who</i> (admin, manager, sales agent or Groundwork manager role, flag on) and now records which app and AI tool made each call, but does not <i>enforce</i> where the call came from. The token the MCP receives is an ordinary Core user token; Core does not check which client it was issued to, so it would be accepted on any Core endpoint that user's role allows. The MCP itself only ever calls the nine quote-builder routes, and the token never leaves the MCP server. Recommended fix below</td><td><b>Gap</b></td></tr>
+    <tr><td>Architecture and authentication sequence diagrams?</td><td><a href="#arch">§1</a> is the high-level architecture; <a href="#auth">§10</a> has the authentication sequence, step by step</td><td><b>Built</b></td></tr>
+    <tr><td>Is there a filter against sharing PII with the LLM?</td><td><b>Not today.</b> Client and passenger names and emails reach the model. Phase 1 replaces client name, email and phone with a link to the client's profile page inside the MCP, with no API change. Phase 2 trims the API to return ids only, decided once the AI governance policy is final</td><td><b>Planned</b></td></tr>
+  </table></div>
+
+  <h3>Defence in depth, layer by layer</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Layer</th><th>Control</th><th>What it stops</th></tr>
+    <tr><td>Auth0</td><td>Only AI clients imported by name (Claude, ChatGPT via CIMD) may connect; open self-registration is off. Each needs an explicit grant to the MCP API. Login is Savoya's normal login, with consent to one scope, <code>access:savoya_mcp</code></td><td>Unknown apps registering themselves, or acting without the user's approval</td></tr>
+    <tr><td>MCP · entry</td><td>Checks the token's signature, issuer, audience (the MCP URL), expiry and scope on every request. Rejects machine tokens. Host header allow-list, 1 MB body limit, CORS, 60-second ceiling on each Core call</td><td>Forged, expired or wrong-audience tokens; oversized or misrouted requests</td></tr>
+    <tr><td>MCP · tools</td><td>Every tool must declare whether it reads or writes; all twelve are read-only. Inputs validated by schema. Per-user rate and concurrency limits</td><td>Malformed input reaching Core; one user or a runaway agent flooding it</td></tr>
+    <tr><td>MCP → Core</td><td>On-behalf-of exchange to a short-lived Core token for the same user. Requests no Core scopes. Tokens kept in memory only, never logged. No fallback identity: a failed exchange stops the call</td><td>A shared identity that sees everything and hides who asked</td></tr>
+    <tr><td>Core · gate</td><td><code>enable_quote_builder_api</code> flag (off by default; off returns 404 for every user). Enabled user only. Role allow-list: manager and the roles built on it (admin, sales agent, Groundwork manager)</td><td>Access by roles not approved for quoting; an environment-wide kill switch</td></tr>
+    <tr><td>Core · work</td><td>At most 40 reservation builds per quote request, 40 vehicle evaluations per rate preview or batch, 3 nearby markets, 20 service-area results. Quotes are built inside a rolled-back database savepoint and never saved</td><td>One request doing unbounded work, or writing anything</td></tr>
+    <tr><td>Core · integrity</td><td>Stop and market references are signed, expire after 24 hours, and are bound to the user who resolved them. Only a short <code>loc_…</code> handle reaches the model; the signed payload stays in Redis. Errors return codes, never internal messages</td><td>Tampering with a resolved stop or market; leaking internals through errors</td></tr>
+    <tr><td>MCP · output</td><td>Every Core response is checked against contract version 1 before the model sees it: all stops present, no persisted quote, consistent keys. A mismatch is blocked with no price</td><td>A wrong or partial quote being presented as right</td></tr>
+  </table></div>
+
+  <h3>Scoping MCP traffic at Core: the recommended fix</h3>
+  <div class="note flag"><b>Core cannot tell an MCP call from a web-app call today.</b> Both arrive as an Auth0 token for the same Core API audience, and Core looks up the user from <code>sub</code> without checking which Auth0 client the token was issued to. Since 20 Oct the MCP sends the attribution headers Core already logs for its mobile apps (<code>App-Name: savoya-mcp</code>, <code>App-Version</code>, <code>Device-Brand: AI Tool</code>, <code>Device-Name</code> set to the AI tool from the verified token), so MCP traffic is now visible by app and AI tool in Core's request logs. The headers are recorded, not checked. The exposure is narrow while the token stays inside the MCP server, but the defence should not depend on that.</div>
+  <div class="note"><b>Proposed:</b> Core reads the client identifier carried in the exchanged token (the OBO client's id) and, for that client only, allows the <code>/api/v1/quote_builder/*</code> routes and nothing else. Two ways to do it: a separate Core API audience for MCP traffic, or an allow-list keyed on the token's client claim. Either makes the scope a Core rule rather than a property of the MCP's code, and it scales: each new MCP capability adds its routes to that list explicitly. The exact claim name needs confirming against a real exchanged token.</div>
+
+  <h3>PII: what reaches the model, and the plan</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Data</th><th>Where it comes from</th><th>Reaches the model today?</th><th>Phase 1 (MCP change, no API change)</th></tr>
+    <tr><td>Client name, email, company</td><td><code>resolve_client</code></td><td>Yes</td><td>Name, email and phone replaced by a link to the client's profile page</td></tr>
+    <tr><td>Passenger name, email</td><td><code>resolve_passengers</code></td><td>Yes</td><td>Not in phase 1 scope. Decide whether to treat passengers like clients</td></tr>
+    <tr><td>Stop addresses and venue names</td><td><code>resolve_itinerary_stops</code></td><td>Yes, needed to confirm the trip</td><td>Unchanged</td></tr>
+    <tr><td>Rates and totals</td><td>rate and quote tools</td><td>Yes, the point of the tool</td><td>Unchanged; not personal data</td></tr>
+    <tr><td>Tokens, secrets, auth codes</td><td>Auth0, MCP</td><td>No. Redacted from logs; never in a tool result</td><td>Unchanged</td></tr>
+  </table></div>
+  <div class="note"><b>Phase 1, agreed by Ayush and Ethan.</b> The MCP keeps consuming the current API response unchanged and, before returning it to the chat, converts client name, email and phone into a clickable link that opens the client's profile page in the Savoya web app. The user still gets to the client in one click; the account details stay out of the conversation. <b>Phase 2</b>, when the MCP's capabilities expand: the API returns only ids where client information is asked for. That decision waits on Savoya's AI governance policy, which is still being defined.</div>
+  <div class="note flag"><b>Three details to settle while building phase 1.</b> <b>The link's visible text must not be the name or email</b>, or the data still reaches the model; use a fixed label such as "Open client profile". <b>The quote document prints "Prepared for" the client</b>, which the plugin currently takes from the resolved client, so the document flow needs the name from the user or the request instead. <b>What the user types is not filtered</b>: searching for a client by email puts that email in the chat whatever the response contains.</div>
+  <div class="note"><b>Logs.</b> The MCP logs at <code>info</code> by default, which records timing and routing only. Quote payloads and Core error previews appear only at <code>debug</code>, which should stay off in production. Core keeps its detailed diagnostics in its own logs and returns codes to the caller.</div>
+
+  <h3>When more APIs are exposed through the MCP</h3>
+  <div class="note"><b>The server is built to take a second capability without reshaping.</b> Each capability is a domain with its own tools, schemas and Core client; authentication, rate limiting and logging are shared. Three rules carry over to every new domain. <b>Every tool must state whether it writes</b>; it will not compile otherwise, so a future booking tool cannot inherit "read-only". <b>Each domain gets its own dedicated Core endpoints</b> behind the same role check and flag, never a reused web-app controller. <b>Write tools are not built yet</b>, deliberately: they need an idempotency key so a retry cannot double-book, and a prepare-then-confirm step so the user approves a payload Core issued rather than one the model composed. To add before the first new domain ships: the Core-side route allow-list above, a per-domain flag, and a review of each new response against the PII rule.</div>
 
   <div class="note new"><b>What changed since v0.23.6, which this page previously described.</b> The server went from nine tools to <b>twelve</b> and the plugin gained cross-market sourcing (§6), a commission question, and a money-ownership contract that is now the strongest constraint in the system (§3). The question set went from five to <b>six plus one conditional</b>. The capture stopped being a single arrow to Drive (§8). Nothing here is inferred from the previous revision of this page — where the two disagreed, the source won.</div>
   <div class="note new"><b>What changed from v0.26.1 to v0.27.6 (PRD R76–R111).</b> Two new gates stop a quote that cannot be trusted before any document exists: <b>a refusal is final</b> (<code>blocked.json</code>, R92) and <b>a split headcount must add up per trip</b> (R91). The user is asked <b>one question</b> after the quote, not two (R93). Saved records hold the <b>real files</b>, checksummed (R94). The commission note on this page was wrong and is corrected in §7. The guard suite grew from 28 guards and 10 fixtures to <b>46 guards and 13 fixtures</b>.</div>
+  <div class="note new"><b>Unreleased, after 0.27.6.</b> An additional discount shows even when the client has no contracted discount (R56), and fuel with no discount is its own line instead of "$0.00" (R55). A stop Core asks to confirm is the user's choice, never the session's (R83). An unreadable quote is refused by direction (NFR-6). The suite is now <b>51 guards and 15 fixtures</b>.</div>
 
   <h2 id="arch">1 · System architecture</h2>
-  <p class="sub">Three tiers: the Claude plugin (chat-native UI and orchestration), the Savoya MCP server, and Savoya Core.</p>
+  <p class="sub">Three codebases and one identity provider: the Claude plugin (workflow and guidance for the agent), the Savoya MCP server (tools, auth, limits, contract checks), Savoya Core (data, permissions and pricing), and Auth0 between them.</p>
   <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-    USER(["Savoya ops / sales / CSM user"])
+    USER(["Savoya CSM / sales / ops user"])
 
-    subgraph PLUGIN["Claude plugin — savoya-quoting v0.27.6"]
+    subgraph PLUGIN["Claude plugin — savoya-quoting v0.27.6 · repo: Savoya MCP"]
         QI["quote-intake skill<br/>nodes A–J"]
         QD["quote-document skill<br/>nodes K–Q"]
         HANDOFF[("handoff/ folder — contract 3<br/>request.md · intake.json · raw_quote.json")]
@@ -104,15 +158,20 @@ flowchart TB
         GUARDS["regress.py — 47 guards<br/>+ 13 fixtures = 60 checks"]
     end
 
-    subgraph MCP["Savoya MCP server — mcp-acceptance.savoya.net"]
-        RESOLVE["Resolution<br/>resolve_client · resolve_passengers<br/>resolve_itinerary_stops · resolve_vehicle_types<br/>resolve_service_areas"]
-        DISCOVER["Rate discovery and inventory<br/>preview_rates · preview_rate_batch<br/>lookup_nearby_markets"]
-        PRICE["Pricing — all exact<br/>calculate_quote_units · generate_quote_options<br/>calculate_sourced_quote_units<br/>calculate_temporary_quote_units"]
+    AUTH0["Auth0<br/>Savoya login · CIMD clients only<br/>MCP token · on-behalf-of exchange"]
+
+    subgraph MCP["Savoya MCP server — repo: savoya-mcp · Node 24, stateless"]
+        GATE["Entry<br/>token check: issuer, audience, expiry, scope<br/>rate limit 60/min · 4 concurrent per user"]
+        TOOLS["12 read-only tools<br/>resolution · rate discovery · exact pricing<br/>schema-validated inputs"]
+        OBO["Core client<br/>OBO token per user, in memory<br/>App-Name and Device-Name headers"]
+        CHECK["Contract check, then presentation<br/>contract_version 1 · blocks bad responses<br/>quote app UI for the host"]
     end
 
-    subgraph CORE["Savoya Core (Rails) — the web app's own backend"]
-        RES["Reservation / pricing engine<br/>shared with the live web app"]
-        QB["QuoteBuilder:: services<br/>in progress · feature-flagged off"]
+    subgraph CORE["Savoya Core (Rails) — repo: savoya · branch feat/savoya-mcp-main"]
+        QBC["QuoteBuilderController · /api/v1/quote_builder<br/>flag enable_quote_builder_api · manager, admin, sales agent roles"]
+        QB["QuoteBuilder:: services<br/>stop resolution · rate discovery · nearby markets<br/>quote units · inventory check · temporary pricing"]
+        RES["Existing reservation and pricing engine<br/>ReservationBuilder · RateProvider · QuoteUpdateStrategy<br/>shared with the live web app"]
+        REDIS[("Redis<br/>signed stop refs, 24h")]
     end
 
     DRIVE[("Google Drive<br/>the only durable capture store")]
@@ -127,26 +186,33 @@ flowchart TB
     QI -->|"writes, final: true"| HANDOFF
     HANDOFF -->|reads, asks nothing about the quote| QD
     QD -->|PDF / email copy / HTML / DOCX / XLSX| USER
-    QI <-->|"OAuth, each CSM signs in individually"| RESOLVE
-    QI --> DISCOVER
-    QI --> PRICE
-    QD -->|"a discount is a re-quote,<br/>not local arithmetic"| PRICE
+    USER <-->|"sign in once, approve access"| AUTH0
+    QI -->|"tool calls with the MCP token"| GATE
+    QD -->|"a discount is a re-quote,<br/>not local arithmetic"| GATE
+    GATE --> TOOLS --> OBO
+    OBO <-->|"exchange for a Core token,<br/>same user"| AUTH0
+    OBO -->|"Core token"| QBC
+    QBC --> QB --> RES
+    QB <--> REDIS
+    QBC -->|"result or structured error"| CHECK
+    CHECK -->|"validated result"| QI
     QI -.-> SCRIPTS
     QD --> SCRIPTS
     GUARDS -.-> SCRIPTS
-    RESOLVE --> RES
-    DISCOVER --> RES
-    PRICE --> RES
-    PRICE -.->|not yet wired| QB
     QD -->|"capture_session.py — compressed,<br/>two passes, durability reported"| DRIVE
     SCRIPTS -.->|"route_map.py only;<br/>often blocked, always optional"| OSM
 
-    classDef future stroke-dasharray: 5 5
     classDef external stroke-dasharray: 3 3
-    class QB future
     class TILES,OSRM,NOM external
 </pre>
   </div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Layer</th><th>Repository</th><th>Owns</th><th>Never does</th></tr>
+    <tr><td>Claude plugin</td><td><code>Savoya MCP/savoya-quoting</code> (Ayush)</td><td>The CSM's workflow: which tool to call and when, what to ask, how a quote becomes a client document, the money rules C1–C5, the capture loop</td><td>Pricing arithmetic. Every number is Core's</td></tr>
+    <tr><td>Savoya MCP server</td><td><code>savoya-mcp</code> (Ethan)</td><td>Tool names and schemas, token checks, the on-behalf-of exchange, rate limits, contract checks on Core's responses, the CSM-facing presentation block and quote app UI</td><td>Touch the database or hold business rules</td></tr>
+    <tr><td>Savoya Core</td><td><code>savoya</code>, branch <code>feat/savoya-mcp-main</code> (Ethan)</td><td>Who may quote, all data and search, rate hierarchy, inventory, and every price, through the same engine the web app uses</td><td>Save a reservation or quote from these routes</td></tr>
+    <tr><td>Auth0</td><td>Tenant config; desired state in Core's <code>auth0/mcp/</code></td><td>Login, consent, MCP tokens, the token exchange</td><td>Any Savoya business permission</td></tr>
+  </table></div>
   <div class="note flag"><b>The three dashed boxes are the only third-party dependency, and they are community demo services.</b> <code>route_map.py</code> alone uses them, for a street basemap and a road-shaped line. <b>The engine already supplies drive times</b> — the router's own minutes are explicitly discarded in favour of Core's — so nothing that affects a quote comes from here. Corporate networks block them routinely; the map then falls back to a basemap-free overview drawn from coordinates the engine resolved, titled differently and labelled as not showing driving routes.</div>
   <div class="note"><b>Why this shape.</b> The plugin implements no pricing arithmetic of its own — every number traces to a Core call, and that includes the discount, the fuel surcharge, vehicle quantity, billable hours and each option's total. The two-skill split exists because the jobs have different audiences: intake's only output is a number the CSM can act on, while the document flow's questions are about presentation. A quote answered in chat with no document is a complete, cheap end state.</div>
   <div class="note"><b>The tool contract is a file, and it is enforced.</b> <code>mcp-contract.md</code> holds a fenced <code>tools</code> block that <i>is</i> the contract, plus a <code>tools-removed</code> block recording what left it. A guard walks every <code>.md</code>, <code>.py</code> and <code>.json</code> in both skills and fails on any tool name outside it — matching a <i>pattern</i> for tool-shaped names rather than a list of known-removed tools, so it catches the next removal as well as the last. It raises rather than defaulting if the block is missing: a guard that silently allows everything when its input disappears is worse than no guard, because it still prints a tick.</div>
@@ -154,20 +220,21 @@ flowchart TB
   <h2 id="tools">2 · The twelve tools</h2>
   <p class="sub">The contract the regression suite enforces. The server went from nine to twelve on 9 October — three for cross-market sourcing — and lost two earlier.</p>
   <div class="scroll"><table class="tbl">
-    <tr><th>Stage</th><th>Tool</th><th>When</th></tr>
-    <tr><td rowspan="5">Resolution</td><td><code>resolve_client</code></td><td>always first, unless the name is cached</td></tr>
-    <tr><td><code>resolve_passengers</code></td><td><b>only when the user names a passenger.</b> No cache, no pre-flight check — <code>passenger_id</code> is optional and Core attaches one itself</td></tr>
-    <tr><td><code>resolve_itinerary_stops</code></td><td>one call, every stop from every leg, deduplicated</td></tr>
-    <tr><td><code>resolve_vehicle_types</code></td><td><b>once per quote, every quote</b></td></tr>
-    <tr><td><code>resolve_service_areas</code></td><td><b>new</b> — when the CSM names a market to anchor a nearby-market lookup to</td></tr>
-    <tr><td rowspan="3">Rate discovery<br/>and inventory</td><td><code>preview_rates</code></td><td>one itinerary</td></tr>
-    <tr><td><code>preview_rate_batch</code></td><td>up to 40 trips/dates. Capacity-bearing vehicles only — <b>greeters never appear, and are not reported as missing either</b></td></tr>
-    <tr><td><code>lookup_nearby_markets</code></td><td>the three nearest markets by <b>road</b> distance, each with the vehicles it <i>adds</i> and which listed markets share them, plus a signed <code>market_ref</code>; pages to the next three, or returns markets the CSM names at any distance</td></tr>
-    <tr><td rowspan="4">Pricing<br/><b>all exact</b></td><td><code>calculate_quote_units</code></td><td>one package bought together; one <code>vehicle_type_id</code> per unit</td></tr>
+    <tr><th>Stage</th><th>Tool</th><th>Core route under <code>/api/v1/quote_builder</code></th><th>When</th></tr>
+    <tr><td rowspan="5">Resolution</td><td><code>resolve_client</code></td><td><code>GET clients</code></td><td>always first, unless the name is cached</td></tr>
+    <tr><td><code>resolve_passengers</code></td><td><code>GET passengers</code></td><td><b>only when the user names a passenger.</b> No cache, no pre-flight check — <code>passenger_id</code> is optional and Core attaches one itself</td></tr>
+    <tr><td><code>resolve_itinerary_stops</code></td><td><code>POST resolve_stops</code></td><td>one call, every stop from every leg, deduplicated</td></tr>
+    <tr><td><code>resolve_vehicle_types</code></td><td><code>GET vehicle_types</code></td><td><b>once per quote, every quote</b></td></tr>
+    <tr><td><code>resolve_service_areas</code></td><td><code>GET service_areas</code></td><td><b>new</b> — when the CSM names a market to anchor a nearby-market lookup to</td></tr>
+    <tr><td rowspan="3">Rate discovery<br/>and inventory</td><td><code>preview_rates</code></td><td><code>POST rate_preview</code></td><td>one itinerary</td></tr>
+    <tr><td><code>preview_rate_batch</code></td><td><code>POST rate_preview_batch</code></td><td>up to 40 trips/dates. Capacity-bearing vehicles only — <b>greeters never appear, and are not reported as missing either</b></td></tr>
+    <tr><td><code>lookup_nearby_markets</code></td><td><code>POST nearby_markets</code></td><td>the three nearest markets by <b>road</b> distance per page, up to 12 per trip, each with the vehicles it <i>adds</i> and which listed markets share them, plus a signed <code>market_ref</code>; or any market the CSM names, at any distance</td></tr>
+    <tr><td rowspan="4">Pricing<br/><b>all exact</b></td><td><code>calculate_quote_units</code></td><td rowspan="4"><code>POST estimate_quote_units</code><br/>one Core endpoint behind all four; <code>generate_quote_options</code> makes one call per option</td><td>one package bought together; one <code>vehicle_type_id</code> per unit</td></tr>
     <tr><td><code>generate_quote_options</code></td><td>comparisons; <b>2–5</b> options, every trip in each</td></tr>
     <tr><td><code>calculate_sourced_quote_units</code></td><td><b>new</b> — a mixed-market package in one call, primary allocations included. <code>quantity</code> here means <b>vehicle count</b>, not a repeat count</td></tr>
     <tr><td><code>calculate_temporary_quote_units</code></td><td>a supplied base rate or an extra discount. Never persisted</td></tr>
   </table></div>
+  <div class="note new"><b>Checked across all three repositories.</b> The plugin's contract block, the MCP server's tool registry and the MCP's Core client agree on these twelve names, and the nine Core paths the MCP calls are exactly the nine routes the Core branch adds. There is no tool without a route and no route without a tool.</div>
   <div class="note flag"><b>Two tools were removed, and with them the whole idea of an estimate.</b> <code>plan_approximate_quote_units</code> and <code>calculate_quote_options</code> are gone from the server, recorded in the contract's <code>tools-removed</code> block, and forbidden anywhere else in the tree. <b>The plugin now has no approximate path at all</b> — the approximate one priced differently from the web app, which is why it went. What replaced it is not an estimate but a question: a profile with no passenger prices normally, and a market with no stored rate means asking the user for a temporary <b>base</b> rate and re-quoting through Core. "No rate available" is a question to the user, never an estimate.</div>
   <div class="note"><b>A supplied rate is a base rate, and that has to be said while asking.</b> $250.00/hr supplied became <b>$192.50/hr</b> effective after a 30% contracted discount and 10% fuel. A CSM who enters a partner's cost quotes the client about 23% below it, and the moment of asking is the only point where that is catchable — afterwards it looks like an ordinary price.</div>
 
@@ -283,12 +350,13 @@ sequenceDiagram
         U-->>QI: names the market, type and quantity
     end
     QI->>MCP: G · ONE quote call — generate_quote_options,<br/>calculate_quote_units, calculate_sourced_quote_units,<br/>or calculate_temporary_quote_units
-    MCP->>CORE: exact pricing path, same as the web app
-    CORE-->>MCP: quote result + a presentation block
+    MCP->>CORE: POST estimate_quote_units — exact pricing path, same as the web app
+    CORE-->>MCP: quote result, contract_version 1
+    MCP-->>QI: contract-checked result: the compact quote view,<br/>{presentation} version 2, and nothing else
     opt a greeter or on-site staff was raised
         QI->>MCP: G3 · price vehicle type 12 or 13 — the attempted<br/>price IS the rate check
     end
-    QI->>QI: H · render_presentation.py — Core's own CSM-facing view,<br/>exit 3 falls back to handoff.py summarize
+    QI->>QI: H · render_presentation.py — the MCP's CSM-facing view of Core's figures,<br/>read through quote_view.py; exit 3 falls back to handoff.py summarize
     QI->>U: the rendered view, unreworded, with every warning
     QI->>U: I · ONE question — customize it, go on to the client document (both options first when there are several), or just the quote?
     U-->>QI: refine (loop), go on, or stop here
@@ -305,7 +373,7 @@ sequenceDiagram
   <div class="note"><b>Everything is one call where it can be.</b> Stops resolve in one call for every leg; the quote is one call for every unit, mixed-market packages included. That is not only latency — a per-leg loop is how a dropped stop becomes a confident 0-minute drive time, which is why every unit also carries <code>requested_stop_count</code> so Core can tell it was handed fewer stops than were asked for.</div>
   <div class="note new"><b>Headcount and stops are gated, not just asked.</b> A stop that did not resolve gets a question for the address, never an as-directed stand-in (R83). A passenger range gets a question for the headcount, and the number goes in as <code>passenger_count</code> (R84). When a request splits the group across trips, the counts per trip must add up to the headcount (R91).</div>
   <div class="note"><b>Never happens here, by design:</b> covers, personalization, commission, maps, formats. All of that is <code>quote-document</code>'s concern. Discounts are the exception that moved — an <i>additional</i> discount is a document-flow question, answered by calling Core again rather than by adjusting the number intake produced.</div>
-  <div class="note"><b>The <code>presentation</code> block is consumed rather than ignored.</b> It is the CSM-facing internal view, so every CSM sees the same structured layout and Core's figures are printed rather than restated. It stays internal: it carries rate ids, rack-versus-effective rates and <code>limited_availability</code>. The client document is still entirely ours.</div>
+  <div class="note"><b>The <code>presentation</code> block is the only thing the plugin reads.</b> The MCP returns a successful quote as <code>{ "presentation": {...} }</code> and nothing else: the compact quote view, presentation version 2, money in cents. <code>quote_view.py</code> is the single reader for both skills, and money is passed through, never computed. It refuses any other version, and says which way to go: a <b>newer</b> version means update the plugin; an <b>older</b> version, or the old raw payload, means the connector is behind and Savoya engineering must serve the compact view (NFR-6). The view stays internal: it carries rate ids, rack-versus-effective rates and <code>limited_availability</code>. The client document is still entirely ours.</div>
 
   <h2 id="sourcing">6 · Cross-market sourcing — delivered vs. scoped</h2>
   <p class="sub">Scoped with product on 6 October as six acceptance criteria (<code>GREEN-371</code>), and built on both sides within four days. PRD R48–R51.</p>
@@ -338,6 +406,7 @@ flowchart TB
   <div class="note flag"><b>The returned counts are "additional", not totals.</b> Vehicles whose vendors already serve the reference market are excluded, because they are already counted there. A CSM reading "Market B · SUV 4" will otherwise promise a client four SUVs that may not be four <i>extra</i> ones. The counts are also <b>unconfirmed</b> and promise nothing about fulfilment.</div>
   <div class="note"><b>Any service area is sourceable, and a <code>market_ref</code> is scoped to the trip's primary market.</b> The nearby list is a display aid: a market the CSM names is looked up with <code>service_area_ids</code> at any distance. A ref obtained from Austin's lookup is rejected for a Dallas trip with a <code>source_market_ref_mismatch</code> issue. To source into Dallas, look up from Dallas.</div>
   <div class="note"><b>A quantity above inventory is Core's to price.</b> After <code>market_inventory_shortfall</code>, a CSM who has the vehicles (a vendor confirmed them by phone) overrides it; the same package goes again with <code>inventory_override: true</code> on the affected units, and Core returns the price with an internal <code>Inventory override</code> warning on each.</div>
+  <div class="note new"><b>Where sourcing lives in the code.</b> It is built in Core's <code>QuoteBuilder</code> as well as on the tool surface: <code>NearbyMarketLookup</code> ranks markets by road distance, <code>SourcingReference</code> signs each <code>market_ref</code> for 24 hours and binds it to the user and the market the lookup started from, and <code>MarketInventoryCheck</code> refuses to price more vehicles than the chosen markets hold (<code>market_inventory_shortfall</code>), unless the unit is marked <code>inventory_override</code>; then it prices and attaches a warning naming the shortfall. One itinerary may draw on up to seven markets. An expired ref returns <code>sourcing_reference_expired</code> naming the market, so the plugin can look it up again. The sourced vehicle is priced by re-running the web app's own service-area override (<code>QuoteUpdateStrategy.requote</code>), which is why it bills the primary market's rate.</div>
   <div class="note new"><b>The schema extension the design predicted was not needed.</b> The earlier design expected a <code>sources[]</code> array under each leg's pricing. In practice each allocation is already its own quote unit, so the existing per-leg structure carries it with only sourcing flags added. <b>A stop in no service area at all</b> turned out to be a real, separate case — and it broke the feature's own verifier, which rejected a sourced leg whose market matched its primary market. That is correct for an override and false by construction here, where Core reports one market as both. The real Sicily legs of a live quote failed verification.</div>
 
   <h2 id="document">7 · quote-document — handoff to deliverable</h2>
@@ -434,57 +503,130 @@ flowchart TB
   <div class="note new"><b>A blocked session leaves a record too, and the files in it are the real ones.</b> A refusal writes a packed <code>.blocked.json.gz.b64</code> envelope carrying the refusal, and the capture lists each upload with its size and sha256 and says to upload it exactly as written (R94). <code>unpack_capture.py</code> warns when a checksum does not match.</div>
   <div class="note new"><b>Replay is the most productive test in the system.</b> Eleven defects came out of three live quotes, found by replaying the captures through the build rather than by reading the session notes — and two of the eleven had been <i>introduced</i> by the previous day's fixes and were invisible any other way. The notes say what a session reported; the capture is what it actually sent and received.</div>
 
-  <h2 id="core">9 · Core QuoteBuilder — what's in progress</h2>
-  <p class="sub">Built from Ethan's change inventory. Scoped as Core-only — MCP and connector code is explicitly excluded from it. Not wired into the shipped plugin today.</p>
+  <h2 id="core">9 · Core QuoteBuilder — what the branch builds</h2>
+  <p class="sub">Read from the Core branch <code>feat/savoya-mcp-main</code>: 48 commits on top of current master (rebased 22 Oct), almost all of them new files. Not merged yet. The feature flag ships off.</p>
   <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-    subgraph NEW["New — Api::V1::QuoteBuilderController · feature-flagged off by default"]
-        CS["ClientSearch / PassengerSearch<br/>fuzzy match, no 10-passenger cap"]
-        SR["StopResolution::*<br/>address / airport / as-directed"]
-        VD["VehicleTypeSearch · EphemeralReservation<br/>RateDiscoveryBuilder · RatePreviewBatchBuilder"]
-        EQ["EstimateOptionsBuilder · QuoteUnitsEstimator<br/>exact path — parity with the web app"]
-        AQ["ApproximateQuotePlanner<br/>planning estimate, non-persisted"]
+    MCPC["Savoya MCP<br/>Core-audience user token"]
+    subgraph CTRL["Api::V1::QuoteBuilderController — 9 routes"]
+        GATES["before every action<br/>enabled user · manager-based role<br/>enable_quote_builder_api flag<br/>expand loc_ refs to signed stops"]
     end
-    subgraph EXIST["Existing Core services these changes touch"]
-        RP["Rates::RateProvider<br/>+ optional special-event arg"]
-        FB["flight_builder.rb"]
-        SV["stop_parameters_validator.rb"]
-        AP["airports_controller.rb<br/>/api/v1/airports/nearby"]
+    subgraph NEW["QuoteBuilder:: services — new"]
+        CS["ClientSearch · PassengerSearch<br/>VehicleTypeSearch"]
+        SR["StopResolution::Resolver<br/>Google Places · airports · cities<br/>nearest service area + warning"]
+        REF["StopRef · ShortStopReferences<br/>signed payload in Redis, 24h<br/>short loc_ handle to the caller"]
+        RD["RateDiscoveryBuilder · RatePreviewBatchBuilder<br/>stored rates + market inventory, max 40"]
+        NM["NearbyMarketLookup · SourcingReference<br/>nearest by road, paged · named markets · signed market_ref"]
+        QU["QuoteUnitsEstimator → EstimateOptionsBuilder<br/>MarketInventoryCheck · PricingSummaryBuilder<br/>TemporaryRateQuote · TemporaryDiscountQuote"]
     end
-    RES2["Reservation engine<br/>shared with the web app"]
+    subgraph EXIST["Existing Core code these changes touch"]
+        RB["ReservationBuilder, unsaved<br/>inside a rolled-back savepoint"]
+        RP["Rates::RateProvider<br/>+ optional special_event"]
+        QUS["QuoteUpdateStrategy.requote<br/>shared with web-app edits"]
+        NAF["Locations::NearbyAirportFinder<br/>moved out of AirportsController"]
+        VAL["FlightBuilder · StopParametersValidator<br/>accept string booleans"]
+    end
 
-    CS --> RES2
-    SR --> RES2
-    VD --> RES2
-    EQ -->|"ReservationBuilder::Builder, unsaved"| RES2
-    AQ --> RES2
-    EQ -.depends on.-> FB
-    EQ -.depends on.-> SV
-    VD -.depends on.-> RP
-    SR -.reuses.-> AP
+    MCPC --> GATES
+    GATES --> CS
+    GATES --> SR
+    GATES --> RD
+    GATES --> NM
+    GATES --> QU
+    SR --> REF
+    SR -.reuses.-> NAF
+    RD --> RP
+    QU --> RB
+    QU --> QUS
+    RB -.depends on.-> VAL
 </pre>
   </div>
-  <div class="note">Two things confirmed by the inventory itself rather than assumed: <b>the missing airline resolver is untouched</b> — nothing here resolves a real flight number, so <code>commercial_tbd: true</code> stays necessary, and the FBO sibling with it. And <b>the no-client/rack route is still unbuilt</b> — <code>ApproximateQuotePlanner</code>'s own docs say a travel-coordination profile is still required. That is the oldest unaddressed product gap in the system, and it blocks PRD R9 and R4 behind it.</div>
-  <div class="note flag"><b>The approximate path has now diverged between the two layers.</b> <code>ApproximateQuotePlanner</code> is still in the Core inventory, but the MCP tool that exposed it was removed on 7 October and the plugin has <b>no approximate path at all</b> — a guard fails the build if any file names the tool. So if the plugin is QuoteBuilder's consumer, that service currently has no consumer; if it is not, the two layers are being built to different pricing philosophies. Worth answering before anything is built on it.</div>
-  <div class="note"><b>Also worth noting about the sourcing work:</b> it landed on the MCP tool surface, not in <code>QuoteBuilder</code>, and is not mentioned anywhere in the change inventory. That is evidence toward "parallel path" rather than "replacement" — but it was never stated as a decision, which is <code>ENGINEERING.md</code> F2.</div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Change to existing Core code</th><th>What it does</th><th>Risk to the web app</th></tr>
+    <tr><td><code>Rates::RateProvider</code></td><td>Hourly and transfer lookups take an optional <code>special_event</code>; when given, group then special-event rates are used and company and default rates are skipped</td><td>Low: the default path is unchanged when the argument is absent</td></tr>
+    <tr><td><code>QuoteUpdateStrategy</code></td><td>The body becomes <code>requote(rebuild:)</code>, shared by web-app edits and sourced estimates, so both price a market change the same way</td><td>Medium: same behaviour, new seam; covered by new specs</td></tr>
+    <tr><td><code>AirportsController#nearby</code></td><td>The SQL moves into <code>Locations::NearbyAirportFinder</code>, reused by stop resolution</td><td>Low: extraction, same query</td></tr>
+    <tr><td><code>FlightBuilder</code>, <code>StopParametersValidator</code></td><td>Accept <code>"true"</code> strings and plain hashes; a commercial-TBD flight drops airline and flight number</td><td>Low to medium: affects every reservation create; specs added</td></tr>
+    <tr><td>Roles, feature flag</td><td><code>ManagerRole</code> gains the quote-builder actions, and so do the roles built on it: <code>AdminRole</code>, <code>SalesAgentRole</code> (allowed since 20 Oct, GREEN-389) and <code>GroundworkManagerRole</code>. A migration adds <code>enable_quote_builder_api</code>, off</td><td>None while the flag is off</td></tr>
+    <tr><td>Rate sheet and fuel surcharge</td><td><code>RateHelper</code>, <code>RateSheets::Builder</code> and <code>Reservation</code> now share one fuel-surcharge rule, so rate sheets honour a company's "waive all incidentals and fees" setting as reservations already did (GREEN-382)</td><td>Intended change: rate sheets for waive-all companies no longer show a fuel surcharge</td></tr>
+    <tr><td>Config</td><td>One new secret, <code>SAVOYA_SIGNED_REF_SECRET</code>, for signing stop and market refs</td><td>None; required before the flag is turned on</td></tr>
+  </table></div>
+  <div class="note new"><b>The approximate path no longer diverges.</b> Core removed <code>ApproximateQuotePlanner</code> and its route (<code>plan_quote_units</code>) on 22 Sep and the single-vehicle <code>estimate_options</code> route on 23 Sep, matching the plugin and MCP removals. All three layers now have exact pricing only.</div>
+  <div class="note">Still true, and confirmed by the branch: <b>no airline or FBO resolver</b>, so <code>commercial_tbd: true</code> stays necessary (<code>ENGINEERING.md</code> B7, B7b), and <b>no rack-only or no-client route</b>: every quote needs a travel coordination profile (F4).</div>
+  <div class="note new"><b>Loose ends fixed in the 22 Oct release cleanup.</b> The stale <code>resolve_locations</code> role entry is gone, the API contract doc no longer describes approximate results, and the <code>arm64-darwin</code> lock-file entries are removed.</div>
+  <div class="note flag"><b>Still open before merge.</b> <code>GroundworkManagerRole</code> inherits quote-builder access from <code>ManagerRole</code>; confirm that is intended. The branch also carries the Auth0 New Universal Login rollout, which changes the login page for every Savoya user, not only MCP users; it should be reviewed and released as its own change.</div>
 
-  <h2 id="auth">10 · Auth model — today vs. where this is headed</h2>
+  <h2 id="auth">10 · Authentication — how it works</h2>
+  <p class="sub">Every request runs as the signed-in Savoya employee, end to end. Two token boundaries: the AI host to the MCP, and the MCP to Core. Ethan's leadership overview, <i>How Savoya MCP Authentication Works</i>, covers the same design in plain language; this section matches it to the code.</p>
+  <h3>High-level view</h3>
   <div class="diagram">
 <pre class="mermaid">
 flowchart LR
-    subgraph T["Today"]
-        direction TB
-        P1["Claude plugin<br/>each CSM signs in individually<br/>via dev.auth.savoya.net, PKCE.<br/>The CLIENT ID is shared across<br/>installations, not the identity"] --> M1["Savoya MCP"] --> R1["Core reservation engine"]
+    U(["Savoya employee"])
+    H["Claude or ChatGPT<br/>public CIMD identity, PKCE<br/>holds an MCP token only"]
+    A["Auth0<br/>Savoya login · consent<br/>access:savoya_mcp"]
+    M["Savoya MCP<br/>verifies the MCP token<br/>exchanges it per user"]
+    C["Savoya Core<br/>user lookup by sub<br/>role · flag · data · pricing"]
+
+    U --> H
+    H <-->|"1 · sign in and approve"| A
+    H -->|"2 · MCP token on every call"| M
+    M <-->|"3 · on-behalf-of exchange"| A
+    M -->|"4 · Core token, same user"| C
+</pre>
+  </div>
+  <h3>Sequence: connect once, then every tool call</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    actor U as Savoya employee
+    participant H as Claude / ChatGPT
+    participant M as Savoya MCP
+    participant A as Auth0
+    participant C as Savoya Core
+
+    Note over U,C: Connect, once per user and AI client
+    H->>M: discover how to authenticate
+    M-->>H: protected-resource metadata, issuer = Savoya Auth0
+    H->>A: authorize, as its imported CIMD client, with PKCE
+    A->>U: Savoya login page, New Universal Login
+    U->>A: sign in, approve "Access Savoya tools using your existing permissions"
+    A-->>H: short-lived MCP token, audience = MCP URL, sub = user, scope access:savoya_mcp
+
+    Note over U,C: Every tool call
+    U->>H: ask for a quote
+    H->>M: POST /mcp, Bearer MCP token
+    M->>M: verify signature, issuer, audience, expiry, scope
+    M->>M: rate and concurrency limit, 429 if exceeded
+    alt no cached Core token for this user
+        M->>A: on-behalf-of exchange, user token + MCP's confidential client
+        A-->>M: short-lived Core-audience token, same sub, no extra scopes
     end
-    subgraph H["Where the Core work is headed"]
-        direction TB
-        P2["Claude plugin"] -->|"Auth0-issued,<br/>per end-user token"| C2["QuoteBuilderController<br/>feature flag + internal-role gate"] --> Q2["QuoteBuilder:: services"] --> R2["Core reservation engine"]
+    M->>C: /api/v1/quote_builder/..., Bearer Core token, App-Name and Device-Name headers
+    C->>C: verify token, find enabled user by sub
+    C->>C: role allows quote_builder? flag on?
+    alt allowed
+        C-->>M: result, contract_version 1
+        M->>M: contract check, then presentation
+        M-->>H: tool result
+    else denied, or token or exchange fails
+        C-->>M: error code and request id
+        M-->>H: structured blocked result, nothing falls back to wider access
     end
 </pre>
   </div>
-  <div class="note flag"><b>A correction worth being precise about.</b> Today's model is <b>not</b> a single shared identity, which is how it is sometimes described. Each CSM authenticates individually with their own Savoya account; what is shared across installations is the OAuth <i>client id</i>, a public PKCE registration. The new controller is the same shape — per the inventory it already "uses the authenticated Savoya user, limits access to internal roles", which is already per-user. So what Auth0 adds on top is not yet stated anywhere source-grounded (<code>ENGINEERING.md</code> F1).</div>
-  <div class="note flag"><b>PRD NFR-2 has never been tested on any path.</b> "A user only sees and prices what their role allows" is the one requirement in the PRD with no evidence in either direction. Per the inventory, authorization also still needs product confirmation because all internal roles are currently allowed. A restricted-role test account would settle it.</div>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Property</th><th>How the code does it</th></tr>
+    <tr><td>No secrets on the AI side</td><td>The host uses a public CIMD identity with PKCE. The only client secret is the MCP's OBO credential, held in the server's secret manager</td></tr>
+    <tr><td>Approved AI clients only</td><td>Each provider's CIMD document is imported into Auth0 and granted access individually. Open dynamic client registration is disabled</td></tr>
+    <tr><td>Narrow tokens</td><td>The MCP token works only against the MCP. The MCP's Auth0 API refuses machine tokens (<code>client: deny_all</code>). The Core grant requests no scopes</td></tr>
+    <tr><td>Core decides access</td><td>Enabled user, a manager-based role (manager, admin, sales agent, Groundwork manager), and the environment-wide flag. A valid login alone grants nothing</td></tr>
+    <tr><td>Fails closed</td><td>Missing, expired or wrong-audience tokens and failed exchanges stop the call. No service-account fallback exists in the code</td></tr>
+    <tr><td>Nothing stored</td><td>Exchanged tokens are cached in memory until a minute before expiry, never written or logged</td></tr>
+  </table></div>
+  <div class="note new"><b>This answers <code>ENGINEERING.md</code> F1.</b> The sign-in at <code>dev.auth.savoya.net</code> is already Savoya's Auth0 tenant, and it was already per CSM. What the new work adds is three things: approved CIMD clients in place of open registration, New Universal Login with Savoya branding, and the on-behalf-of exchange that lets Core identify the user from its own token rather than trusting the MCP. For the plugin, nothing changes except the MCP URL.</div>
+  <div class="note flag"><b>Two gaps remain on this path.</b> Core does not restrict which routes an MCP-issued token can reach (see the security review's recommended fix). And NFR-2 is still untested: the role check is now narrower than "any internal role", covering manager, admin, sales agent and Groundwork manager, but no account with a role outside that list has tried it end to end.</div>
   <div class="note"><code>.mcp.json</code> still points at <code>mcp-acceptance.savoya.net</code>. Production needs a URL change and a version bump.</div>
 
   <h2 id="setup">11 · Setup, and how it fails</h2>
@@ -502,5 +644,38 @@ flowchart LR
   <div class="note"><b>The setup check is the only thing that closes this.</b> It runs in two halves because neither can see the other's world: a local script reports identity, which copy is in use, the capture folder, the backlog and what the map can do here; the session then <i>calls</i> the connectors rather than assuming them — including writing a small test entry to the shared folder, since Editor access and view-only look identical until something tries to write. That entry is left in place deliberately, so the folder's owner can see whose setup is verified. Reachable by the words a CSM would actually use: <i>"check my quoting setup"</i>, <i>"is this saving?"</i>, <i>"why isn't anything showing up?"</i></div>
   <div class="note"><code>preflight.py</code> is a different thing and does not help here — it checks local Python packages for PDF, verification and maps, and never touches a connector, the folder, or identity. Neither ever shows a CSM an install command: the only technical instruction a CSM receives is Print → Save as PDF, worded for their operating system.</div>
 
-  <footer>Quoting MCP · savoya-quoting v0.27.6 · companion to <code>PRD_TDD_Quoting_MCP.md</code> in the Quoting MCP project · refreshed 18 Oct 2026 · regenerate when the architecture changes</footer>
+
+  <h2 id="answered">12 · Open questions the code answers</h2>
+  <p class="sub">Items in the plugin's <code>ENGINEERING.md</code> that were waiting on Core or the MCP server. Each answer below comes from the two codebases, not from a live session, so the ones marked "recheck" should be confirmed on acceptance.</p>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Item</th><th>The question</th><th>What the code says</th><th>Suggested status</th></tr>
+    <tr><td><b>F2</b></td><td>Is <code>QuoteBuilder</code> a replacement for the MCP surface, or parallel to it?</td><td>Neither: it is the MCP surface's backend. All twelve tools call <code>/api/v1/quote_builder/*</code> and nothing else. "Abandoned for now" no longer matches the code</td><td>Close</td></tr>
+    <tr><td><b>F1</b></td><td>What does Auth0 add over today's per-CSM OAuth?</td><td>Today's login is already Auth0. Added: CIMD clients, New Universal Login, the on-behalf-of exchange to Core (§10)</td><td>Close</td></tr>
+    <tr><td><b>F3</b></td><td>Does the exact path require a passenger?</td><td>No. <code>passenger_id</code> is optional; Core attaches an eligible passenger to the rolled-back build and reports <code>passenger_selection_source: "quote_only_fallback"</code></td><td>Close</td></tr>
+    <tr><td><b>F10</b></td><td>Is a narrower permission than "any internal role" required?</td><td>It already is: manager and the roles built on it (admin, sales agent, Groundwork manager). Every other role is refused. Still untested with a restricted account</td><td>Narrow to the test</td></tr>
+    <tr><td><b>F11</b></td><td>How does the plugin cut over?</td><td>There is no separate cutover: the plugin already uses this path on acceptance. Release order is Core first, then the MCP validator, then the plugin's production URL. Future breaking versions use accept-both, switch, retire</td><td>Close once the release order is agreed</td></tr>
+    <tr><td><b>C2</b></td><td>What is the stop-ref lifetime?</td><td>24 hours (<code>StopRef::TTL</code>). The caller sees a short <code>loc_</code> handle; the signed payload stays in Redis and is verified on every use. An invalid or expired ref returns <code>stop_reference_invalid</code></td><td>Close</td></tr>
+    <tr><td><b>B9</b></td><td>Empty <code>issues[]</code> on <code>quote_units_unavailable</code></td><td>A Core commit on 23 Sep (<code>d209779984</code>, "Identify failed quote units") adds per-unit issue paths</td><td>Recheck on acceptance</td></tr>
+    <tr><td><b>G4</b></td><td>Quote response lacks the no-local-provider warning</td><td>The API contract says the nearest-market warning propagates into unit, option and aggregate warnings. The plugin observed it missing on 8 Oct, so acceptance may run an older build</td><td>Recheck on acceptance</td></tr>
+    <tr><td><b>H5</b></td><td>Allow quoting a quantity above Savoya's inventory</td><td>Built: a quote unit marked <code>inventory_override</code> prices past a shortfall, with a warning naming the market, the inventoried count and the requested count. The plugin now prices through it and its old extension workaround is retired (R95)</td><td>Done on the plugin side</td></tr>
+  </table></div>
+  <div class="note">The plugin's decisions were made on the information available at the time. They read Ethan's change inventory, which explicitly excluded MCP code, so the link between the two layers was not visible from the plugin side.</div>
+
+  <h2 id="approval">13 · Rollout and what approval covers</h2>
+  <p class="sub">What has to happen, in order, to take this from acceptance to production, and what is still open.</p>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Step</th><th>Owner</th><th>Detail</th></tr>
+    <tr><td>Fix the Core loose ends, review and merge <code>feat/savoya-mcp-main</code></td><td>Ethan</td><td>§9. Release the Universal Login change separately if it is to be reviewed on its own</td></tr>
+    <tr><td>Add Core-side scoping for MCP tokens</td><td>Ethan</td><td>The recommended fix in the security review. Needed for go-live</td></tr>
+    <tr><td>Build PII phase 1 in the MCP</td><td>Ethan, Ayush</td><td>Client name, email and phone become a profile link. Update the plugin's document flow so "Prepared for" no longer depends on the resolved client name</td></tr>
+    <tr><td>Set <code>SAVOYA_SIGNED_REF_SECRET</code>, deploy Core, turn the flag on</td><td>Ethan</td><td>Per environment. The flag is the kill switch</td></tr>
+    <tr><td>Configure Auth0</td><td>Ethan</td><td>Eight ordered steps in Core's <code>auth0/mcp/README.md</code>: MCP API, tenant settings, CIMD clients, domain connection, OBO client, Core grant</td></tr>
+    <tr><td>Deploy the MCP server</td><td>Ethan</td><td>ECS/Fargate behind an HTTPS load balancer, two tasks or more, OBO secret in Secrets Manager (<code>docs/aws-ecs-deployment.md</code>)</td></tr>
+    <tr><td>Point the plugin at production</td><td>Ayush</td><td><code>.mcp.json</code> URL change and a version bump</td></tr>
+    <tr><td>Test NFR-2 with a restricted account</td><td>Ayush</td><td>Confirm a user outside manager, admin, sales agent and Groundwork manager is refused end to end</td></tr>
+  </table></div>
+  <div class="note flag"><b>Open for the architecture review to decide.</b> Whether Core-side scoping must ship before go-live or can follow it. Whether passengers are covered by PII phase 1 alongside clients. Whether the MCP's per-task rate limit is enough at two tasks, or needs a shared store so the limit is per user across all tasks.</div>
+  <div class="note"><code>savoya-mcp</code> also has a PDF and an <code>output/</code> folder committed to the repository; worth removing before it is shared more widely.</div>
+
+  <footer>Quoting MCP · savoya-quoting v0.27.6 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · companion to <code>PRD_TDD_Quoting_MCP.md</code> · reconciled 24 Oct 2026 · regenerate when the architecture changes</footer>
 </div>

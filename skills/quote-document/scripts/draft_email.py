@@ -135,7 +135,9 @@ def main():
         per_unit, net_line = unit_net(l), line_net(l)
         if per_unit is None or net_line is None:
             sys.exit(f"{l.get('ref') or l.get('key')}: quote.json carries no engine_net_line_cents, "
-                     f"so the email cannot state a net price Core returned. Re-run normalize_quote.py.")
+                     f"so the email cannot state a net price Core returned. This quote.json was written by a "
+                     f"plugin build older than 0.28.0. Re-run normalize_quote.py from the handoff with the "
+                     f"current plugin; if it still fails, it is a plugin fault: report it, do not edit the file.")
         if p["method"] == "hourly":
             if p.get("minimum_hours"): lines.append(f"Minimum hours: {p['minimum_hours']:g} hours")
             lines.append(f"Quoted time: {p.get('billable_hours'):g} hours" + (" per vehicle" if v["quantity"] > 1 else ""))

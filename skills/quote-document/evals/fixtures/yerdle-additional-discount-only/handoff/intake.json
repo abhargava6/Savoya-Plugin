@@ -1,0 +1,129 @@
+{
+ "contract": 3,
+ "written_by": "handoff.py write",
+ "client": {
+  "name": "Yerdle",
+  "profile_id": 201890,
+  "source": "resolve"
+ },
+ "passenger": {
+  "id": null,
+  "name": null,
+  "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"
+ },
+ "tool": "calculate_quote_units",
+ "estimate_type": "exact",
+ "quote_mode": "define",
+ "selected_option": null,
+ "option_keys": [],
+ "units": [
+  {
+   "key": "t1",
+   "label": "Transfer 1: 18000 Von Karman Ave to 6001 Oak Canyon",
+   "date": "2027-03-20T07:40:00-07:00",
+   "passenger_count": 80,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 26,
+    "name": "Mercedes Sprinter Van",
+    "quantity": 7
+   },
+   "line_total": 318080,
+   "pricing_method": "hourly",
+   "adjustments": {
+    "discount_basis_points": 0,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 0,
+    "temporary_discount_basis_points": 2000,
+    "effective_discount_basis_points": 2000,
+    "temporary_discount_amount": 79520,
+    "temporary_discount_label": "Additional discount",
+    "temporary_rate_used": false
+   }
+  },
+  {
+   "key": "t2",
+   "label": "Transfer 2: 6001 Oak Canyon to 18000 Von Karman Ave",
+   "date": "2027-03-20T14:15:00-07:00",
+   "passenger_count": 25,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 26,
+    "name": "Mercedes Sprinter Van",
+    "quantity": 2
+   },
+   "line_total": 90880,
+   "pricing_method": "hourly",
+   "adjustments": {
+    "discount_basis_points": 0,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 0,
+    "temporary_discount_basis_points": 2000,
+    "effective_discount_basis_points": 2000,
+    "temporary_discount_amount": 22720,
+    "temporary_discount_label": "Additional discount",
+    "temporary_rate_used": false
+   }
+  }
+ ],
+ "rate_sheet_shown": true,
+ "headcount_confirmed": 80,
+ "stop_resolution": [
+  {
+   "stop": "18000 Von Karman Ave",
+   "query": "18000 Von Karman Ave, Irvine, California",
+   "result": "resolved"
+  },
+  {
+   "stop": "6001 Oak Canyon",
+   "query": "6001 Oak Canyon, Irvine, California",
+   "result": "resolved"
+  }
+ ],
+ "ambiguities": [],
+ "placeholders": [
+  "Scenario reading: Transfer 1: 7 Sprinter Vans, 80 pax, 7:40am 3/20/2027, Orange County inventory overridden by CSM",
+  "Scenario reading: Transfer 2: 2 Sprinter Vans, 25 pax, 2:15pm 3/20/2027, separate transfer (6.5h gap)"
+ ],
+ "time_readings": [],
+ "overlap_decisions": [],
+ "placeholder_stops": [],
+ "flight_details": [],
+ "venue_names": [],
+ "user_supplied_facts": [],
+ "client_questions": [
+  "Onsite staff support: yes, if possible in the hotel lobby to direct customers to the shuttles",
+  "Is tax and driver gratuity included?",
+  "Cancellation policy: please provide"
+ ],
+ "final": true,
+ "selection": {
+  "select": [
+   "t1",
+   "t2"
+  ],
+  "alternatives": {}
+ },
+ "decisions": {
+  "discount_pct": 20,
+  "greeter_cost": "none",
+  "commission_pct": 5,
+  "format": "email+pdf",
+  "cover": "event-planners",
+  "personalization": "defaults",
+  "map": "yes"
+ },
+ "source_tool": "calculate_quote_units",
+ "persisted": false,
+ "aggregate_total": 408960,
+ "temporary_pricing": {
+  "rate": null,
+  "discount": {
+   "basis_points": 2000,
+   "label": "Additional discount"
+  },
+  "label": "Additional discount"
+ }
+}
