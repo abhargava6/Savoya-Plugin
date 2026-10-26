@@ -465,14 +465,23 @@ def split_problems(units, headcount):
     return out
 
 
+STOP_HOW = ("single_match", "user_pick", "user_address", "stand_in_chosen_by_user")
+
+
 def gates(a, raw, units_src, pkgs):
     """R83 and R84 (amended by R91): the rules a session kept skipping while they were only guidance."""
     notes = []
     for n in a.stop_note:
         parts = [x.strip() for x in n.split("|")]
-        if len(parts) != 3 or parts[2] not in ("resolved", "unresolved"):
-            sys.exit(f"--stop-note must be '<stop>|<query sent>|resolved' or '…|unresolved', got {n!r}")
-        notes.append({"stop": parts[0], "query": parts[1], "result": parts[2]})
+        if len(parts) not in (3, 5) or parts[2] not in ("resolved", "unresolved"):
+            sys.exit(f"--stop-note must be '<stop>|<query sent>|resolved' or '…|unresolved', optionally followed by "
+                     f"'|<stop_ref>|<how>', got {n!r}")
+        note = {"stop": parts[0], "query": parts[1], "result": parts[2]}
+        if len(parts) == 5:
+            if parts[4] not in STOP_HOW:
+                sys.exit(f"--stop-note: how a stop was settled must be one of {', '.join(STOP_HOW)}, got {parts[4]!r}")
+            note["stop_ref"], note["how"] = parts[3], parts[4]
+        notes.append(note)
     bad = [x for x in notes if x["result"] == "unresolved"]
     if bad:
         refuse(a, "R83", "a stop did not resolve (" + "; ".join(f"{x['stop']} via {x['query']!r}" for x in bad) + ").",
@@ -887,7 +896,7 @@ def main():
     w.add_argument("--alt-of", dest="alt_of", action="append", default=[], help="B_KEY=A_KEY: the Option A unit a unit replaces")
     w.add_argument("--headcount", type=int, default=None, help="the headcount the user chose when the request gave a range (R84)")
     w.add_argument("--stop-note", dest="stop_note", action="append", default=[],
-                   help="'<stop>|<query sent>|resolved|unresolved' for every stop lookup (R83); unresolved refuses the write")
+                   help="'<stop>|<query sent>|resolved|unresolved', optionally '|<stop_ref>|<how>' (how: single_match, user_pick, user_address, stand_in_chosen_by_user), for every stop lookup (R83); unresolved refuses the write")
     w.add_argument("--reading", action="append", default=[], help="how a scenario was read (vehicles, hours, headcount); R81")
     w.add_argument("--mode", default="best"); w.add_argument("--tool", default="calculate_quote_units")
     w.add_argument("--selected", default=None)

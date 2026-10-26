@@ -1,0 +1,94 @@
+{
+ "contract": 3,
+ "written_by": "handoff.py write",
+ "client": {
+  "name": "Actian",
+  "profile_id": 201932,
+  "source": "resolve"
+ },
+ "passenger": {
+  "id": null,
+  "name": null,
+  "note": "set only when the user named a passenger; otherwise Core attaches one to the unsaved quote"
+ },
+ "tool": "calculate_quote_units",
+ "estimate_type": "exact",
+ "quote_mode": "define",
+ "selected_option": null,
+ "option_keys": [],
+ "units": [
+  {
+   "key": "a1",
+   "label": "Day 1: Bangkok as-directed 7am-10pm",
+   "date": "2027-10-11T07:00:00+07:00",
+   "passenger_count": 6,
+   "structure": null,
+   "rationale": null,
+   "vehicle": {
+    "id": 7,
+    "name": "SUV",
+    "quantity": 1
+   },
+   "line_total": 600000,
+   "pricing_method": "hourly",
+   "adjustments": {
+    "discount_basis_points": 0,
+    "special_handling_basis_points": 0,
+    "fuel_surcharge_basis_points": 2000,
+    "temporary_discount_basis_points": 0,
+    "effective_discount_basis_points": 0,
+    "temporary_discount_amount": 0,
+    "temporary_rate_used": true
+   }
+  }
+ ],
+ "rate_sheet_shown": true,
+ "headcount_confirmed": 80,
+ "stop_resolution": [
+  {
+   "stop": "18000 Von Karman Ave",
+   "query": "18000 Von Karman Ave, Irvine, California",
+   "result": "resolved"
+  },
+  {
+   "stop": "6001 Oak Canyon",
+   "query": "6001 Oak Canyon, Irvine, California",
+   "result": "resolved"
+  }
+ ],
+ "ambiguities": [],
+ "placeholders": [],
+ "time_readings": [],
+ "overlap_decisions": [],
+ "placeholder_stops": [],
+ "flight_details": [],
+ "venue_names": [],
+ "user_supplied_facts": [],
+ "client_questions": [],
+ "final": true,
+ "selection": {
+  "select": [
+   "a1"
+  ],
+  "alternatives": {}
+ },
+ "decisions": {
+  "discount_pct": 0,
+  "greeter_cost": "none",
+  "commission_pct": 5,
+  "format": "email+pdf",
+  "cover": "event-planners",
+  "personalization": "defaults",
+  "map": "no"
+ },
+ "source_tool": "calculate_quote_units",
+ "persisted": false,
+ "aggregate_total": 600000,
+ "temporary_pricing": {
+  "rate": {
+   "hourly_rate_cents": 50000
+  },
+  "discount": null,
+  "label": "Temporary rate"
+ }
+}

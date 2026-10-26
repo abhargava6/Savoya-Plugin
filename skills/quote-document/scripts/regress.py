@@ -3170,6 +3170,18 @@ def lint_handoff_packages():
             problems.append(f"a resolved stop and a chosen headcount were refused: {r.stderr.strip()[:140]}")
         elif "As Directed" not in open(os.path.join(d, "handoff", "intake.json")).read():
             problems.append("the stop lookup was not recorded in intake.json")
+        # R83 amendment: a note may also carry the stop_ref and how the stop was settled (additive; the 3-field form stays valid)
+        r = run(base_w + ["--headcount", "75", "--stop-note",
+                          "Midtown|Midtown Manhattan, New York, New York|resolved|ref-81aa7a|user_pick"])
+        if r.returncode:
+            problems.append(f"a stop note with stop_ref and how was refused: {r.stderr.strip()[:140]}")
+        else:
+            notes_ = _json.load(open(os.path.join(d, "handoff", "intake.json"))).get("stop_resolution") or []
+            if not any(n_.get("how") == "user_pick" and n_.get("stop_ref") == "ref-81aa7a" for n_ in notes_):
+                problems.append("the stop_ref and how of a stop note were not recorded in intake.json")
+        r = run(base_w + ["--headcount", "75", "--stop-note", "Midtown|Midtown|resolved|ref-81aa7a|the model picked"])
+        if r.returncode == 0:
+            problems.append("a stop note with an unknown way of settling the stop was accepted")
         # The request already sits in handoff/ (a session may write it there): write must not crash copying it onto itself
         inplace = [x if x != "request.md" else os.path.join("handoff", "request.md") for x in base_w]
         r = run(inplace + ["--headcount", "75", "--stop-note", "As Directed|Whistler, British Columbia|resolved"])
@@ -3250,8 +3262,14 @@ def lint_handoff_packages():
         old = _json.dumps({"presentation": {"version": 1, "view": "quote_result", "data": {}}})
         r = run([intake, "ingest", "--name", "V"], old)
         if r.returncode == 0 or os.path.exists(os.path.join(d, "handoff", "responses", "V.json")) \
+                or "connector is older" not in r.stderr + r.stdout \
+                or "Update the savoya-quoting plugin" in r.stderr + r.stdout:
+            problems.append("a presentation version older than this build reads was ingested, or not refused as 'the connector is behind'")
+        newer = _json.dumps({"presentation": {"version": 3, "view": "quote_result", "data": {}}})
+        r = run([intake, "ingest", "--name", "W"], newer)
+        if r.returncode == 0 or os.path.exists(os.path.join(d, "handoff", "responses", "W.json")) \
                 or "Update the savoya-quoting plugin" not in r.stderr + r.stdout:
-            problems.append("a presentation version this build cannot read was ingested, or not refused with 'update the plugin'")
+            problems.append("a presentation version newer than this build reads was ingested, or not refused with 'update the plugin'")
     text = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
     for needle in ("handoff.py ingest", "--package", "--reading", "--stop-note", "--headcount", "British Columbia"):
         if needle not in text:
@@ -3852,10 +3870,123 @@ def lint_email_reconciles():
     return True
 
 
+def lint_email_no_discount():
+    """The email must draft for a quote with NO engine discount.
+
+    2026-10-25 (Actian, Bangkok): a temporary $500/hr rate, a client with no contracted
+    discount, fuel 2000 bps. `normalize_quote.py` set `engine_net_line_cents` only inside the
+    engine-discount branch, so every leg lacked it and `draft_email.py` refused with "Re-run
+    normalize_quote.py" -- advice that could not work. Every other email guard used a quote
+    that carried a discount, so none could see it. This one normalizes a quote built with
+    none, then asserts Core's net is on every leg, the email drafts, and each leg's
+    "Estimated Total" is that net. The unreadable-field message must also stop saying that
+    re-running helps when the field is simply absent.
+    """
+    import json as _json
+    import subprocess
+    import tempfile
+    fx = os.path.join(SKILL, "evals", "fixtures", "actian-no-discount-hourly", "handoff")
+    problems = []
+    if not os.path.isdir(fx):
+        print("  \u2717 email without a discount: fixture missing")
+        return False
+    with tempfile.TemporaryDirectory() as d:
+        shutil.copytree(fx, os.path.join(d, "handoff"))
+        r = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff",
+                            "handoff", "quote.json", "--prepared-by", "G"],
+                           capture_output=True, text=True, cwd=d)
+        if r.returncode:
+            problems.append(f"normalize_quote.py failed on a quote with no engine discount: {r.stderr[-200:]}")
+        else:
+            q = _json.load(open(os.path.join(d, "quote.json"), encoding="utf-8"))
+            for l in q["legs"]:
+                if l.get("engine_net_line_cents") is None or not l.get("engine_rate_units"):
+                    problems.append(f"{l.get('ref')}: no engine_net_line_cents / engine_rate_units on a no-discount leg")
+                # Fuel only, and Core's effective rate is the base rate plus that fuel to the cent:
+                # the line carries the base rate and fuel is the remainder, never "$0.00".
+                if l.get("engine_standard_line_cents") != 500000:
+                    problems.append(f"{l.get('ref')}: a fuel-only leg does not carry the base-rate line")
+            fuel = [a for a in q["adjustments"] if a.get("label") == "Fuel surcharge"]
+            if len(fuel) != 1 or fuel[0].get("amount_cents_fixed") != 100000 or q["total_cents"] != 600000:
+                problems.append("the fuel surcharge line is not Core's remainder ($1,000.00 of $6,000.00)")
+            # If Core's figures do NOT prove base + fuel == effective, keep the net presentation.
+            raw = _json.load(open(os.path.join(d, "handoff", "raw_quote.json"), encoding="utf-8"))
+            raw["presentation"]["data"]["quote_units"][0]["pricing"]["base_rate_amount"] = 45000
+            _json.dump(raw, open(os.path.join(d, "handoff", "raw_quote.json"), "w", encoding="utf-8"))
+            r2 = subprocess.run([sys.executable, os.path.join(HERE, "normalize_quote.py"), "--from-handoff",
+                                 "handoff", "q2.json", "--prepared-by", "G"], capture_output=True, text=True, cwd=d)
+            q2 = _json.load(open(os.path.join(d, "q2.json"), encoding="utf-8")) if r2.returncode == 0 else None
+            if q2 is None or q2["legs"][0].get("engine_standard_line_cents") is not None or q2["total_cents"] != 600000:
+                problems.append("a fuel quote whose rates do not add up was given a standard-rate presentation")
+            mail = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), "quote.json",
+                                   "--json", "draft.json", "--asked"],
+                                  capture_output=True, text=True, cwd=d)
+            if mail.returncode:
+                problems.append(f"draft_email.py refused a quote with no engine discount: {mail.stdout[-160:]}{mail.stderr[-160:]}")
+            else:
+                for l in q["legs"]:
+                    want = f"Estimated Total: ${l['engine_net_line_cents'] / 100:,.2f}"
+                    if want not in mail.stdout:
+                        problems.append(f"{l.get('ref')}: the email does not state Core's net ({want})")
+            for l in q["legs"]:
+                l.pop("engine_net_line_cents", None)
+            with open(os.path.join(d, "old.json"), "w", encoding="utf-8") as fh:
+                _json.dump(q, fh)
+            old = subprocess.run([sys.executable, os.path.join(HERE, "draft_email.py"), "old.json", "--asked"],
+                                 capture_output=True, text=True, cwd=d)
+            msg = old.stdout + old.stderr
+            if old.returncode == 0 or "plugin fault" not in msg:
+                problems.append("a quote.json without engine_net_line_cents was drafted, or the refusal does not say it is a plugin fault")
+    if problems:
+        print("  \u2717 email without a discount")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 email without a discount (Core's net and billed units on every leg; the email drafts and states them; a fuel-only quote shows fuel as the remainder)")
+    return True
+
+
+def lint_stop_confirmation():
+    """A stop the connector asks to confirm is the user's choice (R83 amendment, 2026-10-25).
+
+    On 2026-10-25 the connector returned `location_confirmation_required` for all five stops
+    of a Yerdle World Cup request. The session picked candidates itself, told the user "The
+    stops resolved" and recorded every stop as resolved. The connector's own text told it to
+    select an obvious match, and the plugin's `id` rule could not tell candidates apart (every
+    candidate for a stop carried one `id`). This asserts the instructions say the opposite,
+    in both places a session reads, and that the old `id` rule is gone. It checks the text:
+    behaviour is a second step (an `ingest-stops` check) that does not exist yet.
+    """
+    problems = []
+    skill = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    tree = open(os.path.join(HERE, "..", "..", "quote-intake", "references", "decision-tree.md"), encoding="utf-8").read()
+    rules = open(os.path.join(HERE, "..", "RULES.md"), encoding="utf-8").read()
+    for name, text in (("SKILL.md", skill), ("decision-tree.md", tree)):
+        for needle in ("location_confirmation_required", "needs_confirmation", "before any pricing call",
+                       "not override", "never by `id`"):
+            if needle not in text:
+                problems.append(f"{name} does not say `{needle}`")
+        if "matches the pickup's city" in text:
+            problems.append(f"{name} still tells the session to match candidates by `id`")
+    for needle in ("Two attempts at most", "quote_units_unavailable", "Never write \"resolved\" for a stop that needed confirmation"):
+        if needle not in skill:
+            problems.append(f"SKILL.md does not say `{needle}`")
+    if "needs confirmation is the user's choice" not in rules:
+        problems.append("RULES.md has no entry for the stop-confirmation rule")
+    if problems:
+        print("  \u2717 stop confirmation")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 stop confirmation (asked before pricing, never matched by id, two pricing attempts at most; instruction text only)")
+    return True
+
+
 def lint_presentation_version():
     """GREEN-380: the plugin reads the MCP's compact quote view (presentation version 2) only.
-    Any other version must be refused with a message that says to update the plugin, never
-    read on: a newer MCP's fields would be guessed at, and an older raw payload is gone."""
+    Any other version must be refused, never read on. Direction decides the words: a NEWER
+    version says to update the plugin; an OLDER one (or none) says the connector is behind,
+    because updating the plugin cannot fix that and the old advice sent people the wrong way."""
     problems = []
     for found, raw in ((1, {"presentation": {"version": 1, "view": "quote_result", "data": {}}}),
                        (3, {"presentation": {"version": 3, "view": "quote_result", "data": {}}}),
@@ -3864,8 +3995,12 @@ def lint_presentation_version():
             qv.packages(raw)
             problems.append(f"presentation version {found} was read instead of refused")
         except qv.QuoteViewError as e:
-            if found is not None and "Update the savoya-quoting plugin" not in str(e):
-                problems.append(f"the version {found} refusal does not say to update the plugin: {e}")
+            msg = str(e)
+            if found is not None and found > qv.PRESENTATION_VERSION and "Update the savoya-quoting plugin" not in msg:
+                problems.append(f"the newer version {found} refusal does not say to update the plugin: {e}")
+            if (found is None or found < qv.PRESENTATION_VERSION) and \
+                    ("connector is older" not in msg or "Update the savoya-quoting plugin" in msg):
+                problems.append(f"the older version {found} refusal does not say the connector is behind: {e}")
     if problems:
         print("  \u2717 presentation version")
         for b in problems:
@@ -4462,6 +4597,8 @@ def main():
     lint_ok = lint_sourced_line() and lint_ok
     lint_ok = lint_presentation_version() and lint_ok
     lint_ok = lint_email_reconciles() and lint_ok
+    lint_ok = lint_email_no_discount() and lint_ok
+    lint_ok = lint_stop_confirmation() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok
     lint_ok = lint_instructions_match_the_code() and lint_ok

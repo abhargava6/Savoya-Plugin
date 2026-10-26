@@ -1,0 +1,388 @@
+<title>Savoya MCP Security Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one reading column. A summary of the questions up top, then one section per
+     question: the question as asked, a one-line answer, then the detail and its diagram. */
+  :root{
+    --bg:#F6F7F6; --paper:#FFFFFF; --ink:#16201F; --muted:#56625F; --rule:#DCE2DF;
+    --accent:#1F5E6B; --accent-soft:#E4EEEF;
+    --display:"Source Serif 4",Georgia,"Times New Roman",serif;
+    --body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101615; --paper:#161E1D; --ink:#E8EEEC; --muted:#9AA8A4; --rule:#2A3533;
+      --accent:#7FC0CC; --accent-soft:#1A2B2E; color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101615; --paper:#161E1D; --ink:#E8EEEC; --muted:#9AA8A4; --rule:#2A3533;
+    --accent:#7FC0CC; --accent-soft:#1A2B2E; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+       line-height:1.6;-webkit-font-smoothing:antialiased;
+       padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:860px;margin:0 auto;padding-block:40px 80px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.4vw,38px);line-height:1.15;margin:0 0 12px;text-wrap:balance}
+  h2{font-family:var(--display);font-weight:600;font-size:23px;line-height:1.25;margin:0 0 6px;text-wrap:balance}
+  h3{font-size:14px;font-weight:600;margin:24px 0 6px}
+  p{margin:0 0 12px;max-width:68ch}
+  .lede{font-size:16.5px;color:var(--muted);max-width:64ch}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:16px}
+  code{font-family:var(--mono);font-size:.86em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+
+  .summary{margin:32px 0 8px;border-top:1px solid var(--rule)}
+  .summary a.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:6px 24px;
+     padding:14px 0;border-bottom:1px solid var(--rule);text-decoration:none;color:inherit}
+  .summary a.row:hover .q{color:var(--accent)}
+  .summary .q{font-weight:600}
+  .summary .a{color:var(--muted)}
+  @media (max-width:640px){.summary a.row{grid-template-columns:minmax(0,1fr)}}
+
+  section{margin-top:56px}
+  .asked{border-left:3px solid var(--accent);padding:2px 0 2px 14px;color:var(--muted);font-style:italic;margin:10px 0 16px;max-width:68ch}
+  .answer{font-size:16px;font-weight:500;margin-bottom:16px}
+
+  .diagram{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:18px;margin:16px 0;overflow-x:auto}
+  .diagram pre.mermaid{margin:0;text-align:center}
+  .caption{font-size:13px;color:var(--muted);margin-top:-6px}
+
+  .scroll{overflow-x:auto;margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;vertical-align:top;padding:9px 14px 9px 0;border-bottom:1px solid var(--rule)}
+  th{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  .callout{background:var(--accent-soft);border-radius:10px;padding:14px 18px;margin:16px 0;max-width:72ch}
+  .callout p:last-child{margin-bottom:0}
+  footer{margin-top:64px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Architecture review · first draft</p>
+  <h1>Savoya Quoting MCP: security, rate limiting and data handling</h1>
+  <p class="lede">Answers to the questions raised before go-live, for the quoting capability as built today: the Claude plugin, the Savoya MCP server and the new quote-builder APIs in Savoya Core.</p>
+  <p class="meta">Prepared by Ayush and Ethan · updated 24 Oct 2026 · draft for review</p>
+
+  <nav class="summary" aria-label="Questions and short answers">
+    <a class="row" href="#new"><span class="q">What is new in Core and the MCP?</span><span class="a">A new MCP server repository, and a Core branch that adds nine quote-builder endpoints on top of the existing pricing engine. Links to both below.</span></a>
+    <a class="row" href="#security"><span class="q">How is security implemented?</span><span class="a">Every call runs as the signed-in Savoya employee, checked by Auth0, the MCP server and Core in turn.</span></a>
+    <a class="row" href="#auth"><span class="q">How will authentication work?</span><span class="a">Savoya login through Auth0, then a per-user token exchange so Core sees the real user. Diagrams below.</span></a>
+    <a class="row" href="#rate"><span class="q">How are we rate limiting?</span><span class="a">Per-user limits on the MCP server, per-request work limits in Core, and Core's existing API limit on top.</span></a>
+    <a class="row" href="#misuse"><span class="q">What defends against misuse of the exposed tools?</span><span class="a">Twelve read-only tools, validated inputs, signed references and checked responses.</span></a>
+    <a class="row" href="#scope"><span class="q">Is MCP traffic scoped at Core?</span><span class="a">Yes. The MCP calls only nine new, dedicated endpoints, so its traffic is separate by design.</span></a>
+    <a class="row" href="#pii"><span class="q">Is anything preventing PII reaching the LLM?</span><span class="a">Client contact details are shown to internal users today, which is lower risk than how AI is used at Savoya now. Policy decision below.</span></a>
+    <a class="row" href="#future"><span class="q">What happens when more APIs are exposed?</span><span class="a">Each new capability gets its own dedicated Core endpoints behind the same checks.</span></a>
+  </nav>
+
+  <section id="new">
+    <p class="eyebrow">What is new</p>
+    <h2>What is new in Core and the MCP</h2>
+    <p class="answer">Two pieces of new code talk to each other: a new MCP server, and a set of new quote-builder endpoints in Core. The endpoints reuse Core's existing reservation and pricing engine, so a quote from Claude is calculated exactly as the web app calculates it.</p>
+
+    <div class="scroll"><table>
+      <tr><th>Code</th><th>Where to review it</th><th>What it is</th></tr>
+      <tr><td><b>Savoya MCP server</b><br/>new repository</td><td><a href="https://bitbucket.org/capital-drive/savoya-mcp/src/main/">capital-drive/savoya-mcp</a><br/>branch <code>main</code> @ <code>8f02928</code></td><td>A small, stateless Node.js service. It publishes the twelve tools, checks tokens, exchanges them for Core tokens, applies rate limits and checks Core's responses. It has no database</td></tr>
+      <tr><td><b>Savoya Core</b><br/>new branch</td><td><a href="https://bitbucket.org/capital-drive/savoya/src/feat/savoya-mcp-main/">capital-drive/savoya</a><br/>branch <code>feat/savoya-mcp-main</code> @ <code>e9ff3f85d9</code></td><td>48 commits on top of current <code>master</code>. Adds the quote-builder endpoints and their services, a feature flag, role permissions, and the Auth0 configuration for the MCP</td></tr>
+    </table></div>
+    <p>To see every Core change in one diff: <code>git diff origin/master...origin/feat/savoya-mcp-main</code></p>
+
+    <h3>System architecture</h3>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {"themeVariables": {"fontFamily": "Helvetica Neue, Helvetica, Arial, sans-serif"}}}%%
+flowchart LR
+    C["Claude, with the Savoya quoting plugin"]
+    A["Auth0"]
+
+    subgraph MCP["Savoya MCP server · new repo"]
+        direction TB
+        M1["Check token, rate limit"]
+        M2["12 read-only tools"]
+        M3["Exchange token, call Core"]
+        M4["Check response"]
+        M1 --> M2 --> M3
+        M4
+    end
+
+    subgraph CORE["Savoya Core"]
+        direction TB
+        K1["QuoteBuilderController · 9 endpoints · new"]
+        K2["QuoteBuilder services · new"]
+        K3["Reservation and pricing engine · existing, shared with the web app"]
+        K1 --> K2 --> K3
+    end
+
+    C -->|"tool call"| M1
+    C <-->|"sign in"| A
+    M3 <-->|"token exchange"| A
+    M3 -->|"Core API call"| K1
+    K1 -->|"result"| M4
+    M4 -->|"result"| C
+
+    classDef new fill:#E4EEEF,stroke:#1F5E6B,color:#16201F
+    class M1,M2,M3,M4,K1,K2 new
+</pre>
+    </div>
+    <p class="caption">Shaded boxes are new code. The reservation and pricing engine is Core's existing code, unchanged in how it prices.</p>
+
+    <h3>Inside Core: the quote builder</h3>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {"themeVariables": {"fontFamily": "Helvetica Neue, Helvetica, Arial, sans-serif"}}}%%
+flowchart TB
+    CTRL["QuoteBuilderController · /api/v1/quote_builder · login, role and feature-flag checks"]
+
+    subgraph SVC["New QuoteBuilder services"]
+        S1["Look up: clients, passengers, vehicle types, markets"]
+        S2["Resolve stops: addresses, airports, cities · signed stop references"]
+        S3["Rate preview: stored rates and vehicle inventory"]
+        S4["Nearby markets: closest by road, paged · any named market"]
+        S5["Quote: exact price, never saved · inventory check, with override"]
+    end
+
+    subgraph OLD["Existing Core code it reuses"]
+        E1["ReservationBuilder and quote services"]
+        E2["Rate provider · rate hierarchy"]
+        E3["Service-area override · QuoteUpdateStrategy"]
+        E4["Nearby airport lookup"]
+    end
+
+    CTRL --> S1
+    CTRL --> S2
+    CTRL --> S3
+    CTRL --> S4
+    CTRL --> S5
+    S2 --> E4
+    S3 --> E2
+    S5 --> E1
+    S5 --> E3
+
+    classDef new fill:#E4EEEF,stroke:#1F5E6B,color:#16201F
+    class CTRL,S1,S2,S3,S4,S5 new
+</pre>
+    </div>
+
+    <h3>Where to look in the code</h3>
+    <div class="scroll"><table>
+      <tr><th>Area</th><th>Path</th></tr>
+      <tr><td>MCP: sign-in, token checks, rate limits, HTTP server</td><td><code>savoya-mcp/src/platform/</code></td></tr>
+      <tr><td>MCP: the twelve tools, their schemas, the Core client and response checks</td><td><code>savoya-mcp/src/domains/quotes/</code></td></tr>
+      <tr><td>MCP: design and auth documentation</td><td><code>savoya-mcp/docs/architecture-overview.md</code>, <code>docs/mcp-auth-overview.md</code></td></tr>
+      <tr><td>Core: the nine endpoints</td><td><code>server/config/routes.rb</code>, <code>server/app/controllers/api/v1/quote_builder_controller.rb</code></td></tr>
+      <tr><td>Core: the quote-builder services</td><td><code>server/app/services/quote_builder/</code></td></tr>
+      <tr><td>Core: feature flag and roles</td><td><code>server/components/persistence/db/migrate/20260707130243_add_quote_mcp_feature_flag.rb</code>, <code>app/roles/manager_role.rb</code></td></tr>
+      <tr><td>Core: the response contract the MCP relies on</td><td><code>docs/quote-builder-api-contract.md</code></td></tr>
+      <tr><td>Core: Auth0 configuration for the MCP</td><td><code>auth0/mcp/</code>, <code>docs/auth0-new-universal-login-rollout.md</code></td></tr>
+      <tr><td>Core: tests</td><td><code>server/spec/requests/api/v1/quote_builder/</code>, <code>server/spec/services/quote_builder/</code></td></tr>
+    </table></div>
+
+    <h3>Changes to existing Core code</h3>
+    <p>Almost all of the branch is new files. These are the existing files it changes, each with tests:</p>
+    <div class="scroll"><table>
+      <tr><th>Existing code</th><th>Change</th></tr>
+      <tr><td><code>Rates::RateProvider</code></td><td>Accepts an optional special event when looking up hourly and transfer rates. Without one, it behaves as before</td></tr>
+      <tr><td><code>QuoteUpdateStrategy</code></td><td>Its re-quote step is now a shared method, so a web-app market change and a quote-builder estimate price the same way</td></tr>
+      <tr><td><code>AirportsController#nearby</code></td><td>The nearby-airport query moves into <code>Locations::NearbyAirportFinder</code>, which stop resolution also uses. Same query</td></tr>
+      <tr><td><code>FlightBuilder</code>, <code>StopParametersValidator</code></td><td>Accept the flight flags as text as well as true/false. A commercial flight marked "to be decided" no longer keeps an airline or flight number</td></tr>
+      <tr><td>Rate sheet and fuel surcharge (<code>RateHelper</code>, <code>RateSheets::Builder</code>, <code>Reservation</code>)</td><td>Rate sheets now honour a company's "waive all incidentals and fees" setting, as reservations already did</td></tr>
+      <tr><td>Roles, feature flag, config</td><td>The manager role gains the quote-builder endpoints, and so do the roles built on it: admin, sales agent and Groundwork manager. New flag <code>enable_quote_builder_api</code>, off by default. New secret <code>SAVOYA_SIGNED_REF_SECRET</code> for signing references</td></tr>
+    </table></div>
+  </section>
+
+  <section id="security">
+    <p class="eyebrow">Security</p>
+    <h2>How security is implemented</h2>
+    <p class="answer">There is no shared service account anywhere. Every request carries the identity of the Savoya employee using Claude, and Savoya Core makes every access decision with the same user record and roles it uses for the web app.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {"themeVariables": {"fontFamily": "Helvetica Neue, Helvetica, Arial, sans-serif"}}}%%
+flowchart LR
+    U(["Savoya employee"])
+    C["Claude, with the Savoya quoting plugin"]
+    A["Auth0 · Savoya login"]
+    M["Savoya MCP server · 12 read-only tools"]
+    K["Savoya Core · 9 quote-builder endpoints"]
+
+    U --> C
+    C <-->|"sign in and approve"| A
+    C -->|"tool call, MCP token"| M
+    M <-->|"exchange for a Core token, same user"| A
+    M -->|"API call, Core token"| K
+</pre>
+    </div>
+    <p class="caption">High-level architecture. The plugin guides Claude through Savoya's quoting workflow; the MCP server exposes the tools; Core owns the data, permissions and prices.</p>
+
+    <h3>Checks at each layer</h3>
+    <div class="scroll"><table>
+      <tr><th>Layer</th><th>What it checks</th></tr>
+      <tr><td>Auth0</td><td>Only approved AI clients can connect (Claude and ChatGPT, each imported by name); open self-registration is turned off. The user signs in with their normal Savoya login and approves one permission, <code>access:savoya_mcp</code></td></tr>
+      <tr><td>MCP server, on entry</td><td>The token's signature, issuer, audience, expiry and permission on every request. Machine tokens are refused. Requests to unknown hosts and bodies over 1 MB are rejected</td></tr>
+      <tr><td>MCP server, per tool</td><td>Inputs validated against each tool's schema before Core is called. Per-user rate and concurrency limits</td></tr>
+      <tr><td>MCP server to Core</td><td>A short-lived Core token for the same user, obtained by Auth0's on-behalf-of exchange. Kept in memory only, never logged. If the exchange fails, the call stops</td></tr>
+      <tr><td>Core, on entry</td><td>Enabled user, an allowed role (admin, manager, sales agent or Groundwork manager; every other role is refused), and the <code>enable_quote_builder_api</code> flag, which switches the endpoints off for everyone</td></tr>
+      <tr><td>Core, per request</td><td>Work ceilings on every request, and quotes calculated without saving anything</td></tr>
+      <tr><td>MCP server, on the way back</td><td>Every Core response checked against the agreed contract before Claude sees it. A response that does not match is blocked, with no price shown</td></tr>
+    </table></div>
+  </section>
+
+  <section id="auth">
+    <p class="eyebrow">Authentication</p>
+    <h2>How authentication works</h2>
+    <p class="answer">The user signs in once. After that, each tool call carries a token that only works against the MCP server, which swaps it for a Core token naming the same person.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {"themeVariables": {"fontFamily": "Helvetica Neue, Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+    actor U as Savoya employee
+    participant C as Claude
+    participant M as Savoya MCP
+    participant A as Auth0
+    participant K as Savoya Core
+
+    Note over U,K: Connect, once per user
+    C->>M: how do I authenticate?
+    M-->>C: use Savoya's Auth0
+    C->>A: sign-in request, as an approved client
+    A->>U: Savoya login page
+    U->>A: sign in and approve access
+    A-->>C: MCP token for this user, short-lived
+
+    Note over U,K: Every tool call
+    U->>C: ask for a quote
+    C->>M: tool call with the MCP token
+    M->>M: check the token and the user's rate limit
+    M->>A: exchange for a Core token, same user
+    A-->>M: Core token, short-lived
+    M->>K: quote-builder API call with the Core token
+    K->>K: check user, role and feature flag
+    K-->>M: result, or a structured error
+    M->>M: check the response
+    M-->>C: result
+</pre>
+    </div>
+    <div class="scroll"><table>
+      <tr><th>Property</th><th>How</th></tr>
+      <tr><td>No secrets on the AI side</td><td>Claude signs in with a public identity and a one-time proof (PKCE). The only client secret is the MCP server's, held in its secret manager</td></tr>
+      <tr><td>Narrow tokens</td><td>The token Claude holds works only against the MCP server. The Core token is issued only by exchange and asks for no extra permissions</td></tr>
+      <tr><td>Fails closed</td><td>A missing, expired or wrong token, or a failed exchange, stops the request. Nothing falls back to wider access</td></tr>
+      <tr><td>Core decides access</td><td>A valid login alone grants nothing. Disabling a user or removing their role cuts off access immediately</td></tr>
+    </table></div>
+  </section>
+
+  <section id="rate">
+    <p class="eyebrow">Rate limiting</p>
+    <h2>How we are rate limiting</h2>
+    <p class="answer">The limits are a safeguard against someone, or a runaway agent, flooding the system. They sit well above real use, so they protect Core without slowing anyone down.</p>
+    <div class="scroll"><table>
+      <tr><th>Where</th><th>Limit</th><th class="num">Setting</th></tr>
+      <tr><td rowspan="4">MCP server, per user</td><td>Tool calls per minute</td><td class="num">60</td></tr>
+      <tr><td>Burst</td><td class="num">20</td></tr>
+      <tr><td>Calls in progress at once, per user</td><td class="num">4</td></tr>
+      <tr><td>Calls in progress at once, per server</td><td class="num">100</td></tr>
+      <tr><td rowspan="2">MCP server, per request</td><td>Options in one comparison</td><td class="num">5</td></tr>
+      <tr><td>Stops in one itinerary</td><td class="num">25</td></tr>
+      <tr><td rowspan="3">Core, per request</td><td>Reservation builds in one quote request</td><td class="num">40</td></tr>
+      <tr><td>Vehicle evaluations in one rate preview or batch</td><td class="num">40</td></tr>
+      <tr><td>Nearby markets returned per page</td><td class="num">3</td></tr>
+      <tr><td>Nearby markets shown for one trip, across pages</td><td class="num">12</td></tr>
+      <tr><td>Markets one itinerary can draw vehicles from</td><td class="num">7</td></tr>
+      <tr><td>Core, all API traffic (existing)</td><td>Requests per minute per IP and token, in production</td><td class="num">1,000</td></tr>
+    </table></div>
+    <p>A call over the MCP limit is refused with HTTP 429 and a retry time, before it reaches Core. The 1,000-a-minute limit is Core's existing protection for its whole API and applies to this traffic like any other.</p>
+    <h3>Tool calls and Core calls</h3>
+    <p>One tool call is one Core API call, with one exception: a comparison (<code>generate_quote_options</code>) makes one call per option, so two to five. A rate-sheet batch that is too large for one request can be split into a few smaller ones.</p>
+    <h3>What real use looks like</h3>
+    <div class="callout">
+      <p>A complete quote takes about seven tool calls. At beta scale, ten people making two quotes a day each, that is roughly <b>140 tool calls a day across everyone</b>, against a limit of 60 a minute for each person. Quote calculations already run through the same Core engine the web app uses for every quote today, so this traffic does not change Core's performance.</p>
+    </div>
+  </section>
+
+  <section id="misuse">
+    <p class="eyebrow">Misuse</p>
+    <h2>Defences against misuse of the exposed tools</h2>
+    <p class="answer">All twelve tools only read or calculate. None of them books, saves or changes a reservation, a quote, a client or a rate.</p>
+    <div class="scroll"><table>
+      <tr><th>Purpose</th><th>Tool</th><th>Core endpoint, under <code>/api/v1/quote_builder</code></th></tr>
+      <tr><td rowspan="5">Look up</td><td><code>resolve_client</code></td><td><code>GET clients</code></td></tr>
+      <tr><td><code>resolve_passengers</code></td><td><code>GET passengers</code></td></tr>
+      <tr><td><code>resolve_itinerary_stops</code></td><td><code>POST resolve_stops</code></td></tr>
+      <tr><td><code>resolve_vehicle_types</code></td><td><code>GET vehicle_types</code></td></tr>
+      <tr><td><code>resolve_service_areas</code></td><td><code>GET service_areas</code></td></tr>
+      <tr><td rowspan="3">Rates and inventory</td><td><code>preview_rates</code></td><td><code>POST rate_preview</code></td></tr>
+      <tr><td><code>preview_rate_batch</code></td><td><code>POST rate_preview_batch</code></td></tr>
+      <tr><td><code>lookup_nearby_markets</code></td><td><code>POST nearby_markets</code></td></tr>
+      <tr><td rowspan="4">Price a quote</td><td><code>calculate_quote_units</code></td><td rowspan="4"><code>POST estimate_quote_units</code></td></tr>
+      <tr><td><code>calculate_sourced_quote_units</code></td></tr>
+      <tr><td><code>calculate_temporary_quote_units</code></td></tr>
+      <tr><td><code>generate_quote_options</code></td></tr>
+    </table></div>
+    <h3>Other protections</h3>
+    <div class="scroll"><table>
+      <tr><th>Protection</th><th>What it prevents</th></tr>
+      <tr><td>Every tool declares that it is read-only, and a tool cannot be added without stating whether it writes</td><td>A future tool quietly inheriting "safe to call"</td></tr>
+      <tr><td>Inputs validated against a schema before Core is called</td><td>Malformed or oversized requests reaching Core</td></tr>
+      <tr><td>Resolved stops and nearby markets are passed back as signed references that expire after 24 hours and belong to the user who created them</td><td>Swapping in a different market or location to change a price</td></tr>
+      <tr><td>Quotes are calculated inside a database transaction that is always rolled back</td><td>Anything being saved by a quote calculation</td></tr>
+      <tr><td>Core checks every quote against the vehicle inventory of the markets it draws from. A user who has confirmed extra vehicles with a vendor can mark a quote unit as an inventory override; Core then prices it and attaches a warning naming the shortfall to the unit and the total</td><td>A price for more vehicles than Savoya has, without that being stated on the quote</td></tr>
+      <tr><td>Core returns error codes, never internal messages</td><td>Leaking internal details through errors</td></tr>
+      <tr><td>The MCP server checks every response before Claude sees it</td><td>A wrong or partial quote being shown as correct</td></tr>
+    </table></div>
+  </section>
+
+  <section id="scope">
+    <p class="eyebrow">Traffic from the MCP</p>
+    <h2>Is MCP traffic scoped at Core?</h2>
+    <p class="asked">Can we tell traffic coming from the MCP apart from traffic coming from the web app or anywhere else, and see its volume?</p>
+    <p class="answer">Yes. The MCP server calls only the nine quote-builder endpoints, and all nine are new. Nothing else in Savoya uses them, so MCP traffic is separate by endpoint.</p>
+    <ul>
+      <li><b>Visible in New Relic as its own traffic.</b> Volume, latency and errors for <code>/api/v1/quote_builder/*</code> are the MCP's, with no web-app traffic mixed in. An issue on one of these endpoints can be investigated without separating it from anything else.</li>
+      <li><b>Labelled on every call.</b> The MCP server sends the same attribution headers Core already records for its mobile apps: <code>App-Name: savoya-mcp</code>, <code>App-Version</code>, <code>Device-Brand: AI Tool</code>, and <code>Device-Name</code> set to the AI tool (Claude, Claude Code or ChatGPT), taken from the verified token. Core's existing request logging stores them with each request, so MCP traffic can be filtered by app and by AI tool. Every response and error also carries a request id that links the MCP's log to Core's.</li>
+      <li><b>No existing endpoint is involved.</b> The MCP does not call any endpoint the web app uses, so it cannot add load to them.</li>
+      <li><b>Same authentication as the rest of Core.</b> Calling these endpoints directly would need a valid token for an enabled internal user with an allowed role, and would return nothing that user cannot already see by logging in to Savoya.</li>
+    </ul>
+  </section>
+
+  <section id="pii">
+    <p class="eyebrow">Personal data</p>
+    <h2>Is anything preventing PII reaching the LLM?</h2>
+    <p class="answer">The tools show internal users the client details they need to quote, the same details they see in the Savoya web app. The users are internal Savoya staff, and the data stays within their own Claude session.</p>
+    <h3>What reaches Claude, and what does not</h3>
+    <div class="scroll"><table>
+      <tr><th>Data</th><th>Reaches Claude?</th></tr>
+      <tr><td>Client name, email and company</td><td>Yes, to confirm the right client</td></tr>
+      <tr><td>Passenger name and email</td><td>Yes, when the user names a passenger</td></tr>
+      <tr><td>Pickup and drop-off addresses</td><td>Yes, to confirm the trip</td></tr>
+      <tr><td>Rates and quote totals</td><td>Yes; the purpose of the tools</td></tr>
+      <tr><td>Payment details, card data</td><td>No. No tool returns them</td></tr>
+      <tr><td>Tokens, secrets, login codes</td><td>No. Never in a tool result, and removed from logs</td></tr>
+    </table></div>
+    <p>The MCP server stores no business data or conversation history. By default its logs record timing and routing only; quote contents are logged only when debug logging is switched on for troubleshooting.</p>
+    <h3>Why this is the right position for now</h3>
+    <div class="callout">
+      <p>Staff already use AI at Savoya in a far less controlled way. Browser automation, where an AI tool drives the web app on someone's behalf, can see every screen the user can, including all client details. Even its makers ship it as a beta with repeated warnings. The MCP gives the AI a narrow, read-only, logged path that returns only what quoting needs, so it <b>reduces</b> the exposure that exists today.</p>
+      <p>Filtering client details out of the MCP would not stop that data reaching AI tools while browser automation and personal Claude accounts on company devices are still possible. Doing it well needs those controls first: an enterprise plan with AI browser use disabled and personal accounts blocked.</p>
+      <p><b>Proposed policy:</b> client details may be shown in the chat to internal users until those controls are in place. A filter that keeps client details out of the conversation has been designed and can be built when the policy calls for it. To be confirmed with Mike and Mark.</p>
+    </div>
+  </section>
+
+  <section id="future">
+    <p class="eyebrow">Future APIs</p>
+    <h2>When more APIs are exposed through the MCP</h2>
+    <p class="answer">Every new capability follows the same pattern as quoting, so the answers on this page carry over.</p>
+    <ul>
+      <li><b>Dedicated endpoints.</b> Each capability gets its own Core endpoints, behind the same login, role check and feature flag. Existing web-app endpoints are never exposed directly.</li>
+      <li><b>Shared protections.</b> Sign-in, token exchange, rate limiting, logging and response checks are part of the MCP server itself, so a new capability gets them without extra work.</li>
+      <li><b>Writes are declared.</b> Every tool must state whether it changes data. Any tool that would book or change something is designed separately, with the user confirming exactly what Core will do before it happens.</li>
+      <li><b>Data reviewed per capability.</b> What each new response returns is decided when its endpoint is designed, under the AI data policy in force at the time.</li>
+    </ul>
+  </section>
+
+  <footer>Savoya Quoting MCP · plugin savoya-quoting 0.27.6 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · draft updated 24 Oct 2026. The full architecture, including the plugin's internal workflow, is in the separate Quoting MCP Architecture page.</footer>
+</div>

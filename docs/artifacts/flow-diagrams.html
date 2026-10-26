@@ -179,7 +179,7 @@ flowchart TD
     DOCA --> G2
 
     G2[["G2 · calculate_quote_units<br/>for the chosen option"]] --> H
-    H[["H · render_presentation.py<br/>Core's own view.<br/>exit 3 → handoff.py summarize"]] --> I
+    H[["H · render_presentation.py<br/>the MCP's compact view.<br/>exit 3 → handoff.py summarize"]] --> I
     I{{"I · ONE question: customize it, go on to<br/>the client document, or just the quote?"}}
     I -->|a change| GQ
     I -->|just the quote| CAP[["capture, done"]]

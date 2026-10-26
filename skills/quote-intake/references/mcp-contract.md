@@ -171,7 +171,7 @@ an hourly temporary rate.**
   Each stop carries a venue-first `label`, `address`, `kind` (`address`, `airport`, `as_directed`), `wait_hours`, coordinates, `drive_minutes`, `service_area` (`null` means no Savoya market) and flight details.
   A warning every unit carries is listed once in `warnings_on_every_unit` and is given back to each unit.
   Amounts are integer cents (`amount_unit: "cents"`).
-  Every script reads a response through `skills/quote-document/scripts/quote_view.py`, which refuses any other presentation version with an "update the plugin" message.
+  Every script reads a response through `skills/quote-document/scripts/quote_view.py`, which refuses any other presentation version: a newer one with an "update the plugin" message, an older one (or none) with a "the connector is older" message, since updating the plugin cannot fix that.
 - **No alternative vehicles.** The exact tools take one vehicle per unit, so a response carries the chosen vehicle only.
 - **`presentation`** on every response: a `view` (`rate_preview`, `scenario_comparison`,
   `quote_result`, `blocked`), a `title`, severity-tagged `warnings` and pre-formatted rows.

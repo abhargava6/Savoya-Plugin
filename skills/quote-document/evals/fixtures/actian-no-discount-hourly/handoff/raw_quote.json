@@ -1,0 +1,105 @@
+{
+ "presentation": {
+  "version": 2,
+  "view": "quote_result",
+  "status": "ready",
+  "estimate_type": "exact",
+  "title": "Exact quote",
+  "currency_code": "USD",
+  "amount_unit": "cents",
+  "warnings": [
+   {
+    "severity": "warning",
+    "message": "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."
+   },
+   {
+    "severity": "warning",
+    "message": "No passenger was selected. Savoya attached an eligible passenger only to calculate this unsaved quote; the passenger selection was not saved"
+   },
+   {
+    "severity": "warning",
+    "message": "Additional discount was used for this quote and was not saved in Savoya"
+   }
+  ],
+  "data": {
+   "total_amount": 600000,
+   "quote_units": [
+    {
+     "key": "a1",
+     "label": "Day 1: Bangkok as-directed 7am-10pm",
+     "quantity": 1,
+     "total_amount": 600000,
+     "per_vehicle_amount": 600000,
+     "requested_quantity": 1,
+     "required_quantity": 1,
+     "quoted_hours": 10,
+     "vehicle_type_id": "7",
+     "vehicle_name": "SUV",
+     "vehicle_capacity": 6,
+     "passenger_count": 6,
+     "passenger_count_source": "provided",
+     "passenger_selection_source": "quote_only_fallback",
+     "pickup_date": "2027-10-11T07:00:00+07:00",
+     "timezone": "Asia/Bangkok",
+     "primary_service_area": "Bangkok",
+     "source_service_area": "Bangkok",
+     "stops": [
+      {
+       "order": 1,
+       "label": "Hotel",
+       "address": "Bangkok, Thailand",
+       "kind": "address",
+       "latitude": 33.67833,
+       "longitude": -117.849596,
+       "timezone": "America/Los_Angeles",
+       "service_area": "Bangkok"
+      }
+     ],
+     "estimated_drive_minutes": 14,
+     "pricing": {
+      "pricing_method": "hourly",
+      "rate_source": "temporary",
+      "rate_id": "53066",
+      "subtotal_amount": 500000,
+      "base_rate_amount": 50000,
+      "effective_rate_amount": 60000,
+      "billing_unit": "hour",
+      "minimum_hours": 10,
+      "billable_hours": 10,
+      "cancellation_hours": 2,
+      "adjustments": {
+       "discount_basis_points": 0,
+       "special_handling_basis_points": 0,
+       "fuel_surcharge_basis_points": 2000,
+       "temporary_discount_basis_points": 0,
+       "effective_discount_basis_points": 0,
+       "temporary_discount_amount": 0,
+       "temporary_rate_used": true
+      }
+     },
+     "warnings": [
+      "Inventory override: Bangkok has 0 inventoried SUV vehicles; 1 requested.",
+      "Temporary rate was used for this quote and was not saved in Savoya"
+     ]
+    }
+   ],
+   "unquoteable_unit_keys": [],
+   "warnings_on_every_unit": [],
+   "persisted": false,
+   "pricing": {
+    "adjustments": {
+     "temporary_rate_used": true
+    }
+   }
+  }
+ },
+ "merged_packages": {
+  "A": {
+   "aggregate_total": 408960,
+   "unit_keys": [
+    "t1",
+    "t2"
+   ]
+  }
+ }
+}

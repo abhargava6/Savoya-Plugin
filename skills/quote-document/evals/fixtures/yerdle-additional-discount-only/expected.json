@@ -1,0 +1,26 @@
+{
+ "handoff": true,
+ "normalize": {
+  "prepared_by": "Ayush Bhargava",
+  "title": "Ground Transportation Quote"
+ },
+ "edits": {
+  "personalization": {
+   "cover": "event-planners"
+  }
+ },
+ "adjustments": [],
+ "engine_subtotal_cents": 511200,
+ "total_cents": 408960,
+ "leg_count": 2,
+ "contains": [
+  "$4,089.60",
+  "Additional discount"
+ ],
+ "not_contains": [
+  "Stop 2",
+  "hourly fallback",
+  "rate_id",
+  "Fuel surcharge"
+ ]
+}

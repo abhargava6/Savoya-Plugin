@@ -174,7 +174,24 @@ def normalize_unit(unit):
     engine_discount_pct = None
     if bps and std_rate and eff_rate and std_rate > eff_rate:
         engine_discount_pct = bps / 100.0
+    # R56: every discount Core applied is its own line. The additional discount counts on
+    # its own: a client with NO contracted discount has bps == 0, and gating the whole
+    # standard-rate presentation on the contracted one left a 20% discount inside Core's net
+    # with no line, no `engine_net_line_cents`, and no commission amount (2026-10-24, Yerdle).
+    has_engine_discount = bool((bps or temp_bps) and std_rate and eff_rate and std_rate > eff_rate)
     engine_fuel_pct = (adj.get("fuel_surcharge_basis_points") or 0) / 100.0 or None
+    # A quote with a fuel surcharge and NO discount at all (2026-10-25, Actian Bangkok): Core's
+    # effective rate is the base rate plus fuel, so presenting the effective rate as the line
+    # printed "Fuel surcharge (20%) $0.00" under a subtotal that already held the fuel. Present
+    # the base rate on the line and fuel as the remainder, exactly as a discounted quote does --
+    # but only when Core's own figures prove it: the effective rate must be the base rate plus
+    # the stated fuel to the cent, with no discount and no special handling. Anything else keeps
+    # the net presentation, which never misstates the total.
+    fuel_bps = adj.get("fuel_surcharge_basis_points") or 0
+    fuel_only_presentation = bool(
+        fuel_bps and not bps and not temp_bps and not adj.get("special_handling_basis_points")
+        and std_rate and eff_rate and 0 < std_rate < eff_rate
+        and abs(eff_rate - round(std_rate * (1 + fuel_bps / 10000.0))) <= 1)
     engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
     pickup_service_area = next((s.get("service_area") for s in view_stops if s.get("service_area")), None)
     # No stop in this unit sits in a Savoya service area at all. Core still prices it,
@@ -219,7 +236,7 @@ def normalize_unit(unit):
         "stops": stops,
         "pricing": {
             "method": pricing.get("pricing_method"),
-            "rate_cents": std_rate if engine_discount_pct else eff_rate,
+            "rate_cents": std_rate if has_engine_discount else eff_rate,
             "billable_hours": pricing.get("billable_hours"),
             "minimum_hours": pricing.get("minimum_hours"),
             "cancellation_hours": pricing.get("cancellation_hours"),
@@ -264,25 +281,30 @@ def normalize_unit(unit):
             if minutes:
                 s_["drive_minutes"] = minutes
         leg["route"] = {"drive_min": int(sum(x for x in tt if x)), "source": "engine"}
-    if engine_discount_pct:
+    # Core's own net and the units it billed are kept on EVERY leg, discount or not. The email
+    # (and the fuel remainder) read them unconditionally; setting them only inside the discount
+    # branch made `draft_email.py` refuse every quote with no engine discount (2026-10-25, Actian
+    # Bangkok: a temporary $500/hr rate, no contracted discount). Only the standard-versus-net
+    # presentation below needs a discount.
+    qty = leg["vehicle"]["quantity"] or 1
+    hourly = leg["pricing"]["method"] == "hourly"
+    units = (leg["pricing"]["billable_hours"] or 0) if hourly else 1
+    leg["engine_net_line_cents"] = int(leg["pricing"]["line_total_cents"] or 0)
+    leg["engine_rate_units"] = units
+    if has_engine_discount or fuel_only_presentation:
         # Present standard rates on the line; the engine's discount becomes a visible line item.
-        qty = leg["vehicle"]["quantity"] or 1
-        hourly = leg["pricing"]["method"] == "hourly"
-        units = (leg["pricing"]["billable_hours"] or 0) if hourly else 1
         if hourly:
             per = std_rate * units
         else:
             per = round((unit.get("per_vehicle_amount") or 0) * std_rate / eff_rate)
-        # Keep Core's own net alongside the standard presentation. C5 needs both: the
-        # standard figure is what the rate card shows, the net is what Core actually
-        # quoted, and the engine lines are pinned so standard + lines == net exactly.
-        leg["engine_net_line_cents"] = int(leg["pricing"]["line_total_cents"] or 0)
+        # The standard figure is what the rate card shows, the net (kept above) is what Core
+        # actually quoted, and the engine lines are pinned so standard + lines == net exactly (C5).
         leg["engine_standard_rate_cents"] = int(std_rate)
-        leg["engine_rate_units"] = units
         leg["engine_standard_line_cents"] = int(per * qty)
         leg["pricing"]["per_vehicle_cents"] = int(per)
         leg["pricing"]["line_total_cents"] = int(per * qty)
-        leg["engine_discount_pct"] = engine_discount_pct
+        if engine_discount_pct:
+            leg["engine_discount_pct"] = engine_discount_pct
         if temp_bps:
             leg["engine_temp_discount_pct"] = temp_bps / 100.0
             # Core's own words for it reach the client document, so they are read rather

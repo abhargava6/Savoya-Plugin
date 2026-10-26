@@ -1,0 +1,26 @@
+{
+ "normalize": {
+  "prepared_by": "Ayush Bhargava",
+  "title": "Ground Transportation Quote"
+ },
+ "edits": {
+  "personalization": {
+   "cover": "event-planners"
+  }
+ },
+ "adjustments": [],
+ "engine_subtotal_cents": 577800,
+ "total_cents": 520020,
+ "leg_count": 3,
+ "contains": [
+  "$5,200.20",
+  "This is a quoting tool"
+ ],
+ "not_contains": [
+  "Stop 2",
+  "hourly fallback",
+  "rate_id"
+ ],
+ "pdf_pages": 3,
+ "handoff": true
+}

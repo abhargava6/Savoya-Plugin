@@ -15,7 +15,7 @@ Owner: Ayush Bhargava. Users: Savoya ops, sales and CSMs.
 | `skills/quote-intake/references/decision-tree.md` | the authoritative end-to-end flow, nodes A–Q |
 | `skills/quote-document/RULES.md` | plugin rules learned the hard way — read before rendering |
 | `skills/quote-document/feedback-archive.md` | dated history; weekly pass only |
-| `skills/quote-document/evals/fixtures/` | 10 regression fixtures — real quotes |
+| `skills/quote-document/evals/fixtures/` | 15 regression fixtures — real quotes |
 | `SETUP.md` · `RUNBOOK.md` · `CONTRIBUTING.md` · `CHANGELOG.md` | install · weekly pass · how to improve · what changed |
 
 ## The loop
@@ -116,7 +116,7 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs **47 guards** beyond the thirteen fixtures — 60 checks in all. Run it; the
+`regress.py` runs **51 guards** beyond the fifteen fixtures — 66 checks in all. Run it; the
 list below is for orientation, not for counting:
 
 | Group | Guards |
@@ -151,7 +151,7 @@ and issues no tool calls.
 **Decided 2026-10-10.** The three project documents are the base the work runs off, not a
 record written after it:
 
-- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R94) — what the product must do. A new
+- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R121) — what the product must do. A new
   requirement is written here *first*, with a status, before anything is built.
 - `PRD_TDD_Quoting_MCP.md` (the **TDD**) — how it is built. Updated in the same pass as the
   code, not later.
@@ -227,10 +227,10 @@ promoted fixtures come in.
 - Word and Excel output has never been exercised in a real session.
 - No airline resolver, so flights always go as `commercial_tbd: true` — see
   `ENGINEERING.md` item B7 (PRD R14), and B7b for the FBO sibling (PRD R52).
-- **The three team diagram artifacts** (decision tree, flow, architecture) still describe
-  0.26.1. Their sources are to be imported into `docs/artifacts/` and refreshed (PRD R89);
-  until then `artifacts.json` marks them unmanaged and one statement in them (that the
-  commission amount is never calculated) is wrong.
+- **The four managed artifacts** (help, decision tree, flow diagrams, architecture) are
+  recorded in `docs/artifacts/artifacts.json` at 0.27.6. They are regenerated and republished
+  at the release that adopts presentation version 2 (the compact view), after the working-tree
+  edits to `docs/artifacts` are committed; `sync_artifacts.py check` lists what is stale.
 - A coverage audit has never been done: roughly 40 documented flags (`--remove`,
   `--cover-file`, `--no-map`, `--final`, `--rate-sheet-shown`, the personalization setters)
   are exercised by nothing in the suite. Two axes worth checking — operations nothing
