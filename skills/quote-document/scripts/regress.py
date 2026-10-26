@@ -3982,6 +3982,40 @@ def lint_stop_confirmation():
     return True
 
 
+def lint_town_stops():
+    """R122, R123 (2026-10-25). A stop the client named only as a town or area is priced at a street
+    address Core resolved, never at a town or area point.
+
+    The Actian World Cup session asked which town before any lookup, offered no street address, and
+    priced town and area points that Core could not price (`quote_units_unavailable`, empty `issues`);
+    the same quote priced with four street addresses. This asserts the instructions say so in both
+    places a session reads, and that the retry rule no longer lets the same references go twice. It
+    checks the text: behaviour needs a fixture from a real capture, which does not exist yet.
+    """
+    problems = []
+    skill = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
+    tree = open(os.path.join(HERE, "..", "..", "quote-intake", "references", "decision-tree.md"), encoding="utf-8").read()
+    rules = open(os.path.join(HERE, "..", "RULES.md"), encoding="utf-8").read()
+    for name, text in (("SKILL.md", skill), ("decision-tree.md", tree)):
+        for needle in ("R122", "civic building", "street number", "stand_in_chosen_by_user", "--placeholder-stop"):
+            if needle not in text:
+                problems.append(f"{name} does not say `{needle}`")
+    for needle in ("never ask \"which town\"", "differ from the failed call", "re-sends the same references") :
+        if needle not in skill + tree:
+            problems.append(f"the instructions do not say `{needle}`")
+    if "street-level stop references" in skill:
+        problems.append("SKILL.md still lets the retry re-send references (\"street-level\" without a difference)")
+    if "priced at a street address" not in rules:
+        problems.append("RULES.md has no entry for the town-stop rule")
+    if problems:
+        print("  \u2717 town stops")
+        for b in problems:
+            print(f"      - {b}")
+        return False
+    print("  \u2713 town stops (a town or area is priced at a resolved street address; the retry changes the references; instruction text only)")
+    return True
+
+
 def lint_presentation_version():
     """GREEN-380: the plugin reads the MCP's compact quote view (presentation version 2) only.
     Any other version must be refused, never read on. Direction decides the words: a NEWER
@@ -4599,6 +4633,7 @@ def main():
     lint_ok = lint_email_reconciles() and lint_ok
     lint_ok = lint_email_no_discount() and lint_ok
     lint_ok = lint_stop_confirmation() and lint_ok
+    lint_ok = lint_town_stops() and lint_ok
     lint_ok = lint_option_b_is_cores() and lint_ok
     lint_ok = lint_email_headings() and lint_ok
     lint_ok = lint_instructions_match_the_code() and lint_ok
