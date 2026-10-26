@@ -2,7 +2,7 @@
 
 Items found while building and testing the `savoya-quoting` plugin that need a change, a decision or a data fix **on the Savoya side**. Plugin bugs are not here. They go in `skills/quote-document/RULES.md`, with dated history in `feedback-archive.md`.
 
-**Order of the file:** Open, then Deferred, then Resolved. Every Open and Deferred item uses one template so it pastes into a Jira ticket under `GREEN` (Epic `GREEN-243`). Pipe tables are dropped by Jira's markdown conversion, so items use lists and code blocks. Ids `H1`–`H4` were raised 2026-10-11.
+**Order of the file:** Open, then Deferred, then Resolved. Every Open and Deferred item uses one template so it pastes into a Jira ticket under `GREEN` (Epic `GREEN-243`). Pipe tables are dropped by Jira's markdown conversion, so items use lists and code blocks. Ids `H1`–`H4` were raised 2026-10-11. Ids `I1`–`I3` were raised 2026-10-24; they are with Ethan Ward and none blocks the plugin.
 
 **Item template**
 
@@ -50,6 +50,11 @@ Acceptance criteria
 | Open | **H2** | Hide action buttons on quote and quote-option cards in the chat UI | Feature (UI) | Medium | GREEN-386 |
 | Open | **H3** | Hide the "No passenger was selected" warning in the chat UI | Task (UI) | Medium | GREEN-387 |
 | Open | **C1** | `as_directed` city lookup fails on state abbreviations | Defect | Low | — |
+| Open | **I1** | Structured record when a CSM overrides inventory | Feature | Medium | — |
+| Open | **I2** | A `greeter` flag on quote view units | Feature | Low | — |
+| Open | **I3** | A street-only address on quote view stops | Feature | Low | — |
+| Open | **I4** | The server tells the model to pick a location itself when Core asks for confirmation | Defect | Medium | — |
+| Open | **J1** | Town and area points come back as selectable stop candidates that Core cannot price | Defect | **High** | — |
 | Deferred | **F1** | What Auth0 adds over today's per-CSM OAuth | Decision | **High** | GREEN-354 |
 | Deferred | **F2** | MCP tool surface vs. `QuoteBuilder`: replacement or parallel | Decision | **High** | GREEN-354 |
 | Deferred | **F3** | Does `QuoteBuilder`'s exact path require a passenger? | Decision | Medium | GREEN-354 |
@@ -331,6 +336,8 @@ The session multiplied that unit by 7 by hand (line total 540078 cents) and the 
 ## H6 — `display: show | internal` on `calculate_quote_units`
 **Type:** Feature · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R105, R106
 
+**Triage (2026-10-24):** with Ethan Ward. Does not block the plugin.
+
 **Problem statement**
 `preview_rate_batch` accepts `display`; `calculate_quote_units` does not and always renders the "Exact quote" card.
 
@@ -491,6 +498,8 @@ PRD R70. See also F8.
 ## G3 — `temporary_rate_used` is `false` at aggregate level while the unit says `true`
 **Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** — · **PRD:** —
 
+**Triage (2026-10-24):** with Ethan Ward. Does not block the plugin.
+
 **Problem statement**
 A `calculate_temporary_quote_units` call with an explicit temporary rate returns contradictory flags in one response.
 
@@ -543,12 +552,15 @@ Quote a unit that cannot be priced. Response:
  "presentation": {"data": {"issues": []}}}
 ```
 
+**Update 2026-10-25:** a second session shows the cost. An Actian World Cup request (32 units, one SUV type, 13 passengers) returned `quote_units_unavailable`, `core_status` 422, `issues: []` twice (request ids `cefbd6c9-b9a7-4ef1-886a-4321c836ced1` and `004c421a-fe93-4cd6-8e9e-5a789ac324a9`). The cause was the four origin stops, which were town and area points (see J1); nothing in the response said so, and it took a second session to find it by re-pricing with street addresses (all 32 units priced, $65,056.50). A populated `issues[]` naming the unit and the stop would have shown it at once.
+
 **Reference**
-PRD R34. Related: G6 (16-unit packages).
+PRD R34, R123. Related: G6 (16-unit packages), J1.
 
 **Acceptance criteria**
 - [ ] `issues[]` is populated with the unit key and the per-vehicle failure reasons the priced path already produces.
 - [ ] A 16-unit request with one unpriceable unit identifies that unit in the response.
+- [ ] When the cause is a stop Core cannot price, `issues[]` names the stop (`stop_ref`) as well as the unit.
 
 ---
 
@@ -673,6 +685,156 @@ Decision tree.
 
 **Acceptance criteria**
 - [ ] Standard state abbreviations are accepted, or the expected format is documented.
+
+## I1 — Structured record when a CSM overrides inventory
+**Type:** Feature · **Priority:** Medium · **Status:** open · **Jira:** — · **PRD:** R95
+
+**Triage (2026-10-24):** with Ethan Ward. Does not block the plugin.
+
+**Problem statement**
+`inventory_override` (H5) prices a quantity above inventory. The response says so only in warning text: the counts sit inside a sentence, and nothing says who overrode or when.
+
+**Impact**
+- A consumer that needs the counts has to parse the sentence, which breaks when the sentence changes.
+- Whether Core keeps an audit of overrides is not known.
+- Plugin meanwhile: no reason is asked (R95) and the warning reaches the CSM as Core wrote it.
+
+**Steps to reproduce**
+Observed 2026-10-24, Yerdle, Orange County, 7 Mercedes Sprinter Vans on 2027-03-20, with `inventory_override`. In `presentation.warnings`:
+
+```json
+{"severity": "warning", "message": "Inventory override: Orange County, CA has 3 inventoried Mercedes Sprinter Van vehicles; 7 requested."}
+```
+
+The unit carries `"quantity": 7`, `"requested_quantity": 1`, `"required_quantity": 7`. No field names the market, the inventoried count or the override.
+
+**Reference**
+H5 (GREEN-389), PRD R95. Capture `yerdle-irvine-transfers` in the shared Drive folder, 2026-10-24.
+
+**Acceptance criteria**
+- [ ] A unit that used an override carries a structured field with the service area, vehicle type, inventoried count and requested count.
+- [ ] Engineering states whether Core records who overrode and when.
+
+---
+
+## I2 — A `greeter` flag on quote view units
+**Type:** Feature · **Priority:** Low · **Status:** open · **Jira:** — · **PRD:** —
+
+**Triage (2026-10-24):** with Ethan Ward. Does not block the plugin.
+
+**Problem statement**
+A quote view unit carries the vehicle's id, name and capacity, and no flag for a greeter. A greeter drives nowhere, so no drive time may print for it (D1). The plugin tells a greeter from a vehicle by looking for "greet" in the vehicle name.
+
+**Impact**
+- A greeter vehicle renamed in Savoya without that word would print a drive time.
+- Plugin meanwhile: the name match. It works for "Hourly Greeter/Coordinator".
+
+**Steps to reproduce**
+Observed 2026-10-24. Fields on a unit in `presentation.data.quote_units`:
+
+```json
+"vehicle_type_id": "26", "vehicle_name": "Mercedes Sprinter Van", "vehicle_capacity": 13
+```
+
+Nothing on the unit says whether the vehicle is a greeter.
+
+**Reference**
+PRD D1 (greeter leg). Capture `yerdle-irvine-transfers`.
+
+**Acceptance criteria**
+- [ ] Each unit carries a boolean that is true for a greeter and false otherwise.
+
+---
+
+## I3 — A street-only address on quote view stops
+**Type:** Feature · **Priority:** Low · **Status:** open · **Jira:** — · **PRD:** —
+
+**Triage (2026-10-24):** with Ethan Ward. Does not block the plugin.
+
+**Problem statement**
+A stop's `address` in the quote view is Core's full display name, with city, state and country. The street is already in `label` when the user typed an address, so the client document repeats it.
+
+**Impact**
+- A stop line in the client document reads `18000 Von Karman Ave · 18000 Von Karman Avenue, Irvine, California, US`.
+- Plugin meanwhile: prints both. Nothing is wrong, the street is repeated.
+
+**Steps to reproduce**
+Observed 2026-10-24, stop 1 of Transfer 1:
+
+```json
+"label": "18000 Von Karman Ave", "address": "18000 Von Karman Avenue, Irvine, California, US"
+```
+
+**Reference**
+Capture `yerdle-irvine-transfers`.
+
+**Acceptance criteria**
+- [ ] Each stop carries a street-only field beside `address`, and engineering states which of the two is meant for a client document.
+
+## I4 — The server tells the model to pick a location itself when Core asks for confirmation
+**Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** — · **PRD:** R83
+
+**Triage (2026-10-25):** with Ethan Ward. Does not block the plugin, which now stops and asks the CSM whichever way the server words it.
+
+**Problem statement**
+`resolve_itinerary_stops` can return `status: "blocked"`, `error_type: "location_confirmation_required"` with every stop `needs_confirmation`. The text that comes with it tells the model to choose a candidate and mention it afterwards, so a model that follows the tool text picks the stops for the CSM.
+
+**Impact**
+- A CSM can receive a quote priced at points the model chose, including a candidate in another market, without being asked. Reported 2026-10-25 on a Yerdle World Cup request: all five stops came back `needs_confirmation`, the session chose among the candidates and wrote "The stops resolved" to the user. One candidate for White Plains was `New York State Thruway, Waterloo`, in the Rochester market, with the warnings "No local providers" and "City inferred from nearest same-country city… confirm this location before quoting".
+- Plugin meanwhile: stop and ask the CSM before any pricing call (R83 amendment). Plugin instructions cannot change what the tool text says.
+
+**Steps to reproduce**
+Wording as shipped in `src/domains/quotes/locationGuidance.ts` (branch `main`, read 2026-10-25):
+
+```
+LOCATION_SELECTION_GUIDANCE: "…Multiple candidates alone do not require confirmation; use the user's stated city and other trip details to identify the intended match. Ask only about unresolved locations and wait for their choice…"
+LOCATION_RECOVERY_GUIDANCE:  "Keep valid tickets and trip facts. Select an obvious equivalent returned candidate and disclose the assumption, or ask about material differences. Use its unchanged stop_ref and stop_type…"
+```
+
+and in `presentation.ts`, for `location_confirmation_required`: message "We found more than one possible match for a required location.", next action "Please confirm the intended location before continuing."
+
+The two texts disagree: Core required confirmation, the recovery text says to select.
+
+**Update 2026-10-25:** the same recovery text appeared again in an Actian World Cup session: `next_action` "Select an obvious equivalent returned candidate and disclose the assumption, or ask about material differences." came back with `location_confirmation_required` for the MetLife stop (two candidates, one `id`, one address) and again for four town-named origins. The Actian session did ask the user; the picks it offered were town and area points that Core then could not price (J1).
+
+**Reference**
+Report: Yerdle World Cup session, 2026-10-25, plugin 0.27.6. The five queries and their candidates are in the brief `Savoya-Plugin-Fixes-Brief-Stops-Capture-Discount.md`.
+
+**Acceptance criteria**
+- [ ] When a stop is `needs_confirmation`, the text returned with it tells the model to ask the user to choose and to wait, and no longer says to select a candidate.
+- [ ] Candidates in a different service area from the rest of the itinerary are flagged in the response itself.
+
+## J1 — Town and area points come back as selectable stop candidates that Core cannot price
+**Type:** Defect · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R122, R123
+
+**Problem statement**
+`resolve_itinerary_stops` returns town-level and area-level points ("White Plains town point", "Midtown Manhattan area point", "Newark town point", "Garden City town point") as ordinary candidates for an `address` stop. Pricing a unit with one of those points as a stop fails with `quote_units_unavailable` (Core 422, empty `issues`, see B9). Nothing in the candidate says it is town-level: it carries a `loc_` reference and a service area like any other.
+
+**Impact**
+- A CSM who has no final address, which is the normal case for a pickup "in White Plains, to be confirmed", is offered a point that cannot be quoted. The Actian World Cup session (32 units) priced twice on four such points and got no quote.
+- The same unit, vehicle, client, rate and destination priced once the four origins were street addresses: hourly rack rate 52354, $237/hr base plus 20% fuel, 2-hour minimum, $65,056.50 for all 32 units.
+- Plugin meanwhile (R122, R123): offer a civic-building street address per town, never price a candidate with no street number, retry with different references. The street-number test is a stand-in; the plugin cannot see whether a point is town-level.
+
+**Steps to reproduce**
+Sent through `resolve_itinerary_stops`, stop type `address`: "White Plains, New York", "Midtown Manhattan, New York, New York", "Newark, New Jersey", "Garden City, New York". All four came back `needs_confirmation` with a town or area point first (`loc_246a9a4895b4ff9c6fbbcb81`, `loc_0dcfe0c4b40596f916acdd38`, `loc_c0414aef6471d354fe21e830`, `loc_4688edd5e0f04f7dadeeedc0`), all in the New York City, NY service area (id 11198). Priced as stops in `calculate_quote_units` with SUV (type 8), `passenger_count` 13, profile 201932: `quote_units_unavailable`, `issues: []`.
+
+Street addresses for the same four towns (255 Main Street, White Plains, NY 10601; 20 West 34th Street, New York, NY 10001; 920 Broad Street, Newark, NJ 07102; 351 Stewart Avenue, Garden City, NY 11530) each resolved with one candidate and priced.
+
+**Reference**
+Report: Actian World Cup session, 2026-10-25, plugin 0.27.6, feedback document "Savoya Quoting Plugin: Location Confirmation Feedback". Related: B9, I4.
+
+**Open questions for Ethan**
+- Does Core price town-level or area-level points for transfers at all? If not, the lookup should not offer them for pricing.
+- Can the lookup return a street-address placeholder for a town on request?
+
+**Acceptance criteria**
+- [ ] Each candidate says whether it is a street address, a venue, or a town or area point, in a field the plugin can read.
+- [ ] A town or area point is either not returned as a candidate for an `address` stop, or is marked as not priceable.
+- [ ] `quote_units_unavailable` for a stop of that kind names the stop (B9).
+
+---
+
+---
 
 ---
 

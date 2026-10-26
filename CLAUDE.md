@@ -116,7 +116,7 @@ guard to make a change pass.
 
 ## Guards
 
-`regress.py` runs **51 guards** beyond the fifteen fixtures — 66 checks in all. Run it; the
+`regress.py` runs **52 guards** beyond the fifteen fixtures — 67 checks in all. Run it; the
 list below is for orientation, not for counting:
 
 | Group | Guards |
