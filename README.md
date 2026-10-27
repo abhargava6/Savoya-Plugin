@@ -81,13 +81,15 @@ python3 build.py --bump patch
 ```bash
 python3 build.py                                  # whatever SAVOYA_MCP_URL in .env names
 python3 build.py --env staging --bump patch       # a named environment, ignoring .env
+python3 build.py --env production --bump patch    # a production release
 python3 build.py --mcp-url https://<tunnel>/mcp   # a local tunnel, ignoring .env
 ```
 
 Without `--env` or `--mcp-url`, it uses `SAVOYA_MCP_URL` from the environment or `.env`
 (copy `.env.example`), and falls back to the checked-in `.mcp.json` (acceptance).
 The named environments are listed in `ENVIRONMENTS` at the top of `build.py`:
-`acceptance` is `https://mcp-acceptance.savoya.net/mcp` and `staging` is `https://mcp-staging.savoya.net/mcp`.
+`acceptance` is `https://mcp-acceptance.savoya.net/mcp`, `staging` is `https://mcp-staging.savoya.net/mcp`,
+and `production` is `https://mcp-core.savoya.net/mcp`.
 
 A named environment is a release build, packaged as `savoya-quoting-<version>-<env>.plugin`.
 Any other URL is a local test build labelled `<version>-local.<timestamp>`; it never changes a

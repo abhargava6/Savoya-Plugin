@@ -6,6 +6,7 @@
     python3 build.py --mcp-url https://<tunnel>/mcp   # local test build against a tunnel
     python3 build.py --env staging --bump patch       # release: bump every manifest copy, then build
     PLUGIN_VERSION=0.27.0 python3 build.py --env acceptance   # release at an explicit version
+    python3 build.py --env production --bump patch    # production release
 
 The MCP is chosen by, in order: --env or --mcp-url, then SAVOYA_MCP_URL from the
 environment, then SAVOYA_MCP_URL in .env (see .env.example), then the checked-in .mcp.json.
@@ -36,6 +37,7 @@ BUILD = ROOT / "build"
 ENVIRONMENTS = {
     "acceptance": "https://mcp-acceptance.savoya.net/mcp",
     "staging": "https://mcp-staging.savoya.net/mcp",
+    "production": "https://mcp-core.savoya.net/mcp",
 }
 DEFAULT_URL = json.loads((ROOT / ".mcp.json").read_text())["mcpServers"]["savoya"]["url"]
 

@@ -27,7 +27,7 @@ python3 skills/quote-document/scripts/regress.py --pdf     # must be green
 python3 build.py --bump patch                               # package into build/
 ```
 
-`build.py --env acceptance|staging` builds a release for that MCP environment
+`build.py --env acceptance|staging|production` builds a release for that MCP environment
 (`savoya-quoting-<version>-<env>.plugin`); `--mcp-url https://<tunnel>/mcp` builds a
 `<version>-local.<timestamp>` test package that changes nothing in the repo. With neither,
 it reads `SAVOYA_MCP_URL` from `.env` (see `.env.example`) and falls back to acceptance.
@@ -218,8 +218,6 @@ promoted fixtures come in.
 
 - `covers-src/` (the source cover PDFs behind `assets/covers/*.jpg`) is not in this repo.
   `make_covers.py` needs it; ask Ayush for the originals before regenerating covers.
-- `.mcp.json` points at `mcp-acceptance.savoya.net`; `build.py --env` rewrites only the
-  packaged copy. Production needs an entry in `ENVIRONMENTS` and a version bump.
 - **Special-event pricing has no fixture.** `three-city-suv-special-event` is now a misnomer;
   reproducing that path needs a service date with a known event.
 - **A comparison where no option has a stored rate cannot be captured.**
