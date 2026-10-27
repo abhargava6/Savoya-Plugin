@@ -1,6 +1,6 @@
 {
   "name": "savoya-quoting",
-  "version": "0.27.7",
+  "version": "0.28.0",
   "description": "Savoya quoting: quote-intake (client request \u2192 exact engine quote, two questions, value/elevated or a mix sourced from nearby markets, refine, handoff) and quote-document (handoff \u2192 client-facing PDF / email copy / HTML email / DOCX / XLSX through six fixed questions plus one conditional). Every price is Core's; a document that does not reconcile is not produced. Bundles the Savoya MCP connector.",
   "author": {
     "name": "Savoya Product & Engineering"

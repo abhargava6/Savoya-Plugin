@@ -1,7 +1,7 @@
 ---
 title: Savoya quoting assistant — help
 page_url: "https://claude.ai/artifact/QTmf31aDH5hn7o6pMdHYXm"
-describes_release: 0.27.6
+describes_release: 0.28.0
 audience: everyone at Savoya
 ---
 
@@ -74,6 +74,12 @@ When a request gives a range, such as 50 to 75 passengers, the number of vehicle
 
 ### Why did it ask me for an address instead of a tour area?
 When a stop such as "around the city" cannot be matched to a place Savoya knows, the assistant stops and asks you for an address. It never swaps in a different stop to get past the problem, because that changes the trip you are pricing.
+
+### Why did it stop and ask me to choose a stop?
+When Savoya's pricing system finds more than one possible match for a stop, it asks for confirmation. The assistant shows you each candidate, with the street or venue and the market it is in, and waits for your pick. It never chooses for you. A candidate in a different market from the rest of the trip shows its warning, so you see it before anything is priced.
+
+### What if the client only gave a town for a pickup, such as "White Plains, to be confirmed"?
+The assistant looks for a real street address in that town, such as the city hall, and offers it first. You can pick it, give your own address, or choose another match. A town or area point on its own is never priced. The document prints a neutral label for that stop, not the stand-in address.
 
 ### Why doesn't the quote match the rate sheet?
 The rate sheet is a preview. The quote is the exact price, calculated the way the web app calculates it. For a client whose profile waives incidentals, the sheet can still show a fuel surcharge that the quote correctly leaves out. Use the quote.

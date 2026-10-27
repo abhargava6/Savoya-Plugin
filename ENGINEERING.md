@@ -35,26 +35,22 @@ Acceptance criteria
 | Open | **G6** | Compact response mode for multi-unit packages | Feature | **High** | GREEN-380 |
 | Open | **B7** | No airline resolver, so known commercial flights are unquotable | Feature | **High** | — |
 | Open | **F4** | No-client / rack-only quoting unbuilt on every path | Feature | **High** | GREEN-381 |
-| Open | **A4** | Rate sheet ignores "Waive All Incidentals" | Defect | **High** | GREEN-382 |
-| Open | **H4** | Quote tools can't price a vehicle sourced from a nearby market (Seattle → Whistler) | Defect | **High** | GREEN-388 |
-| Open | **H5** | Allow quoting a quantity above Savoya's inventory when the CSM has vendor confirmation | Feature | **High** | — |
 | Open | **H6** | `display: show \| internal` on `calculate_quote_units` | Feature | **High** | — |
 | Open | **B7b** | No FBO resolver, so private flights are unreachable | Feature | Medium | — |
 | Open | **G4** | Quote response lacks the no-local-provider warning | Feature | Medium | GREEN-383 |
 | Open | **G1** | `greeter_fee` fields exist but no tool sets them | Decision | Medium | — |
 | Open | **G2** | `client_can_book` missing from rate-preview `presentation` rows | Defect | Medium | — |
 | Open | **G3** | `temporary_rate_used` is `false` at aggregate level | Defect | Medium | — |
-| Open | **B9** | `quote_units_unavailable` returns empty `issues[]` | Defect | Medium | — |
+| Open | **B9** | `quote_units_unavailable` returns empty `issues[]` | Defect | Medium | GREEN-416 |
 | Open | **F8** | Greeters silently missing from the rate sheet | Feature | Medium | GREEN-384 |
 | Open | **H1** | Austin rate sheet shows Mini Bus quantity 1, service area lists 4 | Defect | Medium | GREEN-385 |
-| Open | **H2** | Hide action buttons on quote and quote-option cards in the chat UI | Feature (UI) | Medium | GREEN-386 |
 | Open | **H3** | Hide the "No passenger was selected" warning in the chat UI | Task (UI) | Medium | GREEN-387 |
 | Open | **C1** | `as_directed` city lookup fails on state abbreviations | Defect | Low | — |
 | Open | **I1** | Structured record when a CSM overrides inventory | Feature | Medium | — |
 | Open | **I2** | A `greeter` flag on quote view units | Feature | Low | — |
 | Open | **I3** | A street-only address on quote view stops | Feature | Low | — |
-| Open | **I4** | The server tells the model to pick a location itself when Core asks for confirmation | Defect | Medium | — |
-| Open | **J1** | Town and area points come back as selectable stop candidates that Core cannot price | Defect | **High** | — |
+| Open | **I4** | The server tells the model to pick a location itself when Core asks for confirmation | Defect | Medium | GREEN-417 |
+| Open | **J1** | Town and area points come back as selectable stop candidates that Core may not price | Defect | **High** | GREEN-415 |
 | Deferred | **F1** | What Auth0 adds over today's per-CSM OAuth | Decision | **High** | GREEN-354 |
 | Deferred | **F2** | MCP tool surface vs. `QuoteBuilder`: replacement or parallel | Decision | **High** | GREEN-354 |
 | Deferred | **F3** | Does `QuoteBuilder`'s exact path require a passenger? | Decision | Medium | GREEN-354 |
@@ -69,7 +65,7 @@ Acceptance criteria
 | Deferred | **B4** | `scenario_comparison` hides data the payload carries | Feature | Low | — |
 | Deferred | **C2** | Stop-ref TTL undocumented | Feature | Low | — |
 | Deferred | **E1** | Host quote documents at a Savoya URL | Feature | P3 | — |
-| Resolved | A1, A2, A3, B1, B3, B5, B8, B10 | See *Resolved* | — | — | B10: GREEN-371 |
+| Resolved | A1, A2, A3, A4, B1, B3, B5, B8, B10, H2, H4, H5 | See *Resolved* | — | — | A4: GREEN-382; B10: GREEN-371; H2: GREEN-386; H4: GREEN-388; H5: GREEN-389 |
 
 Each Deferred item states why. Move one back to Open by changing its section and status.
 
@@ -187,149 +183,6 @@ If the full no-client path is complex, add a default TC profile per environment 
 - [ ] A written answer: scheduled (with target) or explicitly deferred past pilot.
 - [ ] If built: a pricing call with no TC profile returns a quote or rate preview at rack rates, with no client attached.
 - [ ] Or, as the interim: each environment has a default TC profile with no rates, discounts or similar, and quoting uses it when no client matches.
-
----
-
-## A4 — Rate sheet ignores "Waive All Incidentals"
-**Type:** Defect (pending confirmation) · **Priority:** High · **Status:** open · **Jira:** GREEN-382 · **PRD:** R4
-
-**Problem statement**
-A company profile's Billing tab has a **Waive All Incidentals** flag. When on, the client's fuel surcharge is waived. The exact-pricing tools honor it. `preview_rate_batch` does not.
-
-**Impact**
-- For a client with the flag set, the rate sheet shows a fuel surcharge the client's actual quote will not carry.
-- `preview_rate_batch` feeds the internal preview at decision-tree node F and is the data source for the standalone rate-sheet document still wanted under the PRD.
-- Plugin workaround: none. It has no way to know the two will disagree.
-
-**Steps to reproduce**
-1. Pick a company profile with **Waive All Incidentals** on.
-2. Run `calculate_quote_units` for a trip. `effective_rate_amount` reflects the waiver and no surcharge line appears.
-3. Run `preview_rate_batch` for the same trip. The fuel surcharge is shown as applied.
-
-The original filing carries no captured numbers. Attach the profile id and both responses when reproducing.
-
-**Reference**
-Decision-tree node F; PRD rate-sheet requirement (R4).
-
-**Acceptance criteria**
-- [ ] Engineering confirms bug or intentional.
-- [ ] If bug: `preview_rate_batch` reads `waive_all_incidentals` the same way the quote tools do, and the two agree for the profile above.
-- [ ] If intentional: the response carries a field that states the surcharge is not waived in the preview, so the plugin can caveat the rate sheet.
-
----
-
-## H4 — Quote tools can't price a vehicle sourced from a nearby market (Seattle → Whistler)
-**Type:** Defect · **Priority:** High · **Status:** open · **Jira:** GREEN-388 · **PRD:** R48–R51
-
-**Problem statement**
-The reservation UI prices a vehicle sourced from a nearby market with that market's rates. The quote tools do not. For a Coach Bus sourced from Seattle into Whistler (primary market Vancouver), every path fails:
-- Stored rates, `calculate_sourced_quote_units` → `rate_unavailable`.
-- Sourced + temporary rate, `calculate_temporary_quote_units` with `source_market_ref` → `core_contract_violation` with empty `issues`.
-- Temporary rate without sourcing → `market_inventory_shortfall`.
-
-**Impact**
-- A CSM cannot quote any vehicle that exists only in a nearby market. Motorcoaches for Whistler are the live case.
-- The same booking can be made by hand: book a placeholder reservation, then override the service area. A quote built that way never reaches the quote-document workflow.
-- Plugin workaround: none. The plugin reports the block and asks the CSM for another vehicle or market.
-
-**Steps to reproduce**
-Raised 2026-10-11 by Ayush, from an acceptance test. Client "Ayush TC" (Yerdle), travel_coordination_profile_id 201890. Also reproduced earlier on profile 181639 (Julie Fiol, Ericsson). Primary market Vancouver, Canada (service area id 11146); Whistler stops are served from Vancouver. Source market Seattle (id appears to be 11171, decoded from the signed `market_ref`).
-
-Request: Jun 9, Whistler BC, 50–75 passengers, guided area tour, PA system. Two scenarios: one motorcoach all day, or two motorcoaches for 4 hours each. Jun 10: continuous shuttle between The Westin and the Fairmont golf course. Assumed to proceed (not given): year 2027, 9:00 AM starts, 8h all-day and 4h shifts, Jun 10 shuttle 9–5, passenger split 50 + 25.
-
-Issue 1, stored rates:
-1. `resolve_itinerary_stops`: The Westin Resort & Spa Whistler (`loc_a8daa56fe50286a4c465d769`), Fairmont Chateau Whistler Golf Club (`loc_4a019f6b44d088415e5bcf5b`).
-2. `resolve_vehicle_types` (passenger_count 50): Coach Bus id 6 (capacity 50, limited_availability true, client_can_book false) plus greeters. Mini Bus is id 7 (capacity 41).
-3. `preview_rate_batch` on the Whistler stops, profile 201890: the Vancouver sheet has Sedan, Premium Sedan, SUV and Sprinter only. No Coach Bus, no Mini Bus.
-4. `lookup_nearby_markets` (reference_service_area_id 11146, inventory_date 2027-06-09): Seattle is the only nearby market with coaches (1 Coach Bus, 1 Mini Bus, inventory unconfirmed), about 146 min by road.
-5. `preview_rates` on Seattle stops (The Westin Seattle → Space Needle, hourly) shows Seattle's stored rates:
-
-```
-Seattle, hourly, profile 201890 (listed amounts; sheet also shows 30% company discount and 10% fuel surcharge)
-Sedan          3 seats   $136.29  min 2h   cancel 2h
-Premium Sedan  3 seats   $209.44  min 2h   cancel 2h
-SUV            6 seats   $186.34  min 2h   cancel 2h
-Sprinter Van   13 seats  $249.48  min 2h   cancel 2h
-Mini Bus       41 seats  $394.24  min 4h   cancel 72h
-Coach Bus      50 seats  $463.54  min 4h   cancel 72h
-
-Vancouver, hourly, profile 201890: Sedan $109.34, Premium Sedan $157.85, SUV $130.90, Sprinter $201.74 (2h min, same adjustments). No coach or mini bus.
-```
-
-6. `calculate_sourced_quote_units` with `vehicle_type_id` 6 (and 7), `source_market_ref` = Seattle's `market_ref`, 3 stops, hourly with duration. HTTP 422 on all three quotes (Jun 9 all day, Jun 9 4h, Jun 10 shuttle), for both the Coach Bus and the Mini Bus:
-
-```json
-{"status":"blocked","error_type":"quote_units_unavailable","core_status":422,
- "request_id":"c9ae6aad-9fe8-4e8a-942b-ed5c46e72561",
- "client_error":{"code":"quote_units_unavailable","category":"availability",
-  "recovery":{"code":"review_rates","message":"Please choose another vehicle, provide a temporary rate, or remove the unavailable option."},
-  "issues":[{"path":"quote_units[0].vehicle_type_id","code":"rate_unavailable"},
-            {"path":"quote_units[1].vehicle_type_id","code":"rate_unavailable"}]}}
-```
-
-Other request ids, same error: `07e0e972-3966-4047-9c0b-113e4b414b47` (Jun 9 4h), `e7a3bb09-9c5e-4bba-8699-18f95c973e53` (Jun 10).
-
-Issue 2, temporary rate:
-- 2a. `calculate_temporary_quote_units` with `source_market_ref` (Seattle), vehicle 6 at `amount` 46354, then 46352 (cents, hourly, minimum 4, cancellation_hours 72), and vehicle 7 at 39424. Result: `core_contract_violation`, "Savoya could not complete this quote because the returned information was incomplete.", `issues: []`. Request ids: `fa0e4f6e-dd33-4763-92f6-38d0fca47645` (Jun 9 all day, 46354), `a2d4d0aa-5a69-416b-8a51-736e0c6cb677` (Jun 9 4h, 46354), `949f176c-1eea-456c-9aa4-36b72357e7b1` (Jun 10, 46354), `b737cbb0-9ee9-48de-a568-334899ceb3d4` (Jun 9 all day, 46352), `af6e50a7-83b3-4970-a47d-34c492684bf8` (Jun 9 4h, 46352), `f2221af8-304c-45b2-8f07-58891f992d74` (Jun 10, 46352).
-- 2b. Same call, vehicle 6, no `source_market_ref`. Result: `market_inventory_shortfall`, "Vancouver, Canada has 0 inventoried Coach Bus vehicles; 1 requested." Request id `2368dfc7-ec75-45c4-89b6-45ee46b87e0c`.
-- The tool description says to send the same allocations and `source_market_ref` values used by `calculate_sourced_quote_units`. That call fails in Issue 1, so the two may be coupled.
-
-Issue 3, resolver gaps (minor):
-- `resolve_itinerary_stops` with `stop_type: as_directed`, query "Whistler, BC" and "Whistler, British Columbia, Canada" → `location_resolution_failed`, `needs_confirmation`, no candidates. Address stops resolve, so the hourly tour was modeled Westin → Westin.
-- Whistler address stops return the warning "No local providers" (served from Vancouver). Possibly expected.
-- `resolve_vehicle_types` with query "motorcoach" returns `[]`. Only a call with no query and `passenger_count` returned Coach Bus.
-
-**Reference**
-- The reservation UI bills the sourcing market's rate (reporter's observation, acceptance):
-  1. https://acceptance.savoya.net/savoya/reservations/62500735 — created in Whistler with a Sedan sourced from Vancouver, service area overridden to Seattle, vehicle type changed to Coach Bus. The audit trail shows a quote using the Seattle rate.
-  2. https://acceptance.savoya.net/savoya/reservations/43167612 — booked with a Sedan, then only the service area overridden to Seattle. The rate changed from the Vancouver base of 142 to the Seattle base of 177.
-- Hypothesis, unverified: the reservation builder resolves rates from the effective (overridden or sourced) service area. The quote path resolves them from the anchor market only, and fails to assemble the response for a temporary rate when a source market is attached.
-- **Conflicts with B10.** B10 recorded the opposite on a live quote: an Austin Mini Bus sourced into Dallas billed Dallas's $314.92/hr, not Austin's $244.09/hr, so the primary market supplies the rate. Here the primary market (Vancouver) has no Coach Bus rate, which would explain `rate_unavailable`. Which market's rate a sourced vehicle bills needs an engineering answer (acceptance criterion 3).
-- Related: B10 and `GREEN-371` (sourcing), B9 (empty `issues[]`), G4 (no-local-provider warning), PRD R48–R51.
-
-**Acceptance criteria**
-1. `calculate_sourced_quote_units` returns a priced total for the Seattle Coach Bus into Whistler on profile 201890, consistent with the reservation UI.
-2. `calculate_temporary_quote_units` with `source_market_ref` returns a priced quote, or an error that names the cause. `core_contract_violation` with empty `issues` no longer occurs.
-3. Engineering states in writing which market's rate a sourced vehicle bills, and reconciles it with B10.
-4. Minor: `as_directed` "Whistler, BC" resolves to a stop, and `resolve_vehicle_types` with query "motorcoach" returns Coach Bus (id 6).
-
----
-
-## H5 — Allow quoting a quantity above Savoya's inventory
-**Type:** Feature · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R95
-
-**Problem statement**
-Core returns `market_inventory_shortfall` when the requested quantity of a vehicle type exceeds the inventoried count. CSMs often confirm availability with vendors and can provide more than Savoya's inventory shows. Today they cannot get a priced quote for that quantity.
-
-**Impact**
-- A quote for more vehicles than the inventory shows cannot be produced from Core.
-- Plugin workaround, in place until this ships: the plugin prices the largest quantity Core accepts, checks that the line total equals Core's `per_vehicle_total_amount` times the quantity, and extends the quantity only. The CSM's approval, the vendor statement and the shortfall message are recorded. The extended figure is not a Core-returned figure.
-- Residual risk: Core might price the larger quantity differently from a straight multiple (a volume rule, for example). The plugin cannot see that.
-
-**Steps to reproduce**
-Yerdle Irvine, session `yerdle-irvine-mar20` on plugin 0.27.4, 2026-10-17. Pickup 2027-03-20 7:40am, 18000 Von Karman Ave to 6001 Oak Canyon, primary market Orange County, CA (service area id 11554). 80 passengers. Requested 7 x Mercedes Sprinter Van (vehicle type id 26, capacity 13). Core returned `market_inventory_shortfall` with 3 inventoried (as recorded in the session's workaround note; the verbatim response is not in the readable part of the capture).
-
-One Sprinter, priced by Core:
-
-```
-unit_total 77154 (cents) · pricing_method hourly · billable_hours 2 · minimum_hours 2
-base_rate_amount 50100 · effective_rate_amount 38577
-discount_basis_points 3000 · fuel_surcharge_basis_points 1000
-temporary_rate_used true · limited_availability true
-```
-
-The session multiplied that unit by 7 by hand (line total 540078 cents) and the CSM approved it in chat.
-
-**Reference**
-- Related: H4 and B10 (sourcing), G6 (large responses), PRD R48–R50, R54, R78, R92, R95.
-- The CSM states the quantity, the vendor and who confirmed it; the plugin records that statement with the extension.
-
-**Acceptance criteria**
-1. Core accepts a requested quantity above inventory when the caller asserts vendor confirmation, and returns a priced quote.
-2. The response carries `inventory_override` with `requested` and `inventoried`, at unit level and in the aggregate.
-3. Core writes an audit record of the override: who asserted it, the vendor statement, the time.
-4. Pricing at the larger quantity is Core's own calculation, so any quantity-dependent rule is applied.
-5. The plugin workaround is removed when this ships.
 
 ---
 
@@ -533,7 +386,7 @@ Temporary rate: PRD R34.
 ---
 
 ## B9 — `quote_units_unavailable` returns an empty `issues[]`
-**Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** — · **PRD:** R34
+**Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** GREEN-416 · **PRD:** R34
 
 **Problem statement**
 A unit that cannot be priced returns `quote_units_unavailable` with no detail on which unit or vehicle failed.
@@ -612,32 +465,6 @@ Raised 2026-10-11 by Ayush.
 **Acceptance criteria**
 1. The Austin rate sheet shows the same Mini Bus quantity as the service area's vehicle tab (4), or engineering documents which filter makes the two differ.
 2. Engineering says whether other vehicle types and markets show the same difference.
-
----
-
-## H2 — Hide the action buttons on quote and quote-option cards in the chat UI
-**Type:** Feature (UI) · **Priority:** Medium · **Status:** open · **Jira:** GREEN-386 · **PRD:** —
-
-**Problem statement**
-The Savoya embed shows buttons in the chat UI whenever quote options and/or a quote are presented, for example "Refine this quote".
-
-**Impact**
-- The plugin workflow already asks the user the right questions, in order. The buttons offer a second path that can confuse the user.
-- Plugin workaround: none.
-- The buttons may come back later, so they are to be hidden, not removed.
-
-**Steps to reproduce**
-Raised 2026-10-11 by Ayush.
-1. In a Claude chat with the Savoya MCP connected, request a quote.
-2. Look at the quote card and at the quote-options card. Buttons appear on both (the quote card shows "Refine this quote").
-
-**Reference**
-Screenshot of the quote card (Mineola to MetLife, 10 travelers, tooltip "savoya embed"). Attach to the ticket.
-
-**Acceptance criteria**
-1. No buttons are displayed on the quote card or the quote-options card in the chat UI.
-2. The buttons are hidden, not deleted, so they can be shown again without rebuilding them.
-3. Quote data and the plugin workflow are unaffected.
 
 ---
 
@@ -772,7 +599,7 @@ Capture `yerdle-irvine-transfers`.
 - [ ] Each stop carries a street-only field beside `address`, and engineering states which of the two is meant for a client document.
 
 ## I4 — The server tells the model to pick a location itself when Core asks for confirmation
-**Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** — · **PRD:** R83
+**Type:** Defect · **Priority:** Medium · **Status:** open · **Jira:** GREEN-417 · **PRD:** R83
 
 **Triage (2026-10-25):** with Ethan Ward. Does not block the plugin, which now stops and asks the CSM whichever way the server words it.
 
@@ -804,14 +631,14 @@ Report: Yerdle World Cup session, 2026-10-25, plugin 0.27.6. The five queries an
 - [ ] When a stop is `needs_confirmation`, the text returned with it tells the model to ask the user to choose and to wait, and no longer says to select a candidate.
 - [ ] Candidates in a different service area from the rest of the itinerary are flagged in the response itself.
 
-## J1 — Town and area points come back as selectable stop candidates that Core cannot price
-**Type:** Defect · **Priority:** High · **Status:** open · **Jira:** — · **PRD:** R122, R123
+## J1 — Town and area points come back as selectable stop candidates that Core may not price
+**Type:** Defect · **Priority:** High · **Status:** open · **Jira:** GREEN-415 · **PRD:** R122, R123
 
 **Problem statement**
-`resolve_itinerary_stops` returns town-level and area-level points ("White Plains town point", "Midtown Manhattan area point", "Newark town point", "Garden City town point") as ordinary candidates for an `address` stop. Pricing a unit with one of those points as a stop fails with `quote_units_unavailable` (Core 422, empty `issues`, see B9). Nothing in the candidate says it is town-level: it carries a `loc_` reference and a service area like any other.
+`resolve_itinerary_stops` returns town-level and area-level points ("White Plains town point", "Midtown Manhattan area point", "Newark town point", "Garden City town point") as ordinary candidates for an `address` stop. Pricing a unit with some of those points as a stop fails with `quote_units_unavailable` (Core 422, empty `issues`, see B9). Not every town point fails: in the Yerdle session (2026-10-25) a Hicksville town point priced, while the White Plains and Midtown area references failed. In the Actian session the four points failed together, so which of them Core rejects is not known. Nothing in the candidate says it is town-level: it carries a `loc_` reference and a service area like any other.
 
 **Impact**
-- A CSM who has no final address, which is the normal case for a pickup "in White Plains, to be confirmed", is offered a point that cannot be quoted. The Actian World Cup session (32 units) priced twice on four such points and got no quote.
+- A CSM who has no final address, which is the normal case for a pickup "in White Plains, to be confirmed", is offered points that may not be quotable. The Actian World Cup session (32 units) priced twice on four such points and got no quote.
 - The same unit, vehicle, client, rate and destination priced once the four origins were street addresses: hourly rack rate 52354, $237/hr base plus 20% fuel, 2-hour minimum, $65,056.50 for all 32 units.
 - Plugin meanwhile (R122, R123): offer a civic-building street address per town, never price a candidate with no street number, retry with different references. The street-number test is a stand-in; the plugin cannot see whether a point is town-level.
 
@@ -1164,6 +991,32 @@ Design questions still to settle, not decisions yet requested:
 # Resolved
 
 Items move here with the answer and the date, only on Ayush's say-so. Condensed 2026-10-11. The full original wording and evidence for each item is in git history at commit `f1a8b36`.
+
+## H5 — Allow quoting a quantity above Savoya's inventory · closed 2026-10-26, reported done by Ayush
+**Jira:** `GREEN-389` · **PRD:** R95
+
+**Problem:** Core returned `market_inventory_shortfall` when the requested quantity exceeded the inventoried count, so a CSM with vendor confirmation could not get a priced quote for more vehicles.
+**Resolution:** Reported done by Ayush on 2026-10-26. How it was delivered is not recorded here. The plugin's workaround is gone: `handoff.py extend-quantity` was removed on 2026-10-20 (commit `cca055d`), and a shortfall is resent with `inventory_override: true` (R95), priced on staging 2026-10-24.
+
+## H4 — Quote tools can't price a vehicle sourced from a nearby market (Seattle → Whistler) · closed 2026-10-26, reported done by Ayush
+**Jira:** `GREEN-388` · **PRD:** R48–R51
+
+**Problem:** a Coach Bus sourced from Seattle into Whistler (primary market Vancouver) failed on every path: `rate_unavailable`, `core_contract_violation` with empty `issues`, or `market_inventory_shortfall`.
+**Resolution:** Reported done by Ayush on 2026-10-26. How it was delivered is not recorded here. The plugin has not been retested on the Seattle to Whistler case.
+
+## H2 — Hide the action buttons on quote and quote-option cards in the chat UI · closed 2026-10-26, reported done by Ayush
+**Jira:** `GREEN-386`
+
+**Problem:** the Savoya embed showed buttons such as "Refine this quote" on the quote and quote-option cards, a second path beside the plugin's own questions.
+**Resolution:** Reported done by Ayush on 2026-10-26. Not yet seen in the web app by the plugin's tests.
+
+## A4 — Rate sheet ignores "Waive All Incidentals" · closed 2026-10-26, reported done by Ayush
+**Jira:** `GREEN-382` · **PRD:** R4
+
+**Problem:** `preview_rate_batch` showed a fuel surcharge that the exact-pricing tools waive for a profile with Waive All Incidentals on.
+**Resolution:** Reported done by Ayush on 2026-10-26. Whether it was fixed or documented as intentional is not recorded here. The original filing carried no captured numbers.
+
+The full original wording of H5, H4, H2 and A4 is in git history at commit `e85551d`.
 
 ## B10 — Cross-market sourcing · closed 2026-10-10, largely delivered
 **Jira:** `GREEN-371` · **PRD:** R48–R51 (*Built — in validation*)

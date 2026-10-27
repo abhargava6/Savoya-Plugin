@@ -84,7 +84,7 @@
 
 <div class="wrap">
   <h1>Savoya quoting assistant</h1>
-  <p class="stamp">Release 0.27.6</p>
+  <p class="stamp">Release 0.28.0</p>
   <p class="lede">Paste a client's request and get an exact Savoya quote, then the PDF or email you send. This page shows how it works, what it cannot do yet, and answers the questions people ask most.</p>
   <ul class="toc">
     <li><a href="#before">Before you start</a></li>
@@ -162,6 +162,8 @@ flowchart TD
   <input id="q" class="search" type="search" placeholder="Search, for example: headcount, map, commission" autocomplete="off">
   <div id="faq-list"><details class="qa"><summary>Why did it ask which headcount to quote?</summary><p>When a request gives a range, such as 50 to 75 passengers, the number of vehicles depends on which number you pick. The assistant asks first and prices that headcount. It never falls back to the capacity of a single vehicle.</p></details>
 <details class="qa"><summary>Why did it ask me for an address instead of a tour area?</summary><p>When a stop such as "around the city" cannot be matched to a place Savoya knows, the assistant stops and asks you for an address. It never swaps in a different stop to get past the problem, because that changes the trip you are pricing.</p></details>
+<details class="qa"><summary>Why did it stop and ask me to choose a stop?</summary><p>When Savoya's pricing system finds more than one possible match for a stop, it asks for confirmation. The assistant shows you each candidate, with the street or venue and the market it is in, and waits for your pick. It never chooses for you. A candidate in a different market from the rest of the trip shows its warning, so you see it before anything is priced.</p></details>
+<details class="qa"><summary>What if the client only gave a town for a pickup, such as "White Plains, to be confirmed"?</summary><p>The assistant looks for a real street address in that town, such as the city hall, and offers it first. You can pick it, give your own address, or choose another match. A town or area point on its own is never priced. The document prints a neutral label for that stop, not the stand-in address.</p></details>
 <details class="qa"><summary>Why doesn't the quote match the rate sheet?</summary><p>The rate sheet is a preview. The quote is the exact price, calculated the way the web app calculates it. For a client whose profile waives incidentals, the sheet can still show a fuel surcharge that the quote correctly leaves out. Use the quote.</p></details>
 <details class="qa"><summary>What is a base rate, and why is the client's price lower than the number I typed?</summary><p>When Savoya has no stored rate for a vehicle in a market, you can give a rate to quote from. It is a base rate: the client's contracted discount and fuel are applied to it. Give the rate you want to quote from, not the cost you were quoted, or the client's price will come out lower than you expect.</p></details>
 <details class="qa"><summary>What does "additional vehicles" mean for nearby markets?</summary><p>The counts are vehicles a nearby market adds on top of the home market, not that market's total fleet. They are unconfirmed and promise nothing about fulfilment. Say so when you talk to the client.</p></details>
@@ -194,7 +196,7 @@ flowchart TD
     <p>2. Post a short note in the <strong>#core-ideas</strong> Slack channel so someone picks it up.</p>
   </div>
 
-  <footer>Savoya quoting assistant · release 0.27.6 · for everyone at Savoya</footer>
+  <footer>Savoya quoting assistant · release 0.28.0 · for everyone at Savoya</footer>
 </div>
 
 <script>

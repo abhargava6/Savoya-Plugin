@@ -226,7 +226,7 @@ promoted fixtures come in.
 - No airline resolver, so flights always go as `commercial_tbd: true` — see
   `ENGINEERING.md` item B7 (PRD R14), and B7b for the FBO sibling (PRD R52).
 - **The four managed artifacts** (help, decision tree, flow diagrams, architecture) are
-  recorded in `docs/artifacts/artifacts.json` at 0.27.6. They are regenerated and republished
+  recorded in `docs/artifacts/artifacts.json` at 0.28.0. They are regenerated and republished
   at the release that adopts presentation version 2 (the compact view), after the working-tree
   edits to `docs/artifacts` are committed; `sync_artifacts.py check` lists what is stale.
 - A coverage audit has never been done: roughly 40 documented flags (`--remove`,
