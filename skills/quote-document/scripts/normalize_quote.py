@@ -194,9 +194,9 @@ def normalize_unit(unit):
         and abs(eff_rate - round(std_rate * (1 + fuel_bps / 10000.0))) <= 1)
     engine_handling_pct = (adj.get("special_handling_basis_points") or 0) / 100.0 or None
     pickup_service_area = next((s.get("service_area") for s in view_stops if s.get("service_area")), None)
-    # No stop in this unit sits in a Savoya service area at all. Core still prices it,
-    # from whichever market owns the nearest fleet, and bills the positioning -- which
-    # is the EXPENSIVE sourcing case, not an edge case. On 10 Oct 2026 a Catania airport
+    # A stop in this unit sits in no Savoya service area. Core still prices it, from
+    # whichever market owns the nearest fleet, and bills the positioning -- which is
+    # the EXPENSIVE sourcing case, not an edge case. On 10 Oct 2026 a Catania airport
     # transfer of 36 minutes came back as 14.75 hours hourly from Naples: $9,233.50 for
     # one leg, and with its return $18,623 of a $23,259 quote.
     #
@@ -205,10 +205,18 @@ def normalize_unit(unit):
     # ordinary cross-market override -- is FALSE here, and the costly case was the one
     # case the sourcing marker missed.
     #
+    # Core now says it outright: `service_area_source` is "nearest" when any stop is in
+    # no market (GREEN-383), so it is read rather than inferred. The orphan-stop test
+    # below is kept because it is the only signal a quote captured before that field
+    # existed carries, and it is narrower in one way that matters: it needs EVERY stop
+    # to be outside a market, so a mixed trip was invisible to it.
+    #
     # A view stop carries `service_area: null` only when Core said the place is in no
     # market; the key is absent when Core did not say, which must not read as "nowhere".
-    orphan_stops = bool(view_stops) and all(
+    stated_no_local = unit.get("service_area_source") in ("nearest", "unavailable")
+    all_stops_orphan = bool(view_stops) and all(
         "service_area" in s and not s["service_area"] for s in view_stops)
+    no_local_market = stated_no_local or all_stops_orphan
     # Cross-market sourcing (PRD R48-R51). Core carries ONE source per unit, not an
     # array per leg: a mixed-market package is several units, each with its own
     # source_service_area, which is exactly how calculate_sourced_quote_units takes
@@ -222,9 +230,9 @@ def normalize_unit(unit):
         "service_area": service_area,
         "primary_service_area": primary_service_area,
         "sourced_from_other_market": bool(service_area and (
-            orphan_stops
+            no_local_market
             or (source_service_area and source_service_area != primary_service_area))),
-        "no_local_service_area": orphan_stops,
+        "no_local_service_area": no_local_market,
         "label": unit.get("label") or unit.get("key"),
         "date": unit.get("pickup_date"),
         "passenger_count": unit.get("passenger_count"),
@@ -313,16 +321,18 @@ def normalize_unit(unit):
                 adj.get("temporary_discount_label"))
     # "No local providers" is client-relevant: surface it as a line note automatically.
     #
-    # Two triggers, because the signal moved. The warning text now appears only on
-    # resolve_itinerary_stops; the QUOTE response carries `excess_drive_time: true`
-    # instead. Reading only the warning meant a Whistler job — priced out of Vancouver,
-    # 4 hours of positioning folded into a 12-hour bill — produced NO note at all, so a
-    # client saw the hours without the reason. Found by re-capturing the Whistler fixture.
+    # Three triggers, because the signal moved twice. The warning text used to appear
+    # only on resolve_itinerary_stops, with the QUOTE response carrying
+    # `excess_drive_time: true` instead. Reading only the warning meant a Whistler job —
+    # priced out of Vancouver, 4 hours of positioning folded into a 12-hour bill —
+    # produced NO note at all, so a client saw the hours without the reason. Found by
+    # re-capturing the Whistler fixture.
     #
-    # The warning is preferred when present because it names the market. `excess_drive_time`
-    # doesn't, so the wording falls back to the service area, then to generic. Carrying the
-    # resolution warning through the handoff would restore the name in every case — that
-    # belongs with handoff contract v3 (F2).
+    # Core repeats the warning on the quote since GREEN-383, so the named market is
+    # there in every case and nothing has to be carried from intake. The other two are
+    # kept for quotes captured before that: the warning names the market, while
+    # `excess_drive_time` does not, so its wording falls back to the service area and
+    # then to generic.
     note = None
     for w in unit.get("warnings") or []:
         if "No local providers" in w:
@@ -370,8 +380,10 @@ def normalize_unit(unit):
     if leg.get("no_local_service_area"):
         hrs = leg["pricing"].get("billable_hours")
         amount = leg.get("engine_net_line_cents")
+        where_outside = ("NO SAVOYA SERVICE AREA at any stop" if all_stops_orphan
+                         else "A STOP SITS IN NO SAVOYA SERVICE AREA")
         internal["placeholders"].append(
-            f"{leg['key']}: NO SAVOYA SERVICE AREA at any stop. Core priced it from "
+            f"{leg['key']}: {where_outside}. Core priced it from "
             f"{leg.get('service_area') or 'the nearest market'}"
             + (f" and billed {hrs:g} hours" if hrs else "")
             + (f" = ${amount / 100:,.2f}" if amount else "")

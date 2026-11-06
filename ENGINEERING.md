@@ -37,7 +37,7 @@ Acceptance criteria
 | Open | **F4** | No-client / rack-only quoting unbuilt on every path | Feature | **High** | GREEN-381 |
 | Open | **H6** | `display: show \| internal` on `calculate_quote_units` | Feature | **High** | — |
 | Open | **B7b** | No FBO resolver, so private flights are unreachable | Feature | Medium | — |
-| Open | **G4** | Quote response lacks the no-local-provider warning | Feature | Medium | GREEN-383 |
+| Fixed | **G4** | Quote response lacks the no-local-provider warning | Feature | Medium | GREEN-383 |
 | Open | **G1** | `greeter_fee` fields exist but no tool sets them | Decision | Medium | — |
 | Open | **G2** | `client_can_book` missing from rate-preview `presentation` rows | Defect | Medium | — |
 | Open | **G3** | `temporary_rate_used` is `false` at aggregate level | Defect | Medium | — |
@@ -243,7 +243,7 @@ PRD R52. Sibling of B7. `QuoteBuilder` does not close it (see F5 note under B7).
 ---
 
 ## G4 — Quote response lacks the no-local-provider warning
-**Type:** Feature · **Priority:** Medium · **Status:** open · **Jira:** GREEN-383 · **PRD:** R57
+**Type:** Feature · **Priority:** Medium · **Status:** fixed, unreleased · **Jira:** GREEN-383 · **PRD:** R57
 
 **Problem statement**
 `resolve_itinerary_stops` returns the sourcing warning. The quote response does not. The quote response sets `excess_drive_time: true` instead. Both facts are needed.
@@ -268,8 +268,26 @@ Run `calculate_temporary_quote_units` for the same stops. No such warning is ret
 PRD R57. Sourcing work: `GREEN-371`.
 
 **Acceptance criteria**
-- [ ] The quote response carries the no-local-provider warning with the sourcing market named.
-- [ ] Engineering confirms the signals co-occur: no local provider → sourced from another market → excess drive time applies.
+- [x] The quote response carries the no-local-provider warning with the sourcing market named.
+- [x] Engineering confirms the signals co-occur: they do not, and that matters. `excess_drive_time`
+  is set when a pickup or dropoff is outside the reservation's market and more than 30 minutes
+  from its central city (`ExcessDriveTimeEstimator`), which a long in-market run also does. So it
+  is not a sourcing signal and cannot stand in for one.
+
+**Fix**
+The market substitution happens during stop resolution, which writes the warning into the signed
+stop ticket. Pricing re-expanded that ticket for the market id and never read the rest.
+Core now reads `service_area_source` back off the ticket, puts it on the quote unit, and
+re-emits the same sentence from a shared constant when it says `nearest`.
+One stop outside a market decides the whole unit, so a trip from a market out to a town with no
+providers discloses it too.
+The MCP passes the field through and rejects a `nearest` unit that names no market.
+The document normalizer reads the stated field and keeps its orphan-stop inference only as a
+fallback for quotes captured before this.
+
+**Still open:** `sourcing_drive_time` is not populated on this path, so the quote names the market
+but cannot say which hours of the bill are positioning. It needs a baseline that does not exist
+here, because the reservation is built in the sourcing market from the start.
 
 ---
 

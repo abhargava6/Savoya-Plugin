@@ -90,6 +90,12 @@ When Savoya has no stored rate for a vehicle in a market, you can give a rate to
 ### What does "additional vehicles" mean for nearby markets?
 The counts are vehicles a nearby market adds on top of the home market, not that market's total fleet. They are unconfirmed and promise nothing about fulfilment. Say so when you talk to the client.
 
+### Can I ask what vehicles Savoya has in a market?
+Yes, without starting a quote. Ask, for example, "What makes and models do we have in Los Angeles?" or "How many Cadillac Escalades do we have in Dallas?"
+You get counts by vehicle type, make and model.
+They are today's unconfirmed vendor vehicles, not what is free on a trip date.
+Vendors type make and model themselves, so the same vehicle can appear under two spellings.
+
 ### Does a commission change the total?
 No. The document shows the rate and the commission amount, calculated on the subtotal after discounts and before fuel. The option total stays exactly as Savoya returned it.
 

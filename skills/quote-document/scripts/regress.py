@@ -3983,36 +3983,72 @@ def lint_stop_confirmation():
 
 
 def lint_town_stops():
-    """R122, R123 (2026-10-25). A stop the client named only as a town or area is priced at a street
-    address Core resolved, never at a town or area point.
+    """R122, R123 (rewritten 2026-10-27). A vague `address` stop is asked, never substituted.
 
-    The Actian World Cup session asked which town before any lookup, offered no street address, and
-    priced town and area points that Core could not price (`quote_units_unavailable`, empty `issues`);
-    the same quote priced with four street addresses. This asserts the instructions say so in both
-    places a session reads, and that the retry rule no longer lets the same references go twice. It
-    checks the text: behaviour needs a fixture from a real capture, which does not exist yet.
+    Root cause, traced 2026-10-27: Google returns a locality with no `postal_code`, Core's
+    `street_address` falls back to the autocomplete description so the candidate looks like an
+    address, Core signs a stop ticket for it, and `quote_stop_payload_errors` then refuses it for
+    the missing postal code -- a reason that reaches only Core's log. The connector now grades every
+    candidate against that same rule and strips the `stop_ref` from any Core would refuse, so an
+    unpriceable point cannot be sent at all and the plugin's job is to ask, not to compensate.
+
+    The first version of this rule had the plugin add a city-hall query per town and refuse
+    candidates whose name carried no street number. Both were stand-ins for a property the plugin
+    could not see, and both are gone; the banned list below keeps them gone.
+
+    No fixture can cover this: the stop lookup is a live connector call and nothing in the suite
+    captures one. So this checks three things that are checkable -- the rule is stated in both
+    places a session reads, the workaround is absent from them, and every `how` value the
+    instructions name is one `handoff.py` actually accepts.
     """
     problems = []
     skill = open(os.path.join(HERE, "..", "..", "quote-intake", "SKILL.md"), encoding="utf-8").read()
     tree = open(os.path.join(HERE, "..", "..", "quote-intake", "references", "decision-tree.md"), encoding="utf-8").read()
     rules = open(os.path.join(HERE, "..", "RULES.md"), encoding="utf-8").read()
+    handoff = open(os.path.join(HERE, "..", "..", "quote-intake", "scripts", "handoff.py"), encoding="utf-8").read()
+    both = skill + tree
+
+    # Gone, and staying gone. RULES.md still records the history, deliberately.
     for name, text in (("SKILL.md", skill), ("decision-tree.md", tree)):
-        for needle in ("R122", "civic building", "street number", "stand_in_chosen_by_user", "--placeholder-stop"):
+        for needle in ("civic building", "city or town hall", "street number"):
+            if needle in text:
+                problems.append(f"{name} has the removed workaround back (`{needle}`)")
+
+    # The rule itself, in both places a session reads.
+    for name, text in (("SKILL.md", skill), ("decision-tree.md", tree)):
+        for needle in ("R122", "Add no query of your own", "never compose an address",
+                       "ask the user for a street address", "priceable_reason",
+                       "`as_directed` stop is city-level by design", "--placeholder-stop"):
             if needle not in text:
                 problems.append(f"{name} does not say `{needle}`")
-    for needle in ("never ask \"which town\"", "differ from the failed call", "re-sends the same references") :
-        if needle not in skill + tree:
+    # An unpriceable candidate is never offered as a choice.
+    if "never offer it as an option" not in both:
+        problems.append("the instructions do not say an unpriceable candidate is never offered")
+    # The retry still has to change something.
+    for needle in ("differ from the failed call", "re-sends the same references"):
+        if needle not in both:
             problems.append(f"the instructions do not say `{needle}`")
-    if "street-level stop references" in skill:
-        problems.append("SKILL.md still lets the retry re-send references (\"street-level\" without a difference)")
-    if "priced at a street address" not in rules:
-        problems.append("RULES.md has no entry for the town-stop rule")
+
+    # The instructions and the script have to agree on the vocabulary, or a session
+    # writes a `how` the write refuses.
+    accepted = re.search(r"STOP_HOW\s*=\s*\(([^)]*)\)", handoff)
+    if not accepted:
+        problems.append("handoff.py no longer declares STOP_HOW, so the `how` values cannot be checked")
+    else:
+        allowed = set(re.findall(r"\"([a-z_]+)\"", accepted.group(1)))
+        for how in sorted(set(re.findall(r"`(user_address|user_pick|single_match|stand_in_chosen_by_user)`", both))):
+            if how not in allowed:
+                problems.append(f"the instructions name `how` value `{how}`, which handoff.py refuses")
+
+    if "asked, never substituted" not in rules:
+        problems.append("RULES.md has no entry for the vague-address rule")
     if problems:
         print("  \u2717 town stops")
         for b in problems:
             print(f"      - {b}")
         return False
-    print("  \u2713 town stops (a town or area is priced at a resolved street address; the retry changes the references; instruction text only)")
+    print("  \u2713 town stops (a vague address stop is asked, never substituted; no civic-building query; "
+          "no street-number test; the retry changes references; `how` values match handoff.py)")
     return True
 
 
