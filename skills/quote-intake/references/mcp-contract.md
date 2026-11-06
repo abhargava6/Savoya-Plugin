@@ -1,4 +1,4 @@
-# The Savoya MCP contract — twelve tools
+# The Savoya MCP contract — thirteen tools
 
 **This file is the contract.** `regress.py`'s tool-contract guard parses the block below
 and fails if any instruction file or script names a tool that isn't in it. When the server
@@ -11,6 +11,8 @@ The server went from nine tools to twelve on 9 October (cross-market sourcing,
 was found by re-querying the connector on a hunch. A bidirectional check is still
 outstanding.
 
+`lookup_market_fleet` was added on 5 November (`GREEN-429`) and verified live that day.
+
 ```tools
 resolve_client
 resolve_passengers
@@ -20,11 +22,18 @@ resolve_service_areas
 preview_rates
 preview_rate_batch
 lookup_nearby_markets
+lookup_market_fleet
 calculate_quote_units
 calculate_sourced_quote_units
 calculate_temporary_quote_units
 generate_quote_options
 ```
+
+## Added 2026-11-05 — market fleet
+
+| Tool | What it does |
+|---|---|
+| `lookup_market_fleet` | Counts one service area's vehicles by vehicle type, make and model, for fleet questions asked outside any quote. Takes `service_area_id` from `resolve_service_areas`, plus optional `make` and `model` filters that match any part of the name, ignoring case. Counts are today's unconfirmed vendor inventory (the same vehicles behind `market_vehicle_count`), not trip-time availability. Make and model are typed by vendors, so a typo such as "Freighliner" is its own row. Never use it to price or to choose a vehicle for a quote. |
 
 ## Added 2026-10-09 — cross-market sourcing
 

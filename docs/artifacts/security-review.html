@@ -75,7 +75,7 @@
     <a class="row" href="#security"><span class="q">How is security implemented?</span><span class="a">Every call runs as the signed-in Savoya employee, checked by Auth0, the MCP server and Core in turn.</span></a>
     <a class="row" href="#auth"><span class="q">How will authentication work?</span><span class="a">Savoya login through Auth0, then a per-user token exchange so Core sees the real user. Diagrams below.</span></a>
     <a class="row" href="#rate"><span class="q">How are we rate limiting?</span><span class="a">Per-user limits on the MCP server, per-request work limits in Core, and Core's existing API limit on top.</span></a>
-    <a class="row" href="#misuse"><span class="q">What defends against misuse of the exposed tools?</span><span class="a">Twelve read-only tools, validated inputs, signed references and checked responses.</span></a>
+    <a class="row" href="#misuse"><span class="q">What defends against misuse of the exposed tools?</span><span class="a">Thirteen read-only tools, validated inputs, signed references and checked responses.</span></a>
     <a class="row" href="#scope"><span class="q">Is MCP traffic scoped at Core?</span><span class="a">Yes. The MCP calls only nine new, dedicated endpoints, so its traffic is separate by design.</span></a>
     <a class="row" href="#pii"><span class="q">Is anything preventing PII reaching the LLM?</span><span class="a">Client contact details are shown to internal users today, which is lower risk than how AI is used at Savoya now. Policy decision below.</span></a>
     <a class="row" href="#future"><span class="q">What happens when more APIs are exposed?</span><span class="a">Each new capability gets its own dedicated Core endpoints behind the same checks.</span></a>
@@ -88,7 +88,7 @@
 
     <div class="scroll"><table>
       <tr><th>Code</th><th>Where to review it</th><th>What it is</th></tr>
-      <tr><td><b>Savoya MCP server</b><br/>new repository</td><td><a href="https://bitbucket.org/capital-drive/savoya-mcp/src/main/">capital-drive/savoya-mcp</a><br/>branch <code>main</code> @ <code>8f02928</code></td><td>A small, stateless Node.js service. It publishes the twelve tools, checks tokens, exchanges them for Core tokens, applies rate limits and checks Core's responses. It has no database</td></tr>
+      <tr><td><b>Savoya MCP server</b><br/>new repository</td><td><a href="https://bitbucket.org/capital-drive/savoya-mcp/src/main/">capital-drive/savoya-mcp</a><br/>branch <code>main</code> @ <code>8f02928</code></td><td>A small, stateless Node.js service. It publishes the thirteen tools, checks tokens, exchanges them for Core tokens, applies rate limits and checks Core's responses. It has no database</td></tr>
       <tr><td><b>Savoya Core</b><br/>new branch</td><td><a href="https://bitbucket.org/capital-drive/savoya/src/feat/savoya-mcp-main/">capital-drive/savoya</a><br/>branch <code>feat/savoya-mcp-main</code> @ <code>e9ff3f85d9</code></td><td>48 commits on top of current <code>master</code>. Adds the quote-builder endpoints and their services, a feature flag, role permissions, and the Auth0 configuration for the MCP</td></tr>
     </table></div>
     <p>To see every Core change in one diff: <code>git diff origin/master...origin/feat/savoya-mcp-main</code></p>
@@ -173,7 +173,7 @@ flowchart TB
     <div class="scroll"><table>
       <tr><th>Area</th><th>Path</th></tr>
       <tr><td>MCP: sign-in, token checks, rate limits, HTTP server</td><td><code>savoya-mcp/src/platform/</code></td></tr>
-      <tr><td>MCP: the twelve tools, their schemas, the Core client and response checks</td><td><code>savoya-mcp/src/domains/quotes/</code></td></tr>
+      <tr><td>MCP: the thirteen tools, their schemas, the Core client and response checks</td><td><code>savoya-mcp/src/domains/quotes/</code></td></tr>
       <tr><td>MCP: design and auth documentation</td><td><code>savoya-mcp/docs/architecture-overview.md</code>, <code>docs/mcp-auth-overview.md</code></td></tr>
       <tr><td>Core: the nine endpoints</td><td><code>server/config/routes.rb</code>, <code>server/app/controllers/api/v1/quote_builder_controller.rb</code></td></tr>
       <tr><td>Core: the quote-builder services</td><td><code>server/app/services/quote_builder/</code></td></tr>
@@ -307,7 +307,7 @@ sequenceDiagram
   <section id="misuse">
     <p class="eyebrow">Misuse</p>
     <h2>Defences against misuse of the exposed tools</h2>
-    <p class="answer">All twelve tools only read or calculate. None of them books, saves or changes a reservation, a quote, a client or a rate.</p>
+    <p class="answer">All thirteen tools only read or calculate. None of them books, saves or changes a reservation, a quote, a client or a rate.</p>
     <div class="scroll"><table>
       <tr><th>Purpose</th><th>Tool</th><th>Core endpoint, under <code>/api/v1/quote_builder</code></th></tr>
       <tr><td rowspan="5">Look up</td><td><code>resolve_client</code></td><td><code>GET clients</code></td></tr>
@@ -315,9 +315,10 @@ sequenceDiagram
       <tr><td><code>resolve_itinerary_stops</code></td><td><code>POST resolve_stops</code></td></tr>
       <tr><td><code>resolve_vehicle_types</code></td><td><code>GET vehicle_types</code></td></tr>
       <tr><td><code>resolve_service_areas</code></td><td><code>GET service_areas</code></td></tr>
-      <tr><td rowspan="3">Rates and inventory</td><td><code>preview_rates</code></td><td><code>POST rate_preview</code></td></tr>
+      <tr><td rowspan="4">Rates and inventory</td><td><code>preview_rates</code></td><td><code>POST rate_preview</code></td></tr>
       <tr><td><code>preview_rate_batch</code></td><td><code>POST rate_preview_batch</code></td></tr>
       <tr><td><code>lookup_nearby_markets</code></td><td><code>POST nearby_markets</code></td></tr>
+      <tr><td><code>lookup_market_fleet</code></td><td><code>GET market_fleet</code></td></tr>
       <tr><td rowspan="4">Price a quote</td><td><code>calculate_quote_units</code></td><td rowspan="4"><code>POST estimate_quote_units</code></td></tr>
       <tr><td><code>calculate_sourced_quote_units</code></td></tr>
       <tr><td><code>calculate_temporary_quote_units</code></td></tr>
