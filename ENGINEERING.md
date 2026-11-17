@@ -51,6 +51,7 @@ Acceptance criteria
 | Open | **I3** | A street-only address on quote view stops | Feature | Low | — |
 | Open | **I4** | The server tells the model to pick a location itself when Core asks for confirmation | Defect | Medium | GREEN-417 |
 | Open | **J1** | Town and area points come back as selectable stop candidates that Core may not price | Defect | **High** | GREEN-415 |
+| Open | **I5** | Count of vehicles by make and model for a market | Feature | Medium | GREEN-429 |
 | Deferred | **F1** | What Auth0 adds over today's per-CSM OAuth | Decision | **High** | GREEN-354 |
 | Deferred | **F2** | MCP tool surface vs. `QuoteBuilder`: replacement or parallel | Decision | **High** | GREEN-354 |
 | Deferred | **F3** | Does `QuoteBuilder`'s exact path require a passenger? | Decision | Medium | GREEN-354 |
@@ -65,7 +66,7 @@ Acceptance criteria
 | Deferred | **B4** | `scenario_comparison` hides data the payload carries | Feature | Low | — |
 | Deferred | **C2** | Stop-ref TTL undocumented | Feature | Low | — |
 | Deferred | **E1** | Host quote documents at a Savoya URL | Feature | P3 | — |
-| Resolved | A1, A2, A3, A4, B1, B3, B5, B8, B10, H2, H4, H5 | See *Resolved* | — | — | A4: GREEN-382; B10: GREEN-371; H2: GREEN-386; H4: GREEN-388; H5: GREEN-389 |
+| Resolved | A1, A2, A3, A4, B1, B3, B5, B8, B10, H2, H4, H5 | See *Resolved* | — | — | A4: GREEN-382; B10: GREEN-371; H2: GREEN-386; H4: GREEN-388; H5: GREEN-390 |
 
 Each Deferred item states why. Move one back to Open by changing its section and status.
 
@@ -243,7 +244,7 @@ PRD R52. Sibling of B7. `QuoteBuilder` does not close it (see F5 note under B7).
 ---
 
 ## G4 — Quote response lacks the no-local-provider warning
-**Type:** Feature · **Priority:** Medium · **Status:** fixed, unreleased · **Jira:** GREEN-383 · **PRD:** R57
+**Type:** Feature · **Priority:** Medium · **Status:** fixed, released in 0.28.1 · **Jira:** GREEN-383 · **PRD:** R57
 
 **Problem statement**
 `resolve_itinerary_stops` returns the sourcing warning. The quote response does not. The quote response sets `excess_drive_time: true` instead. Both facts are needed.
@@ -554,7 +555,7 @@ Observed 2026-10-24, Yerdle, Orange County, 7 Mercedes Sprinter Vans on 2027-03-
 The unit carries `"quantity": 7`, `"requested_quantity": 1`, `"required_quantity": 7`. No field names the market, the inventoried count or the override.
 
 **Reference**
-H5 (GREEN-389), PRD R95. Capture `yerdle-irvine-transfers` in the shared Drive folder, 2026-10-24.
+H5 (GREEN-390), PRD R95. Capture `yerdle-irvine-transfers` in the shared Drive folder, 2026-10-24.
 
 **Acceptance criteria**
 - [ ] A unit that used an override carries a structured field with the service area, vehicle type, inventoried count and requested count.
@@ -680,6 +681,47 @@ Report: Actian World Cup session, 2026-10-25, plugin 0.27.6, feedback document "
 ---
 
 ---
+
+---
+
+## I5 — Count of vehicles by make and model for a market
+**Type:** Feature · **Priority:** Medium · **Status:** open · **Jira:** GREEN-429 · **PRD:** R124, R125
+
+**Problem statement**
+Sales asks which makes and models Savoya has in a market. The MCP returns vehicle types, and for a nearby market the quantity it adds. It never returns make or model. Make and model are in the database.
+
+**Impact**
+- Two sales requests on 2026-10-30 (below). A session cannot answer either from the MCP.
+- The nearby-market lookup counts only vehicles a market adds. It is not a fleet count and must not be used as one.
+- Plugin meanwhile: none. A session says it cannot answer. Does not block the plugin.
+
+**Steps to reproduce**
+Sales requests, 2026-10-30:
+- "what types of vehicles do we have available in Bogota/Bogotá, Columbia?"
+- "Do we have any Maybach vehicle make/models in Los Angeles service area"
+
+Observed 2026-11-02. `resolve_service_areas("Los Angeles")`:
+
+```json
+{"contract_version":1,"service_areas":[{"id":11196,"name":"Los Angeles, California"}]}
+```
+
+`lookup_nearby_markets(11196, 2026-12-01)`, Orange County row:
+
+```json
+"vehicles":[{"vehicle_type_id":"8","name":"SUV","quantity":2,"shared_with":[]}]
+```
+
+No make or model field. Nothing for Los Angeles itself.
+
+**Reference**
+PRD R124, R125. GREEN-429. Same conventions as the existing tools: service area id from `resolve_service_areas`, compact response (NFR-7).
+
+**Acceptance criteria**
+- [ ] Given a service area id, the response gives each vehicle type's count and, inside it, the count per make and model.
+- [ ] An optional make (and model) filter returns the count. A make the market does not have returns 0.
+- [ ] No client, quote, trip date or TC profile is needed.
+- [ ] A market with 100+ vehicles reads in one call.
 
 ---
 
@@ -1011,7 +1053,7 @@ Design questions still to settle, not decisions yet requested:
 Items move here with the answer and the date, only on Ayush's say-so. Condensed 2026-10-11. The full original wording and evidence for each item is in git history at commit `f1a8b36`.
 
 ## H5 — Allow quoting a quantity above Savoya's inventory · closed 2026-10-26, reported done by Ayush
-**Jira:** `GREEN-389` · **PRD:** R95
+**Jira:** `GREEN-390` · **PRD:** R95
 
 **Problem:** Core returned `market_inventory_shortfall` when the requested quantity exceeded the inventoried count, so a CSM with vendor confirmation could not get a priced quote for more vehicles.
 **Resolution:** Reported done by Ayush on 2026-10-26. How it was delivered is not recorded here. The plugin's workaround is gone: `handoff.py extend-quantity` was removed on 2026-10-20 (commit `cca055d`), and a shortfall is resent with `inventory_override: true` (R95), priced on staging 2026-10-24.

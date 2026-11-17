@@ -3,6 +3,16 @@
 Reconstructed from the working sessions of 22–24 September 2026. Versions before
 0.19.1 predate this repository and are not recorded here.
 
+## 0.28.1
+
+From Ethan Ward's `ethan-invalid-stops` branch (GREEN-415, GREEN-417, GREEN-383, GREEN-429), released from `release-0.28.1`. Requirements R122 and R123 rewritten; R57 noted. The connector in each environment must withhold stop tickets from candidates Core would refuse (`priceable: false`) and return `service_area_source` on the quote before this plugin is installed there; on an older connector a town point can still fail to price, and the one retry and the stop-and-report path apply.
+
+- **A vague `address` stop is asked, never substituted (R122, R123).** The 0.28.0 workaround is gone: the plugin no longer adds a city-hall query per town, and no longer refuses a candidate for lacking a street number. Root cause, traced into Core: Google returns a town with no postal code, Core signs a stop ticket for it anyway, and pricing then refuses it, a reason that reached only Core's log. The connector now strips the ticket from any candidate Core would refuse. Intake sends the stop as the client described it, adds no query of its own, composes no address, and when nothing returned is priceable asks the user for a street address with the connector's `priceable_reason`. A candidate marked `priceable: false` is never offered. `address` stops only; an `as_directed` stop is city-level by design. The retry after `quote_units_unavailable` uses references that differ from the failed call. `lint_town_stops` keeps the removed text out and checks that every `how` value the instructions name is one `handoff.py` accepts. History: `feedback-archive.md`, 2026-10-27.
+- **"No local market" is read from the quote (R57, GREEN-383).** Core states `service_area_source` (`nearest` or `unavailable`) on the quote unit and repeats the no-local-providers warning with the market named, so `normalize_quote.py` reads it instead of inferring it. A trip with only one end outside a Savoya market is now disclosed; the old inference needed every stop outside a market, and is kept as a fallback for quotes captured before this. The internal placeholder says "A STOP SITS IN NO SAVOYA SERVICE AREA" when only some stops are outside. The `sourcing` handoff key, specified but never written or read, is removed from `handoff-contract.md`. `ENGINEERING.md` G4 closed.
+- **`lookup_market_fleet` is in the MCP contract (GREEN-429).** The thirteenth tool counts one market's vehicles by type, make and model, for fleet questions outside any quote. Documented in `mcp-contract.md`, the help page and the architecture artifact; no skill calls it yet (R124, R125 stay open). The tool-contract guard now allows it.
+- **Help page and artifacts refreshed** for the rewritten town-stop answer and the new tool.
+- **`ENGINEERING.md`:** G4 fixed; I5 (make and model counts, GREEN-429) added; H5's Jira key corrected to GREEN-390.
+
 ## 0.28.0
 
 From the Yerdle and Actian World Cup sessions on 0.27.6, and the connector's move to a compact quote view (GREEN-380). Requirements R54, R55, R56, R83 (amended), R95, R122 and R123, and NFR-6. The connector in each environment must serve presentation version 2 before this plugin is installed there.
