@@ -115,7 +115,7 @@ because the thing it checks either reached a CSM once, or was found shipping dur
 migration. A sample of them:
 
 - **instruction paths** — every `scripts/` / `references/` path is anchored and resolves.
-- **tool contract** — no instruction file or script names an MCP tool outside the twelve
+- **tool contract** — no instruction file or script names an MCP tool outside the thirteen
   in `mcp-contract.md`, which is the contract the suite enforces. It matches a *pattern*
   for tool-shaped names rather than a list of known-removed tools, so it catches the next
   removal as well as the last.

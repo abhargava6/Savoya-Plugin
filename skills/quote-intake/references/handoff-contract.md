@@ -91,13 +91,13 @@ sentence a CSM can act on: *re-run the quote.*
   than re-derived.
 - **`warnings`** — the unit-level warnings, **as Core sent them**, minus the single named
   suppression. Includes anything we don't recognise.
-- **`sourcing`** — `{market, excess_drive_time}` captured from
-  `resolve_itinerary_stops`. **This is the one field intake must carry because the document
-  cannot get it any other way:** the "No local providers" warning naming the market appears
-  only on stop resolution, while the quote response carries just
-  `excess_drive_time: true`. Without it a Whistler job billing 12 hours against a requested
-  8 can only tell the client "a neighbouring market". See `ENGINEERING.md` G4 — if Core
-  starts returning the warning on the quote, this field becomes redundant rather than wrong.
+- **No `sourcing` key.** It was specified here as `{market, excess_drive_time}` for intake
+  to carry from `resolve_itinerary_stops`, because the quote response named no market.
+  `handoff.py` never wrote it and nothing read it.
+  Core now states it on the quote: `service_area_source` is `nearest` when a stop sits in
+  no Savoya market, and `source_service_area` names the market the vehicle comes from, so
+  the document reads both from the quote and needs nothing carried across the seam.
+  Closed as `ENGINEERING.md` G4 / GREEN-383.
 - **`passenger`** — `{id, name}` only when the **user named one**. Omitted otherwise; Core
   attaches an eligible passenger to the unsaved calculation itself.
 

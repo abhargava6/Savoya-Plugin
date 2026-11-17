@@ -9,9 +9,9 @@
       "audience": "everyone at Savoya",
       "managed": true,
       "reflects_version": "0.28.0",
-      "published_version": "0.28.0",
-      "published_hash": "04372260639c20bd",
-      "source_hash": "df9cdeeea63928e4"
+      "published_version": "0.28.1",
+      "published_hash": "2991a8f21dab147f",
+      "source_hash": "1e9165485262171d"
     },
     {
       "key": "decision-tree",
@@ -20,10 +20,10 @@
       "url": "https://claude.ai/artifact/Ahp59uyA6xuiDwaqeuaeSm",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.28.0",
-      "published_version": "0.28.0",
-      "published_hash": "0e16832e9573ce07",
-      "source_hash": "04a3a1d00b8ea255"
+      "reflects_version": "0.28.1",
+      "published_version": "0.28.1",
+      "published_hash": "71bb9a55fbbb6640",
+      "source_hash": "0750faa9e7ef0179"
     },
     {
       "key": "flow-diagrams",
@@ -32,10 +32,10 @@
       "url": "https://claude.ai/artifact/2Z2Z3dMLh5mcAVf4dC3TBB",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.28.0",
-      "published_version": "0.28.0",
-      "published_hash": "7265c8e0d7349a13",
-      "source_hash": "04a3a1d00b8ea255"
+      "reflects_version": "0.28.1",
+      "published_version": "0.28.1",
+      "published_hash": "80955fc738f87d11",
+      "source_hash": "0750faa9e7ef0179"
     },
     {
       "key": "architecture",
@@ -44,10 +44,10 @@
       "url": "https://claude.ai/artifact/3wNBnpJUjL95wCioeAMBV8",
       "audience": "team",
       "managed": true,
-      "reflects_version": "0.28.0",
-      "published_version": "0.28.0",
-      "published_hash": "bd449b20f7dd3680",
-      "source_hash": "04a3a1d00b8ea255"
+      "reflects_version": "0.28.1",
+      "published_version": "0.28.1",
+      "published_hash": "f364a03cd6927566",
+      "source_hash": "0750faa9e7ef0179"
     },
     {
       "key": "security-review",

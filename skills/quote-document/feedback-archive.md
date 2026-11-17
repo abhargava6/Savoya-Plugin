@@ -4,6 +4,25 @@ Dated history of every rule in `RULES.md` — what was observed, in which sessio
 
 ---
 
+## 2026-10-27 (R122/R123 — a town stop looked like a street address, and the reason never left Core)
+
+Source: the Actian World Cup session, traced through the connector into Core.
+
+- **Four town-named origins priced twice and failed twice** with `quote_units_unavailable`, Core 422 and `issues: []`.
+The same quote priced cleanly with four street addresses, $65,056.50 for 32 units.
+- **The root cause is a hole in Core, not in the plugin.**
+Google returns a locality with no `postal_code`.
+Core's `street_address` then falls back to the autocomplete description, so a town comes back looking like a street address: `type: "address"`, a signed `stop_ref`, status `resolved`.
+`quote_stop_payload_errors` refuses it at pricing time for the missing postal code, and that reason reaches only Core's log — `render_contract_error` logs `diagnostics`, while the JSON body carries error, issues and request id alone.
+So the session saw a resolved stop, an empty `issues` list, and no way to tell why.
+- **The fix belongs in the connector, because the ticket is the capability.**
+It now grades every candidate against Core's own rule and withholds the `stop_ref` from any Core would refuse.
+A flag can be ignored; a missing ticket cannot.
+- **The first version of this rule was a stand-in, and is withdrawn.**
+It had the plugin add a city-hall query per town and refuse any candidate whose name carried no street number — two guesses at a property the plugin could not see.
+Both are gone, and `lint_town_stops` keeps them gone.
+The plugin's job is to ask, not to compensate.
+
 ## 2026-10-16 (0.27.0 — the Yerdle session: a wrong claim, an unasked question, a missing capture)
 
 Source: the Yerdle IOL Whistler quote on 0.26.1 (Drive feedback record and full capture) and the

@@ -151,7 +151,7 @@ and issues no tool calls.
 **Decided 2026-10-10.** The three project documents are the base the work runs off, not a
 record written after it:
 
-- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R121) — what the product must do. A new
+- `Requirements_Quoting_Pilot.md` (the **PRD**, R1–R125) — what the product must do. A new
   requirement is written here *first*, with a status, before anything is built.
 - `PRD_TDD_Quoting_MCP.md` (the **TDD**) — how it is built. Updated in the same pass as the
   code, not later.
