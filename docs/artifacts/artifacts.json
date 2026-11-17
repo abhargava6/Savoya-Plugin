@@ -9,8 +9,8 @@
       "audience": "everyone at Savoya",
       "managed": true,
       "reflects_version": "0.28.0",
-      "published_version": "0.28.0",
-      "published_hash": "04372260639c20bd",
+      "published_version": "0.28.1",
+      "published_hash": "2991a8f21dab147f",
       "source_hash": "1e9165485262171d"
     },
     {
@@ -21,8 +21,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.28.1",
-      "published_version": "0.28.0",
-      "published_hash": "0e16832e9573ce07",
+      "published_version": "0.28.1",
+      "published_hash": "71bb9a55fbbb6640",
       "source_hash": "0750faa9e7ef0179"
     },
     {
@@ -33,8 +33,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.28.1",
-      "published_version": "0.28.0",
-      "published_hash": "7265c8e0d7349a13",
+      "published_version": "0.28.1",
+      "published_hash": "80955fc738f87d11",
       "source_hash": "0750faa9e7ef0179"
     },
     {
@@ -45,8 +45,8 @@
       "audience": "team",
       "managed": true,
       "reflects_version": "0.28.1",
-      "published_version": "0.28.0",
-      "published_hash": "bd449b20f7dd3680",
+      "published_version": "0.28.1",
+      "published_hash": "f364a03cd6927566",
       "source_hash": "0750faa9e7ef0179"
     },
     {

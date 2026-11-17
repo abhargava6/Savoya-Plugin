@@ -72,7 +72,7 @@
 <div class="wrap">
   <h1>Quoting MCP — architecture diagrams</h1>
   <p class="sub">Companion to <code>PRD_TDD_Quoting_MCP.md</code> — the same diagrams, rendered large. Source of truth for the logic itself is <code>skills/quote-intake/references/decision-tree.md</code>; this page is the system-level picture around it, across all three codebases.</p>
-  <p class="ver">plugin savoya-quoting v0.28.0 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · reconciled 24 Oct 2026 against all three sources</p>
+  <p class="ver">plugin savoya-quoting v0.28.1 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · reconciled 24 Oct 2026 against all three sources</p>
 
   <ul class="toc">
     <li><a href="#security">Security review for go-live</a></li>
@@ -150,7 +150,7 @@
 flowchart TB
     USER(["Savoya CSM / sales / ops user"])
 
-    subgraph PLUGIN["Claude plugin — savoya-quoting v0.28.0 · repo: Savoya MCP"]
+    subgraph PLUGIN["Claude plugin — savoya-quoting v0.28.1 · repo: Savoya MCP"]
         QI["quote-intake skill<br/>nodes A–J"]
         QD["quote-document skill<br/>nodes K–Q"]
         HANDOFF[("handoff/ folder — contract 3<br/>request.md · intake.json · raw_quote.json")]
@@ -678,5 +678,5 @@ sequenceDiagram
   <div class="note flag"><b>Open for the architecture review to decide.</b> Whether Core-side scoping must ship before go-live or can follow it. Whether passengers are covered by PII phase 1 alongside clients. Whether the MCP's per-task rate limit is enough at two tasks, or needs a shared store so the limit is per user across all tasks.</div>
   <div class="note"><code>savoya-mcp</code> also has a PDF and an <code>output/</code> folder committed to the repository; worth removing before it is shared more widely.</div>
 
-  <footer>Quoting MCP · savoya-quoting v0.28.0 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · companion to <code>PRD_TDD_Quoting_MCP.md</code> · reconciled 24 Oct 2026 · regenerate when the architecture changes</footer>
+  <footer>Quoting MCP · savoya-quoting v0.28.1 · savoya-mcp main @ 8f02928 · Core feat/savoya-mcp-main @ e9ff3f85d9 · companion to <code>PRD_TDD_Quoting_MCP.md</code> · reconciled 24 Oct 2026 · regenerate when the architecture changes</footer>
 </div>
